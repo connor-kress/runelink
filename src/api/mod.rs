@@ -1,5 +1,8 @@
-use axum::{extract::Query, response::IntoResponse};
+use crate::{db::DbPool, models::User, schema::users};
+use axum::{extract::Query, extract::State, response::IntoResponse, Json};
+use diesel::prelude::*;
 use serde::Deserialize;
+use std::sync::Arc;
 
 #[derive(Deserialize)]
 pub struct PingParams {
@@ -18,4 +21,23 @@ pub async fn ping(Query(params): Query<PingParams>) -> impl IntoResponse {
     };
     println!("{}", message);
     return message;
+}
+
+pub async fn list_users(State(pool): State<Arc<DbPool>>) -> impl IntoResponse {
+    let pool = pool.clone();
+    let users_result = tokio::task::spawn_blocking(move || {
+        let mut conn = pool.get().expect("couldn't get db connection from pool");
+        return users::table.load::<User>(&mut conn);
+    })
+    .await
+    .unwrap();
+
+    return match users_result {
+        Ok(users) => Json(users).into_response(),
+        Err(e) => (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {:?}", e),
+        )
+            .into_response(),
+    };
 }

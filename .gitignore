@@ -1,1 +1,5 @@
-/target
+# Rust build
+/target/
+
+# Environmental variables
+.env
