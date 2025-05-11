@@ -1,4 +1,8 @@
-use crate::{db::DbPool, models::User, schema::users};
+use crate::{
+    db::DbPool,
+    models::{NewUser, User},
+    schema::users,
+};
 use axum::{extract::Query, extract::State, response::IntoResponse, Json};
 use diesel::prelude::*;
 use serde::Deserialize;
@@ -33,6 +37,31 @@ pub async fn list_users(State(pool): State<Arc<DbPool>>) -> impl IntoResponse {
     .unwrap();
 
     return match users_result {
+        Ok(users) => Json(users).into_response(),
+        Err(e) => (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {:?}", e),
+        )
+            .into_response(),
+    };
+}
+
+pub async fn create_user(State(pool): State<Arc<DbPool>>) -> impl IntoResponse {
+    let new_user = NewUser {
+        name: "connor".into(),
+        domain: "textbookheaven.org".into(),
+    };
+    let pool = pool.clone();
+    let user_result = tokio::task::spawn_blocking(move || {
+        let mut conn = pool.get().expect("couldn't get db connection from pool");
+        return diesel::insert_into(users::table)
+            .values(&new_user)
+            .get_result::<User>(&mut conn);
+    })
+    .await
+    .unwrap();
+
+    return match user_result {
         Ok(users) => Json(users).into_response(),
         Err(e) => (
             axum::http::StatusCode::INTERNAL_SERVER_ERROR,

@@ -13,7 +13,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/api/ping", get(api::ping))
-        .route("/api/users", get(api::list_users))
+        .route("/api/users", get(api::list_users).post(api::create_user))
         .with_state(pool);
 
     let listener = TcpListener::bind("0.0.0.0:3000")

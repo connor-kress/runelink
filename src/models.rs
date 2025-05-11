@@ -7,3 +7,10 @@ pub struct User {
     pub name: String,
     pub domain: String,
 }
+
+#[derive(Insertable, Serialize, Deserialize, Debug)]
+#[diesel(table_name = crate::schema::users)]
+pub struct NewUser<'a> {
+    pub name: &'a str,
+    pub domain: &'a str,
+}
