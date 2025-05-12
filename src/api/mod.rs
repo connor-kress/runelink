@@ -1,5 +1,6 @@
 use crate::{
     db::DbPool,
+    db_queries::get_all_messages,
     models::{NewUser, User},
     schema::users,
 };
@@ -63,6 +64,25 @@ pub async fn create_user(State(pool): State<Arc<DbPool>>) -> impl IntoResponse {
 
     return match user_result {
         Ok(users) => Json(users).into_response(),
+        Err(e) => (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {:?}", e),
+        )
+            .into_response(),
+    };
+}
+
+pub async fn list_messages(State(pool): State<Arc<DbPool>>) -> impl IntoResponse {
+    let pool = pool.clone();
+    let messages_result = tokio::task::spawn_blocking(move || {
+        let mut conn = pool.get().expect("couldn't get db connection from pool");
+        return get_all_messages(&mut conn);
+    })
+    .await
+    .unwrap();
+
+    return match messages_result {
+        Ok(messages) => Json(messages).into_response(),
         Err(e) => (
             axum::http::StatusCode::INTERNAL_SERVER_ERROR,
             format!("Database error: {:?}", e),
