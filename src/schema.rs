@@ -1,8 +1,7 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
-    users (id) {
-        id -> Int4,
+    users (name, domain) {
         name -> Text,
         domain -> Text,
     }
