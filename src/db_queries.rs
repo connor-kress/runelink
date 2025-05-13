@@ -1,7 +1,17 @@
-use crate::models::{FlatMessage, Message, User};
-use crate::schema::messages;
+use crate::models::{FlatMessage, Message, NewUser, User};
+use crate::schema::{messages, users};
 use diesel::prelude::*;
 use uuid::Uuid;
+
+pub fn insert_user(conn: &mut PgConnection, new_user: &NewUser) -> QueryResult<User> {
+    diesel::insert_into(users::table)
+        .values(new_user)
+        .get_result::<User>(conn)
+}
+
+pub fn get_users(conn: &mut PgConnection) -> QueryResult<Vec<User>> {
+    users::table.load::<User>(conn)
+}
 
 fn unflatten(msg: FlatMessage) -> Message {
     let sender = msg

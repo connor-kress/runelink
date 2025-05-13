@@ -1,11 +1,9 @@
 use crate::{
     db::DbPool,
-    db_queries::get_all_messages,
-    models::{NewUser, User},
-    schema::users,
+    db_queries::{get_all_messages, get_users, insert_user},
+    models::NewUser,
 };
 use axum::{extract::Query, extract::State, response::IntoResponse, Json};
-use diesel::prelude::*;
 use serde::Deserialize;
 use std::sync::Arc;
 
@@ -32,7 +30,7 @@ pub async fn list_users(State(pool): State<Arc<DbPool>>) -> impl IntoResponse {
     let pool = pool.clone();
     let users_result = tokio::task::spawn_blocking(move || {
         let mut conn = pool.get().expect("couldn't get db connection from pool");
-        return users::table.load::<User>(&mut conn);
+        return get_users(&mut conn);
     })
     .await
     .unwrap();
@@ -55,9 +53,7 @@ pub async fn create_user(State(pool): State<Arc<DbPool>>) -> impl IntoResponse {
     let pool = pool.clone();
     let user_result = tokio::task::spawn_blocking(move || {
         let mut conn = pool.get().expect("couldn't get db connection from pool");
-        return diesel::insert_into(users::table)
-            .values(&new_user)
-            .get_result::<User>(&mut conn);
+        return insert_user(&mut conn, &new_user);
     })
     .await
     .unwrap();
