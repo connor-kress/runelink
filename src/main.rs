@@ -6,6 +6,7 @@ mod db;
 mod db_queries;
 mod models;
 mod schema;
+mod utils;
 
 #[tokio::main]
 async fn main() {

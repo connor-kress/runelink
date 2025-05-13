@@ -10,9 +10,9 @@ pub struct User {
 
 #[derive(Insertable, Serialize, Deserialize, Debug)]
 #[diesel(table_name = crate::schema::users)]
-pub struct NewUser<'a> {
-    pub name: &'a str,
-    pub domain: &'a str,
+pub struct NewUser {
+    pub name: String,
+    pub domain: String,
 }
 
 #[derive(Queryable, Selectable, Identifiable, Debug)]

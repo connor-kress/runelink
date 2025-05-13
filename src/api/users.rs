@@ -2,8 +2,12 @@ use crate::{
     db::DbPool,
     db_queries::{get_users, insert_user},
     models::NewUser,
+    utils::map_diesel_error,
 };
-use axum::{extract::State, response::IntoResponse, Json};
+use axum::{
+    extract::{Json, State},
+    response::IntoResponse,
+};
 use std::sync::Arc;
 
 pub async fn list_users(State(pool): State<Arc<DbPool>>) -> impl IntoResponse {
@@ -25,11 +29,10 @@ pub async fn list_users(State(pool): State<Arc<DbPool>>) -> impl IntoResponse {
     };
 }
 
-pub async fn create_user(State(pool): State<Arc<DbPool>>) -> impl IntoResponse {
-    let new_user = NewUser {
-        name: "connor".into(),
-        domain: "textbookheaven.org".into(),
-    };
+pub async fn create_user(
+    State(pool): State<Arc<DbPool>>,
+    Json(new_user): Json<NewUser>,
+) -> impl IntoResponse {
     let pool = pool.clone();
     let user_result = tokio::task::spawn_blocking(move || {
         let mut conn = pool.get().expect("couldn't get db connection from pool");
@@ -40,10 +43,6 @@ pub async fn create_user(State(pool): State<Arc<DbPool>>) -> impl IntoResponse {
 
     return match user_result {
         Ok(users) => Json(users).into_response(),
-        Err(e) => (
-            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Database error: {:?}", e),
-        )
-            .into_response(),
+        Err(e) => map_diesel_error(e).into_response(),
     };
 }
