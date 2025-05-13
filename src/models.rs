@@ -33,3 +33,22 @@ pub struct Message {
     pub recipient: Option<User>,
     pub body: String,
 }
+
+impl From<FlatMessage> for Message {
+    fn from(value: FlatMessage) -> Self {
+        let sender = value
+            .sender_name
+            .zip(value.sender_domain)
+            .map(|(name, domain)| User { name, domain });
+        let recipient = value
+            .recipient_name
+            .zip(value.recipient_domain)
+            .map(|(name, domain)| User { name, domain });
+        Message {
+            id: value.id,
+            sender,
+            recipient,
+            body: value.body,
+        }
+    }
+}

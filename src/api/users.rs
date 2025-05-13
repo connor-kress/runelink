@@ -1,8 +1,8 @@
 use crate::{
-    db::DbPool,
+    db::{get_conn, DbPool},
     db_queries::{get_users, insert_user},
+    error::ApiError,
     models::NewUser,
-    utils::map_diesel_error,
 };
 use axum::{
     extract::{Json, State},
@@ -10,39 +10,29 @@ use axum::{
 };
 use std::sync::Arc;
 
-pub async fn list_users(State(pool): State<Arc<DbPool>>) -> impl IntoResponse {
+pub async fn list_users(
+    State(pool): State<Arc<DbPool>>,
+) -> Result<impl IntoResponse, ApiError> {
     let pool = pool.clone();
-    let users_result = tokio::task::spawn_blocking(move || {
-        let mut conn = pool
-            .get()
-            .expect("couldn't get db connection from pool");
-        return get_users(&mut conn);
+    tokio::task::spawn_blocking(move || {
+        let mut conn = get_conn(&pool)?;
+        get_users(&mut conn)
     })
     .await
-    .unwrap();
-
-    return match users_result {
-        Ok(users) => Json(users).into_response(),
-        Err(e) => map_diesel_error(e).into_response(),
-    };
+    .map_err(ApiError::from)?
+    .map(Json)
 }
 
 pub async fn create_user(
     State(pool): State<Arc<DbPool>>,
     Json(new_user): Json<NewUser>,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, ApiError> {
     let pool = pool.clone();
-    let user_result = tokio::task::spawn_blocking(move || {
-        let mut conn = pool
-            .get()
-            .expect("couldn't get db connection from pool");
-        return insert_user(&mut conn, &new_user);
+    tokio::task::spawn_blocking(move || {
+        let mut conn = get_conn(&pool)?;
+        insert_user(&mut conn, &new_user)
     })
     .await
-    .unwrap();
-
-    return match user_result {
-        Ok(users) => Json(users).into_response(),
-        Err(e) => map_diesel_error(e).into_response(),
-    };
+    .map_err(ApiError::from)?
+    .map(Json)
 }

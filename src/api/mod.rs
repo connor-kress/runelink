@@ -6,7 +6,7 @@ mod users;
 pub use messages::*;
 pub use users::*;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct PingParams {
     id: Option<i32>,
     msg: Option<String>,
