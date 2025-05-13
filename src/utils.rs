@@ -21,7 +21,9 @@ pub fn map_diesel_error(e: DieselError) -> (StatusCode, String) {
                 format!("Database error: {}", info.message()),
             ),
         },
-        DieselError::NotFound => (StatusCode::NOT_FOUND, "Resource not found".to_string()),
+        DieselError::NotFound => {
+            (StatusCode::NOT_FOUND, "Resource not found".to_string())
+        }
         _ => (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("Unknown database error: {:?}", e),

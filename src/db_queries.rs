@@ -3,7 +3,10 @@ use crate::schema::{messages, users};
 use diesel::prelude::*;
 use uuid::Uuid;
 
-pub fn insert_user(conn: &mut PgConnection, new_user: &NewUser) -> QueryResult<User> {
+pub fn insert_user(
+    conn: &mut PgConnection,
+    new_user: &NewUser,
+) -> QueryResult<User> {
     diesel::insert_into(users::table)
         .values(new_user)
         .get_result::<User>(conn)
@@ -37,7 +40,10 @@ pub fn get_all_messages(conn: &mut PgConnection) -> QueryResult<Vec<Message>> {
     Ok(flat_messages.into_iter().map(unflatten).collect())
 }
 
-pub fn get_message_by_id(conn: &mut PgConnection, msg_id: Uuid) -> QueryResult<Message> {
+pub fn get_message_by_id(
+    conn: &mut PgConnection,
+    msg_id: Uuid,
+) -> QueryResult<Message> {
     let flat_message = messages::table
         .find(msg_id)
         .get_result::<FlatMessage>(conn)?;

@@ -13,7 +13,9 @@ use std::sync::Arc;
 pub async fn list_users(State(pool): State<Arc<DbPool>>) -> impl IntoResponse {
     let pool = pool.clone();
     let users_result = tokio::task::spawn_blocking(move || {
-        let mut conn = pool.get().expect("couldn't get db connection from pool");
+        let mut conn = pool
+            .get()
+            .expect("couldn't get db connection from pool");
         return get_users(&mut conn);
     })
     .await
@@ -21,11 +23,7 @@ pub async fn list_users(State(pool): State<Arc<DbPool>>) -> impl IntoResponse {
 
     return match users_result {
         Ok(users) => Json(users).into_response(),
-        Err(e) => (
-            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Database error: {:?}", e),
-        )
-            .into_response(),
+        Err(e) => map_diesel_error(e).into_response(),
     };
 }
 
@@ -35,7 +33,9 @@ pub async fn create_user(
 ) -> impl IntoResponse {
     let pool = pool.clone();
     let user_result = tokio::task::spawn_blocking(move || {
-        let mut conn = pool.get().expect("couldn't get db connection from pool");
+        let mut conn = pool
+            .get()
+            .expect("couldn't get db connection from pool");
         return insert_user(&mut conn, &new_user);
     })
     .await

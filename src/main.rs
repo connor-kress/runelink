@@ -4,6 +4,7 @@ use tokio::net::TcpListener;
 mod api;
 mod db;
 mod db_queries;
+mod error;
 mod models;
 mod schema;
 mod utils;
