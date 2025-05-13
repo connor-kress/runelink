@@ -1,4 +1,5 @@
 use axum::{routing::get, Router};
+use sqlx::migrate::Migrator;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 mod api;
@@ -7,10 +8,17 @@ mod db_queries;
 mod error;
 mod models;
 
+// Embed all sql migrations in binary
+static MIGRATOR: Migrator = sqlx::migrate!();
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenvy::dotenv().ok();
+
     let pool = Arc::new(db::get_pool().await?);
+
+    MIGRATOR.run(pool.as_ref()).await?;
+    println!("Migrations are up to date.");
 
     let app = Router::new()
         .route("/api/ping", get(api::ping))
