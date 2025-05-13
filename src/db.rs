@@ -8,7 +8,7 @@ pub async fn get_pool() -> Result<DbPool, sqlx::Error> {
         .expect("DATABASE_URL must be set");
     PgPoolOptions::new()
         .max_connections(50)
-        .idle_timeout(Duration::from_secs(2))
+        .acquire_timeout(Duration::from_secs(2))
         .connect(&database_url)
         .await
 }
