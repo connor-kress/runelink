@@ -1,37 +1,69 @@
+use crate::db::DbPool;
 use crate::error::ApiError;
 use crate::models::{FlatMessage, Message, NewUser, User};
-use crate::schema::{messages, users};
-use diesel::prelude::*;
 use uuid::Uuid;
 
-pub fn insert_user(
-    conn: &mut PgConnection,
+pub async fn insert_user(
+    pool: &DbPool,
     new_user: &NewUser,
 ) -> Result<User, ApiError> {
-    diesel::insert_into(users::table)
-        .values(new_user)
-        .get_result(conn)
+    sqlx::query_as::<_, User>(r#"
+        INSERT INTO users (name, domain)
+        VALUES ($1, $2)
+        RETURNING name, domain;
+    "#)
+    .bind(&new_user.name)
+    .bind(&new_user.domain)
+    .fetch_one(pool)
+    .await
+    .map_err(ApiError::from)
+}
+
+pub async fn get_all_users(pool: &DbPool) -> Result<Vec<User>, ApiError> {
+    sqlx::query_as::<_, User>("SELECT name, domain FROM users;")
+        .fetch_all(pool)
+        .await
         .map_err(ApiError::from)
 }
 
-pub fn get_users(conn: &mut PgConnection) -> Result<Vec<User>, ApiError> {
-    users::table.load::<User>(conn).map_err(ApiError::from)
-}
-
-pub fn get_all_messages(
-    conn: &mut PgConnection,
+pub async fn get_all_messages(
+    pool: &DbPool,
 ) -> Result<Vec<Message>, ApiError> {
-    let messages = messages::table.load::<FlatMessage>(conn)?;
-    Ok(messages.into_iter().map(Message::from).collect())
+    let flats: Vec<FlatMessage> = sqlx::query_as::<_, FlatMessage>(r#"
+        SELECT
+            id,
+            sender_name,
+            sender_domain,
+            recipient_name,
+            recipient_domain,
+            body
+        FROM messages;
+    "#)
+    .fetch_all(pool)
+    .await
+    .map_err(ApiError::from)?;
+
+    Ok(flats.into_iter().map(Message::from).collect())
 }
 
-pub fn get_message_by_id(
-    conn: &mut PgConnection,
+pub async fn get_message_by_id(
+    pool: &DbPool,
     msg_id: Uuid,
 ) -> Result<Message, ApiError> {
-    messages::table
-        .find(msg_id)
-        .get_result::<FlatMessage>(conn)
-        .map(Message::from)
-        .map_err(ApiError::from)
+    sqlx::query_as::<_, FlatMessage>(r#"
+        SELECT
+            id,
+            sender_name,
+            sender_domain,
+            recipient_name,
+            recipient_domain,
+            body
+        FROM messages
+        WHERE id = $1;
+    "#)
+    .bind(msg_id)
+    .fetch_one(pool)
+    .await
+    .map_err(ApiError::from)
+    .map(Message::from)
 }

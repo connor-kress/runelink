@@ -1,6 +1,6 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use diesel::result::{DatabaseErrorKind, Error as DieselError};
+use sqlx::error::Error as SqlxError;
 use thiserror::Error;
 use tokio::task::JoinError;
 
@@ -8,35 +8,48 @@ use tokio::task::JoinError;
 pub enum ApiError {
     #[error("Database connection error: {0}")]
     DbConnectionError(String),
+
     #[error("Unique constraint violation")]
     UniqueViolation,
+
     #[error("Resource not found")]
     NotFound,
+
     #[error("Database error: {0}")]
     DatabaseError(String),
+
     #[error("Unknown error: {0}")]
     Unknown(String),
 }
 
-impl From<DieselError> for ApiError {
-    fn from(e: DieselError) -> Self {
+impl From<SqlxError> for ApiError {
+    fn from(e: SqlxError) -> Self {
         match e {
-            DieselError::DatabaseError(
-                DatabaseErrorKind::UniqueViolation,
-                _,
-            ) => ApiError::UniqueViolation,
-            DieselError::NotFound => ApiError::NotFound,
-            DieselError::DatabaseError(_, info) => {
-                ApiError::DatabaseError(info.message().to_string())
+            SqlxError::PoolTimedOut | SqlxError::PoolClosed => {
+                ApiError::DbConnectionError(e.to_string())
             }
-            _ => ApiError::Unknown(format!("{:?}", e)),
+
+            SqlxError::Database(db_err) => match db_err.code().as_deref() {
+                Some("23505") => ApiError::UniqueViolation,
+                _ => ApiError::DatabaseError(db_err.message().to_string()),
+            },
+
+            SqlxError::RowNotFound => ApiError::NotFound,
+
+            _ => ApiError::Unknown(e.to_string()),
         }
+    }
+}
+
+impl From<JoinError> for ApiError {
+    fn from(e: JoinError) -> Self {
+        ApiError::Unknown(format!("Join error: {e}"))
     }
 }
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
-        match self {
+        let (status, body) = match self {
             ApiError::DbConnectionError(msg) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, msg)
             }
@@ -47,13 +60,7 @@ impl IntoResponse for ApiError {
             ApiError::DatabaseError(_) | ApiError::Unknown(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, self.to_string())
             }
-        }
-        .into_response()
-    }
-}
-
-impl From<JoinError> for ApiError {
-    fn from(e: JoinError) -> Self {
-        ApiError::Unknown(format!("Join error: {e}"))
+        };
+        (status, body).into_response()
     }
 }

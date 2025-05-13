@@ -1,22 +1,20 @@
-use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
+use sqlx::prelude::FromRow;
 use uuid::Uuid;
 
-#[derive(Queryable, Serialize, Deserialize, Debug)]
+#[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct User {
     pub name: String,
     pub domain: String,
 }
 
-#[derive(Insertable, Serialize, Deserialize, Debug)]
-#[diesel(table_name = crate::schema::users)]
+#[derive(Debug, Deserialize)]
 pub struct NewUser {
     pub name: String,
     pub domain: String,
 }
 
-#[derive(Queryable, Selectable, Identifiable, Debug)]
-#[diesel(table_name = crate::schema::messages)]
+#[derive(Debug, FromRow)]
 pub struct FlatMessage {
     pub id: Uuid,
     pub sender_name: Option<String>,
@@ -26,7 +24,7 @@ pub struct FlatMessage {
     pub body: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Message {
     pub id: Uuid,
     pub sender: Option<User>,
