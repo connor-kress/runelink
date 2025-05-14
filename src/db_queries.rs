@@ -32,13 +32,10 @@ pub async fn get_all_messages(
     let flats: Vec<FlatMessage> = sqlx::query_as::<_, FlatMessage>(r#"
         SELECT
             m.*,
-            su.created_at AS sender_created_at,
-            ru.created_at AS recipient_created_at
+            a.created_at AS author_created_at
         FROM messages m
-        LEFT JOIN users su ON su.name = m.sender_name
-                          AND su.domain = m.sender_domain
-        LEFT JOIN users ru ON ru.name = m.recipient_name
-                          AND ru.domain = m.recipient_domain
+        LEFT JOIN users a ON a.name = m.author_name
+                         AND a.domain = m.author_domain
         ORDER BY m.created_at DESC;
     "#)
     .fetch_all(pool)
@@ -55,13 +52,10 @@ pub async fn get_message_by_id(
     sqlx::query_as::<_, FlatMessage>(r#"
         SELECT
             m.*,
-            su.created_at AS sender_created_at,
-            ru.created_at AS recipient_created_at
+            a.created_at AS author_created_at
         FROM messages m
-        LEFT JOIN users su ON su.name = m.sender_name
-                          AND su.domain = m.sender_domain
-        LEFT JOIN users ru ON ru.name = m.recipient_name
-                          AND ru.domain = m.recipient_domain
+        LEFT JOIN users a ON a.name = m.author_name
+                         AND a.domain = m.author_domain
         WHERE m.id = $1;
     "#)
     .bind(msg_id)

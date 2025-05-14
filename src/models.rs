@@ -20,12 +20,9 @@ pub struct NewUser {
 #[derive(Debug, FromRow)]
 pub struct FlatMessage {
     pub id: Uuid,
-    pub sender_name: Option<String>,
-    pub sender_domain: Option<String>,
-    pub sender_created_at: Option<OffsetDateTime>,
-    pub recipient_name: Option<String>,
-    pub recipient_domain: Option<String>,
-    pub recipient_created_at: Option<OffsetDateTime>,
+    pub author_name: Option<String>,
+    pub author_domain: Option<String>,
+    pub author_created_at: Option<OffsetDateTime>,
     pub body: String,
     pub created_at: OffsetDateTime,
     pub updated_at: OffsetDateTime,
@@ -34,8 +31,7 @@ pub struct FlatMessage {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Message {
     pub id: Uuid,
-    pub sender: Option<User>,
-    pub recipient: Option<User>,
+    pub author: Option<User>,
     pub body: String,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
@@ -45,19 +41,10 @@ pub struct Message {
 
 impl From<FlatMessage> for Message {
     fn from(value: FlatMessage) -> Self {
-        let sender = value
-            .sender_name
-            .zip(value.sender_domain)
-            .zip(value.sender_created_at)
-            .map(|((name, domain), created_at)| User {
-                name,
-                domain,
-                created_at,
-            });
-        let recipient = value
-            .recipient_name
-            .zip(value.recipient_domain)
-            .zip(value.recipient_created_at)
+        let author = value
+            .author_name
+            .zip(value.author_domain)
+            .zip(value.author_created_at)
             .map(|((name, domain), created_at)| User {
                 name,
                 domain,
@@ -65,8 +52,7 @@ impl From<FlatMessage> for Message {
             });
         Message {
             id: value.id,
-            sender,
-            recipient,
+            author,
             body: value.body,
             created_at: value.created_at,
             updated_at: value.updated_at,
