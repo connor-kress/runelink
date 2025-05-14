@@ -13,8 +13,10 @@ sqlx = { version = "0.8.5", features = [
     "postgres",
     "macros",
     "migrate",
-    "uuid"
+    "uuid",
+    "time"
 ] }
 thiserror = "2.0.12"
+time = { version = "0.3.41", features = ["serde", "formatting"] }
 tokio = { version = "1.44.2", features = ["rt-multi-thread", "macros"] }
 uuid = { version = "1.16.0", features = ["v4", "serde"] }

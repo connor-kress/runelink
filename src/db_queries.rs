@@ -10,7 +10,7 @@ pub async fn insert_user(
     sqlx::query_as::<_, User>(r#"
         INSERT INTO users (name, domain)
         VALUES ($1, $2)
-        RETURNING name, domain;
+        RETURNING name, domain, created_at;
     "#)
     .bind(&new_user.name)
     .bind(&new_user.domain)
@@ -20,7 +20,7 @@ pub async fn insert_user(
 }
 
 pub async fn get_all_users(pool: &DbPool) -> Result<Vec<User>, ApiError> {
-    sqlx::query_as::<_, User>("SELECT name, domain FROM users;")
+    sqlx::query_as::<_, User>("SELECT name, domain, created_at FROM users;")
         .fetch_all(pool)
         .await
         .map_err(ApiError::from)
@@ -31,13 +31,15 @@ pub async fn get_all_messages(
 ) -> Result<Vec<Message>, ApiError> {
     let flats: Vec<FlatMessage> = sqlx::query_as::<_, FlatMessage>(r#"
         SELECT
-            id,
-            sender_name,
-            sender_domain,
-            recipient_name,
-            recipient_domain,
-            body
-        FROM messages;
+            m.*,
+            su.created_at AS sender_created_at,
+            ru.created_at AS recipient_created_at
+        FROM messages m
+        LEFT JOIN users su ON su.name = m.sender_name
+                          AND su.domain = m.sender_domain
+        LEFT JOIN users ru ON ru.name = m.recipient_name
+                          AND ru.domain = m.recipient_domain
+        ORDER BY m.created_at DESC;
     "#)
     .fetch_all(pool)
     .await
@@ -52,14 +54,15 @@ pub async fn get_message_by_id(
 ) -> Result<Message, ApiError> {
     sqlx::query_as::<_, FlatMessage>(r#"
         SELECT
-            id,
-            sender_name,
-            sender_domain,
-            recipient_name,
-            recipient_domain,
-            body
-        FROM messages
-        WHERE id = $1;
+            m.*,
+            su.created_at AS sender_created_at,
+            ru.created_at AS recipient_created_at
+        FROM messages m
+        LEFT JOIN users su ON su.name = m.sender_name
+                          AND su.domain = m.sender_domain
+        LEFT JOIN users ru ON ru.name = m.recipient_name
+                          AND ru.domain = m.recipient_domain
+        WHERE m.id = $1;
     "#)
     .bind(msg_id)
     .fetch_one(pool)
