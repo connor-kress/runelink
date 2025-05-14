@@ -5,6 +5,8 @@ CREATE TABLE messages (
     recipient_name TEXT,
     recipient_domain TEXT,
     body TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     CONSTRAINT fk_sender
         FOREIGN KEY (sender_name, sender_domain)
@@ -30,3 +32,16 @@ CREATE TABLE messages (
         (recipient_name IS NOT NULL AND recipient_domain IS NOT NULL)
     )
 );
+
+CREATE FUNCTION set_updated_at()
+  RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER messages_set_updated_at
+  BEFORE UPDATE ON messages
+  FOR EACH ROW
+  EXECUTE FUNCTION set_updated_at();
