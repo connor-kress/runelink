@@ -1,9 +1,30 @@
-CREATE TABLE channels (
+CREATE TABLE hosts (
+    domain TEXT PRIMARY KEY,
+    user_count INT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE servers (
     id UUID PRIMARY KEY,
     title TEXT NOT NULL,
     description TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE channels (
+    id UUID PRIMARY KEY,
+    server_id UUID NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_server
+        FOREIGN KEY (server_id)
+        REFERENCES servers (id)
+        ON DELETE CASCADE
 );
 
 CREATE TABLE messages (
@@ -37,19 +58,26 @@ CREATE INDEX idx_messages_channel_id_created_at
     ON messages (channel_id, created_at);
 
 CREATE FUNCTION set_updated_at()
-  RETURNS TRIGGER AS $$
+    RETURNS TRIGGER AS $$
 BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
+    NEW.updated_at = NOW();
+    RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
+-- Hosts and users are updated remotely and synced manually
+
+CREATE TRIGGER servers_set_updated_at
+    BEFORE UPDATE ON servers
+    FOR EACH ROW
+    EXECUTE FUNCTION set_updated_at();
+
 CREATE TRIGGER channels_set_updated_at
-  BEFORE UPDATE ON channels
-  FOR EACH ROW
-  EXECUTE FUNCTION set_updated_at();
+    BEFORE UPDATE ON channels
+    FOR EACH ROW
+    EXECUTE FUNCTION set_updated_at();
 
 CREATE TRIGGER messages_set_updated_at
-  BEFORE UPDATE ON messages
-  FOR EACH ROW
-  EXECUTE FUNCTION set_updated_at();
+    BEFORE UPDATE ON messages
+    FOR EACH ROW
+    EXECUTE FUNCTION set_updated_at();
