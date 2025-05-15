@@ -65,7 +65,7 @@ pub struct ServerWithChannels {
 #[derive(Clone, Debug, Serialize, Deserialize, FromRow)]
 pub struct Host {
     pub domain: String,
-    pub user_count: u32,
+    pub user_count: i32,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339")]

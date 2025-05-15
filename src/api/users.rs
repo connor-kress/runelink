@@ -10,12 +10,14 @@ use axum::{
 };
 use std::sync::Arc;
 
+/// GET /api/users
 pub async fn list_users(
     State(pool): State<Arc<DbPool>>,
 ) -> Result<impl IntoResponse, ApiError> {
     get_all_users(&pool).await.map(Json)
 }
 
+/// POST /api/users
 pub async fn create_user(
     State(pool): State<Arc<DbPool>>,
     Json(new_user): Json<NewUser>,
