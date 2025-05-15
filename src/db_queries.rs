@@ -76,5 +76,4 @@ pub async fn get_message_by_id(
     .fetch_one(pool)
     .await
     .map_err(ApiError::from)
-    .map(Message::from)
 }
