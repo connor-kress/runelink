@@ -1,6 +1,6 @@
 use crate::{
     db::DbPool,
-    db_queries::{get_all_users, insert_user},
+    queries::{get_all_users, insert_user},
     error::ApiError,
     models::NewUser,
 };

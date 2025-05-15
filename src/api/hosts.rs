@@ -1,6 +1,6 @@
 use crate::{
     db::DbPool,
-    db_queries::{get_all_hosts, get_host_by_domain},
+    queries::{get_all_hosts, get_host_by_domain},
     error::ApiError,
 };
 use axum::{

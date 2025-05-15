@@ -1,6 +1,6 @@
 use crate::{
     db::DbPool,
-    db_queries::{get_all_servers, get_server_with_channels},
+    queries::{get_all_servers, get_server_with_channels},
     error::ApiError,
 };
 use axum::{extract::{Path, State}, response::IntoResponse, Json};

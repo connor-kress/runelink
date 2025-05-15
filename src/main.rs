@@ -4,7 +4,7 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 mod api;
 mod db;
-mod db_queries;
+mod queries;
 mod error;
 mod models;
 

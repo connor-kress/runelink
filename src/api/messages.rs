@@ -1,6 +1,6 @@
 use crate::{
     db::DbPool,
-    db_queries::{get_all_messages, get_message_by_id},
+    queries::{get_all_messages, get_message_by_id},
     error::ApiError,
 };
 use axum::{extract::{Path, State}, response::IntoResponse, Json};
