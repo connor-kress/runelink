@@ -1,7 +1,9 @@
+use uuid::Uuid;
+use sqlx::types::Json;
+
 use crate::db::DbPool;
 use crate::error::ApiError;
-use crate::models::{FlatMessage, Message, NewUser, User};
-use uuid::Uuid;
+use crate::models::{Message, NewUser, User};
 
 pub async fn insert_user(
     pool: &DbPool,
@@ -20,7 +22,7 @@ pub async fn insert_user(
 }
 
 pub async fn get_all_users(pool: &DbPool) -> Result<Vec<User>, ApiError> {
-    sqlx::query_as::<_, User>("SELECT name, domain, created_at FROM users;")
+    sqlx::query_as!(User, "SELECT * FROM users;")
         .fetch_all(pool)
         .await
         .map_err(ApiError::from)
@@ -29,36 +31,48 @@ pub async fn get_all_users(pool: &DbPool) -> Result<Vec<User>, ApiError> {
 pub async fn get_all_messages(
     pool: &DbPool,
 ) -> Result<Vec<Message>, ApiError> {
-    let flats: Vec<FlatMessage> = sqlx::query_as::<_, FlatMessage>(r#"
+    sqlx::query_as!(
+        Message,
+        r#"
         SELECT
-            m.*,
-            a.created_at AS author_created_at
+            m.id,
+            m.channel_id,
+            m.body,
+            m.created_at,
+            m.updated_at,
+            to_jsonb(a) AS "author: Json<User>"
         FROM messages m
         LEFT JOIN users a ON a.name = m.author_name
                          AND a.domain = m.author_domain
         ORDER BY m.created_at DESC;
-    "#)
+        "#
+    )
     .fetch_all(pool)
     .await
-    .map_err(ApiError::from)?;
-
-    Ok(flats.into_iter().map(Message::from).collect())
+    .map_err(ApiError::from)
 }
 
 pub async fn get_message_by_id(
     pool: &DbPool,
     msg_id: Uuid,
 ) -> Result<Message, ApiError> {
-    sqlx::query_as::<_, FlatMessage>(r#"
+    sqlx::query_as!(
+        Message,
+        r#"
         SELECT
-            m.*,
-            a.created_at AS author_created_at
+            m.id,
+            m.channel_id,
+            m.body,
+            m.created_at,
+            m.updated_at,
+            to_jsonb(a) AS "author: Json<User>"
         FROM messages m
         LEFT JOIN users a ON a.name = m.author_name
                          AND a.domain = m.author_domain
         WHERE m.id = $1;
-    "#)
-    .bind(msg_id)
+        "#,
+        msg_id,
+    )
     .fetch_one(pool)
     .await
     .map_err(ApiError::from)
