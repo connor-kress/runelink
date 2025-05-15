@@ -1,9 +1,13 @@
 use axum::{extract::Query, response::IntoResponse};
 use serde::Deserialize;
 
+mod channels;
 mod messages;
+mod servers;
 mod users;
+pub use channels::*;
 pub use messages::*;
+pub use servers::*;
 pub use users::*;
 
 #[derive(Deserialize, Debug)]

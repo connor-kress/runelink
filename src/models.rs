@@ -38,7 +38,7 @@ pub struct Channel {
     pub id: Uuid,
     pub server_id: Uuid,
     pub title: String,
-    pub description: String,
+    pub description: Option<String>,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339")]
@@ -49,12 +49,17 @@ pub struct Channel {
 pub struct Server {
     pub id: Uuid,
     pub title: String,
-    pub channels: Vec<Json<Channel>>,
-    pub description: String,
+    pub description: Option<String>,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339")]
     pub updated_at: OffsetDateTime,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ServerWithChannels {
+    pub server: Server,
+    pub channels: Vec<Channel>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, FromRow)]

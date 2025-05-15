@@ -3,19 +3,22 @@ use sqlx::types::Json;
 
 use crate::db::DbPool;
 use crate::error::ApiError;
-use crate::models::{Message, NewUser, User};
+use crate::models::{Channel, Message, NewUser, Server, ServerWithChannels, User};
 
 pub async fn insert_user(
     pool: &DbPool,
     new_user: &NewUser,
 ) -> Result<User, ApiError> {
-    sqlx::query_as::<_, User>(r#"
+    sqlx::query_as!(
+        User,
+        r#"
         INSERT INTO users (name, domain)
         VALUES ($1, $2)
-        RETURNING name, domain, created_at;
-    "#)
-    .bind(&new_user.name)
-    .bind(&new_user.domain)
+        RETURNING *;
+        "#,
+        new_user.name,
+        new_user.domain,
+    )
     .fetch_one(pool)
     .await
     .map_err(ApiError::from)
@@ -74,6 +77,60 @@ pub async fn get_message_by_id(
         msg_id,
     )
     .fetch_one(pool)
+    .await
+    .map_err(ApiError::from)
+}
+
+pub async fn get_channel_by_id(
+    pool: &DbPool,
+    channel_id: Uuid,
+) -> Result<Channel, ApiError> {
+    sqlx::query_as!(
+        Channel,
+        "SELECT * FROM channels WHERE id = $1;",
+        channel_id
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(ApiError::from)
+}
+
+pub async fn get_server_with_channels(
+    pool: &DbPool,
+    server_id: Uuid,
+) -> Result<ServerWithChannels, ApiError> {
+    let server = sqlx::query_as!(
+        Server,
+        "SELECT * FROM servers WHERE id = $1;",
+        server_id,
+    )
+    .fetch_one(pool)
+    .await?;
+
+    let channels = sqlx::query_as!(
+        Channel,
+        r#"
+        SELECT *
+        FROM channels
+        WHERE server_id = $1
+        ORDER BY created_at DESC;
+        "#,
+        server_id,
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(ServerWithChannels { server, channels })
+}
+
+pub async fn get_all_servers(
+    pool: &DbPool,
+) -> Result<Vec<Server>, ApiError> {
+    sqlx::query_as!(
+        Server,
+        "SELECT * FROM servers",
+    )
+    .fetch_all(pool)
     .await
     .map_err(ApiError::from)
 }
