@@ -3,7 +3,7 @@ use sqlx::types::Json;
 
 use crate::db::DbPool;
 use crate::error::ApiError;
-use crate::models::{Channel, Message, NewUser, Server, ServerWithChannels, User};
+use crate::models::{Channel, Host, Message, NewUser, Server, ServerWithChannels, User};
 
 pub async fn insert_user(
     pool: &DbPool,
@@ -110,8 +110,7 @@ pub async fn get_server_with_channels(
     let channels = sqlx::query_as!(
         Channel,
         r#"
-        SELECT *
-        FROM channels
+        SELECT * FROM channels
         WHERE server_id = $1
         ORDER BY created_at DESC;
         "#,
@@ -131,6 +130,30 @@ pub async fn get_all_servers(
         "SELECT * FROM servers",
     )
     .fetch_all(pool)
+    .await
+    .map_err(ApiError::from)
+}
+
+pub async fn get_all_hosts(pool: &DbPool) -> Result<Vec<Host>, ApiError> {
+    sqlx::query_as!(
+        Host,
+        "SELECT * FROM hosts ORDER BY user_count DESC;",
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(ApiError::from)
+}
+
+pub async fn get_host_by_domain(
+    pool: &DbPool,
+    domain: &str,
+) -> Result<Host, ApiError> {
+    sqlx::query_as!(
+        Host,
+        "SELECT * FROM hosts WHERE domain = $1;",
+        domain,
+    )
+    .fetch_one(pool)
     .await
     .map_err(ApiError::from)
 }

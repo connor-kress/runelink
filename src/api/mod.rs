@@ -2,10 +2,12 @@ use axum::{extract::Query, response::IntoResponse};
 use serde::Deserialize;
 
 mod channels;
+mod hosts;
 mod messages;
 mod servers;
 mod users;
 pub use channels::*;
+pub use hosts::*;
 pub use messages::*;
 pub use servers::*;
 pub use users::*;

@@ -22,12 +22,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let app = Router::new()
         .route("/api/ping", get(api::ping))
+
         .route("/api/users", get(api::list_users).post(api::create_user))
+
         .route("/api/messages", get(api::list_messages))
         .route("/api/messages/{id}", get(api::get_message_by_id_handler))
+
         .route("/api/channels/{id}", get(api::get_channel_by_id_handler))
+
         .route("/api/servers", get(api::list_servers))
-        .route( "/api/servers/{id}", get(api::get_server_by_id_handler))
+        .route("/api/servers/{id}", get(api::get_server_by_id_handler))
+
+        .route("/api/hosts", get(api::list_hosts))
+        .route("/api/hosts/{domain}", get(api::get_host))
+
         .with_state(pool.clone());
 
     let listener = TcpListener::bind("0.0.0.0:3000").await?;
