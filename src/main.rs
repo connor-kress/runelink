@@ -24,6 +24,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/ping", get(api::ping))
         .route("/api/users", get(api::list_users).post(api::create_user))
         .route("/api/messages", get(api::list_messages))
+        .route(
+            "/api/messages/id/{message_id}",
+            get(api::get_message_by_id_handler),
+        )
         .with_state(pool.clone());
 
     let listener = TcpListener::bind("0.0.0.0:3000").await?;
