@@ -27,7 +27,12 @@ pub async fn get_server_with_channels_handler(
     State(pool): State<Arc<DbPool>>,
     Path(server_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let server = queries::get_server_by_id(&pool, server_id).await?;
-    let channels = queries::get_channels_by_server(&pool, server_id).await?;
-    Ok(Json(ServerWithChannels { server, channels }))
+    let (server, channels) = tokio::join!(
+        queries::get_server_by_id(&pool, server_id),
+        queries::get_channels_by_server(&pool, server_id),
+    );
+    Ok(Json(ServerWithChannels {
+        server: server?,
+        channels: channels?,
+    }))
 }
