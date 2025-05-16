@@ -1,33 +1,18 @@
-use crate::db::DbPool;
-use crate::error::ApiError;
-use crate::models::{Channel, Server, ServerWithChannels};
+use crate::{db::DbPool, error::ApiError, models::Server};
 use uuid::Uuid;
 
-pub async fn get_server_with_channels(
+pub async fn get_server_by_id(
     pool: &DbPool,
     server_id: Uuid,
-) -> Result<ServerWithChannels, ApiError> {
-    let server = sqlx::query_as!(
+) -> Result<Server, ApiError> {
+    sqlx::query_as!(
         Server,
         "SELECT * FROM servers WHERE id = $1;",
         server_id,
     )
     .fetch_one(pool)
-    .await?;
-
-    let channels = sqlx::query_as!(
-        Channel,
-        r#"
-        SELECT * FROM channels
-        WHERE server_id = $1
-        ORDER BY created_at DESC;
-        "#,
-        server_id,
-    )
-    .fetch_all(pool)
-    .await?;
-
-    Ok(ServerWithChannels { server, channels })
+    .await
+    .map_err(ApiError::from)
 }
 
 pub async fn get_all_servers(

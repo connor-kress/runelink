@@ -1,4 +1,4 @@
-use crate::{db::DbPool, error::ApiError, queries};
+use crate::{db::DbPool, error::ApiError, models::ServerWithChannels, queries};
 use axum::{
     extract::{Path, State},
     response::IntoResponse,
@@ -19,5 +19,15 @@ pub async fn get_server_by_id_handler(
     State(pool): State<Arc<DbPool>>,
     Path(server_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
-    queries::get_server_with_channels(&pool, server_id).await.map(Json)
+    queries::get_server_by_id(&pool, server_id).await.map(Json)
+}
+
+/// GET /api/servers/{id}/with_channels
+pub async fn get_server_with_channels_handler(
+    State(pool): State<Arc<DbPool>>,
+    Path(server_id): Path<Uuid>,
+) -> Result<impl IntoResponse, ApiError> {
+    let server = queries::get_server_by_id(&pool, server_id).await?;
+    let channels = queries::get_channels_by_server(&pool, server_id).await?;
+    Ok(Json(ServerWithChannels { server, channels }))
 }
