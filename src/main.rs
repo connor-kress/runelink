@@ -25,7 +25,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         .route("/api/users", get(api::list_users).post(api::create_user))
 
-        .route("/api/messages", get(api::list_messages))
+        .route(
+            "/api/messages",
+            get(api::list_messages).post(api::create_message),
+        )
         .route("/api/messages/{id}", get(api::get_message_by_id_handler))
 
         .route("/api/channels/{id}", get(api::get_channel_by_id_handler))

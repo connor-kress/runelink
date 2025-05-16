@@ -33,6 +33,14 @@ pub struct Message {
     pub updated_at: OffsetDateTime,
 }
 
+#[derive(Clone, Debug, Deserialize)]
+pub struct NewMessage {
+    pub channel_id: Uuid,
+    pub author_name: String,
+    pub author_domain: String,
+    pub body: String,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, FromRow)]
 pub struct Channel {
     pub id: Uuid,

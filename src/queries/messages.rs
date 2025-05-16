@@ -1,8 +1,31 @@
 use crate::db::DbPool;
 use crate::error::ApiError;
-use crate::models::{Message, User};
+use crate::models::{Message, NewMessage, User};
 use sqlx::types::Json;
 use uuid::Uuid;
+
+pub async fn insert_message(
+    pool: &DbPool,
+    new_msg: &NewMessage,
+) -> Result<Message, ApiError> {
+    let new_id = Uuid::new_v4();
+    sqlx::query!(
+        r#"
+        INSERT INTO messages (id, channel_id, author_name, author_domain, body)
+        VALUES ($1, $2, $3, $4, $5);
+        "#,
+        new_id,
+        new_msg.channel_id,
+        new_msg.author_name,
+        new_msg.author_domain,
+        new_msg.body,
+    )
+    .execute(pool)
+    .await
+    .map_err(ApiError::from)?;
+
+    get_message_by_id(pool, new_id).await
+}
 
 pub async fn get_all_messages(
     pool: &DbPool,
