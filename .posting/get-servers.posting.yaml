@@ -1,0 +1,2 @@
+name: get servers
+url: http://localhost:3000/api/servers

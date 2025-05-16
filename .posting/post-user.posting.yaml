@@ -1,0 +1,13 @@
+name: post user
+method: POST
+url: http://localhost:3000/api/users
+body:
+  content: |-
+    {
+      "name": "omar",
+      "domain": "darplex.com"
+    }
+  content_type: application/json
+headers:
+- name: content-type
+  value: application/json

@@ -1,0 +1,2 @@
+name: get channel by id
+url: http://localhost:3000/api/channels/5ed5a92e-0765-4323-a8ce-4217d43bb909

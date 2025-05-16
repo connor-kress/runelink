@@ -1,0 +1,2 @@
+name: get host by domain
+url: http://localhost:3000/api/hosts/darplex.com

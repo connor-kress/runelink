@@ -1,0 +1,15 @@
+name: post message
+method: POST
+url: http://localhost:3000/api/messages
+body:
+  content: |-
+    {
+      "channel_id": "5ed5a92e-0765-4323-a8ce-4217d43bb909",
+      "author_name": "omar",
+      "author_domain": "darplex.com",
+      "body": "This is a message."
+    }
+  content_type: application/json
+headers:
+- name: content-type
+  value: application/json
