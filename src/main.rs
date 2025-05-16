@@ -32,9 +32,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/messages/{id}", get(api::get_message_by_id_handler))
 
         .route("/api/channels/{id}", get(api::get_channel_by_id_handler))
+        .route("/api/channels/{id}/messages", get(api::list_messages_by_channel))
 
         .route("/api/servers", get(api::list_servers))
         .route("/api/servers/{id}", get(api::get_server_by_id_handler))
+        .route("/api/servers/{id}/messages", get(api::list_messages_by_server))
 
         .route("/api/hosts", get(api::list_hosts))
         .route("/api/hosts/{domain}", get(api::get_host))

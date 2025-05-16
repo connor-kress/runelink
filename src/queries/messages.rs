@@ -51,6 +51,61 @@ pub async fn get_all_messages(
     .map_err(ApiError::from)
 }
 
+pub async fn get_messages_by_server(
+    pool: &DbPool,
+    server_id: Uuid,
+) -> Result<Vec<Message>, ApiError> {
+    sqlx::query_as!(
+        Message,
+        r#"
+        SELECT
+            m.id,
+            m.channel_id,
+            m.body,
+            m.created_at,
+            m.updated_at,
+            to_jsonb(a) AS "author: Json<User>"
+        FROM messages m
+        LEFT JOIN users a ON a.name = m.author_name
+                         AND a.domain = m.author_domain
+        JOIN channels c ON c.id = m.channel_id
+        WHERE c.server_id = $1
+        ORDER BY m.created_at DESC;
+        "#,
+        server_id,
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(ApiError::from)
+}
+
+pub async fn get_messages_by_channel(
+    pool: &DbPool,
+    channel_id: Uuid,
+) -> Result<Vec<Message>, ApiError> {
+    sqlx::query_as!(
+        Message,
+        r#"
+        SELECT
+            m.id,
+            m.channel_id,
+            m.body,
+            m.created_at,
+            m.updated_at,
+            to_jsonb(a) AS "author: Json<User>"
+        FROM messages m
+        LEFT JOIN users a ON a.name = m.author_name
+                         AND a.domain = m.author_domain
+        WHERE m.channel_id = $1
+        ORDER BY m.created_at DESC;
+        "#,
+        channel_id,
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(ApiError::from)
+}
+
 pub async fn get_message_by_id(
     pool: &DbPool,
     msg_id: Uuid,
