@@ -1,6 +1,9 @@
-use axum::http::StatusCode;
-use axum::response::{IntoResponse, Response};
-use sqlx::error::Error as SqlxError;
+use axum::{
+    http::StatusCode,
+    response::{IntoResponse, Response},
+    Json,
+};
+use serde::Serialize;
 use thiserror::Error;
 use tokio::task::JoinError;
 
@@ -22,19 +25,19 @@ pub enum ApiError {
     Unknown(String),
 }
 
-impl From<SqlxError> for ApiError {
-    fn from(e: SqlxError) -> Self {
+impl From<sqlx::Error> for ApiError {
+    fn from(e: sqlx::Error) -> Self {
         match e {
-            SqlxError::PoolTimedOut | SqlxError::PoolClosed => {
+            sqlx::Error::PoolTimedOut | sqlx::Error::PoolClosed => {
                 ApiError::DbConnectionError(e.to_string())
             }
 
-            SqlxError::Database(db_err) => match db_err.code().as_deref() {
+            sqlx::Error::Database(db_err) => match db_err.code().as_deref() {
                 Some("23505") => ApiError::UniqueViolation,
                 _ => ApiError::DatabaseError(db_err.message().to_string()),
             },
 
-            SqlxError::RowNotFound => ApiError::NotFound,
+            sqlx::Error::RowNotFound => ApiError::NotFound,
 
             _ => ApiError::Unknown(e.to_string()),
         }
@@ -47,20 +50,23 @@ impl From<JoinError> for ApiError {
     }
 }
 
+#[derive(Serialize)]
+struct ErrorResponse {
+    error: String,
+}
+
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
-        let (status, body) = match self {
-            ApiError::DbConnectionError(msg) => {
-                (StatusCode::INTERNAL_SERVER_ERROR, msg)
-            }
-            ApiError::UniqueViolation => {
-                (StatusCode::CONFLICT, self.to_string())
-            }
-            ApiError::NotFound => (StatusCode::NOT_FOUND, self.to_string()),
-            ApiError::DatabaseError(_) | ApiError::Unknown(_) => {
-                (StatusCode::INTERNAL_SERVER_ERROR, self.to_string())
-            }
+        let status = match self {
+            ApiError::DbConnectionError(_)
+            | ApiError::DatabaseError(_)
+            | ApiError::Unknown(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            ApiError::UniqueViolation => StatusCode::CONFLICT,
+            ApiError::NotFound => StatusCode::NOT_FOUND,
         };
+        let body = Json(ErrorResponse {
+            error: self.to_string(),
+        });
         (status, body).into_response()
     }
 }
