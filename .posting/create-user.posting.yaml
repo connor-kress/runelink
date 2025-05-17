@@ -1,4 +1,4 @@
-name: post user
+name: create user
 method: POST
 url: http://localhost:3000/api/users
 body:

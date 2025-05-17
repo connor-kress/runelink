@@ -1,0 +1,13 @@
+name: create server
+method: POST
+url: http://localhost:3000/api/servers
+body:
+  content: |-
+    {
+      "title": "Darplex",
+      "description": "Check out darplex.com"
+    }
+  content_type: application/json
+headers:
+- name: content-type
+  value: application/json

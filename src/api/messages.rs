@@ -7,12 +7,13 @@ use axum::{
 use std::sync::Arc;
 use uuid::Uuid;
 
-/// POST /api/messages
+/// POST /api/channels/{id}/messages
 pub async fn create_message(
     State(pool): State<Arc<DbPool>>,
-    Json(new_msg): Json<NewMessage>,
+    Path(channel_id): Path<Uuid>,
+    Json(new_message): Json<NewMessage>,
 ) -> Result<impl IntoResponse, ApiError> {
-    queries::insert_message(&pool, &new_msg).await.map(Json)
+    queries::insert_message(&pool, channel_id, &new_message).await.map(Json)
 }
 
 /// GET /api/messages

@@ -1,4 +1,4 @@
-use crate::{db::DbPool, error::ApiError, queries};
+use crate::{db::DbPool, error::ApiError, models::NewChannel, queries};
 use axum::{
     extract::{Path, State},
     response::IntoResponse,
@@ -6,6 +6,15 @@ use axum::{
 };
 use std::sync::Arc;
 use uuid::Uuid;
+
+/// POST /api/servers/{id}/channels
+pub async fn create_channel(
+    State(pool): State<Arc<DbPool>>,
+    Path(server_id): Path<Uuid>,
+    Json(new_channel): Json<NewChannel>,
+) -> Result<impl IntoResponse, ApiError> {
+    queries::insert_channel(&pool, server_id, &new_channel).await.map(Json)
+}
 
 /// GET /api/channels
 pub async fn list_channels(

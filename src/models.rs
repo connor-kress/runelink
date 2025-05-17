@@ -35,7 +35,6 @@ pub struct Message {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct NewMessage {
-    pub channel_id: Uuid,
     pub author_name: String,
     pub author_domain: String,
     pub body: String,
@@ -53,6 +52,12 @@ pub struct Channel {
     pub updated_at: OffsetDateTime,
 }
 
+#[derive(Clone, Debug, Deserialize)]
+pub struct NewChannel {
+    pub title: String,
+    pub description: Option<String>,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, FromRow)]
 pub struct Server {
     pub id: Uuid,
@@ -62,6 +67,12 @@ pub struct Server {
     pub created_at: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339")]
     pub updated_at: OffsetDateTime,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct NewServer {
+    pub title: String,
+    pub description: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

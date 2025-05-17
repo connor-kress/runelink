@@ -6,7 +6,8 @@ use uuid::Uuid;
 
 pub async fn insert_message(
     pool: &DbPool,
-    new_msg: &NewMessage,
+    channel_id: Uuid,
+    new_message: &NewMessage,
 ) -> Result<Message, ApiError> {
     let new_id = Uuid::new_v4();
     sqlx::query!(
@@ -15,10 +16,10 @@ pub async fn insert_message(
         VALUES ($1, $2, $3, $4, $5);
         "#,
         new_id,
-        new_msg.channel_id,
-        new_msg.author_name,
-        new_msg.author_domain,
-        new_msg.body,
+        channel_id,
+        new_message.author_name,
+        new_message.author_domain,
+        new_message.body,
     )
     .execute(pool)
     .await

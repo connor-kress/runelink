@@ -1,4 +1,9 @@
-use crate::{db::DbPool, error::ApiError, models::ServerWithChannels, queries};
+use crate::{
+    db::DbPool,
+    error::ApiError,
+    models::{NewServer, ServerWithChannels},
+    queries,
+};
 use axum::{
     extract::{Path, State},
     response::IntoResponse,
@@ -6,6 +11,14 @@ use axum::{
 };
 use std::sync::Arc;
 use uuid::Uuid;
+
+/// POST /api/servers
+pub async fn create_server(
+    State(pool): State<Arc<DbPool>>,
+    Json(new_server): Json<NewServer>,
+) -> Result<impl IntoResponse, ApiError> {
+    queries::insert_server(&pool, &new_server).await.map(Json)
+}
 
 /// GET /api/servers
 pub async fn list_servers(

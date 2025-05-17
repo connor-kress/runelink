@@ -25,19 +25,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         .route("/api/users", get(api::list_users).post(api::create_user))
 
-        .route(
-            "/api/messages",
-            get(api::list_messages).post(api::create_message),
-        )
+        .route("/api/messages", get(api::list_messages))
         .route("/api/messages/{id}", get(api::get_message_by_id_handler))
 
         .route("/api/channels", get(api::list_channels))
         .route("/api/channels/{id}", get(api::get_channel_by_id_handler))
-        .route("/api/channels/{id}/messages", get(api::list_messages_by_channel))
+        .route(
+            "/api/channels/{id}/messages",
+            get(api::list_messages_by_channel).post(api::create_message),
+        )
 
-        .route("/api/servers", get(api::list_servers))
+        .route(
+            "/api/servers",
+            get(api::list_servers).post(api::create_server),
+        )
         .route("/api/servers/{id}", get(api::get_server_by_id_handler))
-        .route("/api/servers/{id}/channels", get(api::list_channels_by_server))
+        .route(
+            "/api/servers/{id}/channels",
+            get(api::list_channels_by_server).post(api::create_channel),
+        )
         .route("/api/servers/{id}/messages", get(api::list_messages_by_server))
         .route(
             "/api/servers/{id}/with_channels",

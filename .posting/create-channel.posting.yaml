@@ -1,0 +1,13 @@
+name: create channel
+method: POST
+url: http://localhost:3000/api/servers/ac120a29-1f29-4b1a-abf6-575c5c32f339/channels
+body:
+  content: |-
+    {
+      "title": "Off topic",
+      "description": "Anything you want"
+    }
+  content_type: application/json
+headers:
+- name: content-type
+  value: application/json
