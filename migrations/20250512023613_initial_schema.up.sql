@@ -1,22 +1,21 @@
 -- TABLE DEFINITIONS --
 
 CREATE TABLE users (
+    id UUID PRIMARY KEY,
     name TEXT NOT NULL,
     domain TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     synced_at TIMESTAMPTZ,
-    PRIMARY KEY (name, domain)
+    UNIQUE (name, domain)
 );
 
 CREATE TABLE hosts (
     domain TEXT PRIMARY KEY,
-    user_count INT NOT NULL DEFAULT 0,
+    user_count INT NOT NULL DEFAULT 0
+        CHECK (user_count >= 0),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-    CONSTRAINT chk_user_count_nonnegative
-        CHECK (user_count >= 0)
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE servers (
@@ -29,43 +28,27 @@ CREATE TABLE servers (
 
 CREATE TABLE channels (
     id UUID PRIMARY KEY,
-    server_id UUID NOT NULL,
+    server_id UUID NOT NULL
+        REFERENCES servers (id)
+        ON DELETE CASCADE,
     title TEXT NOT NULL,
     description TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-    CONSTRAINT fk_server
-        FOREIGN KEY (server_id)
-        REFERENCES servers (id)
-        ON DELETE CASCADE
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE messages (
     id UUID PRIMARY KEY,
-    channel_id UUID NOT NULL,
-    author_name TEXT,
-    author_domain TEXT,
-    body TEXT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-    CONSTRAINT fk_channel
-        FOREIGN KEY (channel_id)
+    channel_id UUID NOT NULL
         REFERENCES channels (id)
         ON DELETE CASCADE,
-
-    CONSTRAINT fk_author
-        FOREIGN KEY (author_name, author_domain)
-        REFERENCES users (name, domain)
+    author_id UUID
+        REFERENCES users (id)
         ON DELETE SET NULL
         ON UPDATE CASCADE,
-
-    -- All or nothing for the author
-    CONSTRAINT chk_author_fields_complete_or_null CHECK (
-        (author_name IS NULL AND author_domain IS NULL) OR
-        (author_name IS NOT NULL AND author_domain IS NOT NULL)
-    )
+    body TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 
@@ -78,7 +61,7 @@ CREATE INDEX idx_messages_channel_id_created_at
     ON messages (channel_id, created_at);
 
 CREATE INDEX idx_messages_author
-    ON messages (author_name, author_domain);
+    ON messages (author_id);
 
 
 -- UPDATED_AT MANAGEMENT --
