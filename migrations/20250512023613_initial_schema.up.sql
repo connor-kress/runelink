@@ -1,7 +1,11 @@
+-- EXTENSIONS --
+
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
 -- TABLE DEFINITIONS --
 
 CREATE TABLE users (
-    id UUID PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     domain TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -19,7 +23,7 @@ CREATE TABLE hosts (
 );
 
 CREATE TABLE servers (
-    id UUID PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title TEXT NOT NULL,
     description TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -27,7 +31,7 @@ CREATE TABLE servers (
 );
 
 CREATE TABLE channels (
-    id UUID PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     server_id UUID NOT NULL
         REFERENCES servers (id)
         ON DELETE CASCADE,
@@ -38,7 +42,7 @@ CREATE TABLE channels (
 );
 
 CREATE TABLE messages (
-    id UUID PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     channel_id UUID NOT NULL
         REFERENCES channels (id)
         ON DELETE CASCADE,
