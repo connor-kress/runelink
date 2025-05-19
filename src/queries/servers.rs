@@ -9,15 +9,13 @@ pub async fn insert_server(
     pool: &DbPool,
     new_server: &NewServer,
 ) -> Result<Server, ApiError> {
-    let new_id = Uuid::new_v4();
     sqlx::query_as!(
         Server,
         r#"
-        INSERT INTO servers (id, title, description)
-        VALUES ($1, $2, $3)
+        INSERT INTO servers (title, description)
+        VALUES ($1, $2)
         RETURNING *;
         "#,
-        new_id,
         new_server.title,
         new_server.description,
     )

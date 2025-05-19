@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 #[derive(Clone, Debug, Serialize, Deserialize, FromRow)]
 pub struct User {
+    pub id: Uuid,
     pub name: String,
     pub domain: String,
     #[serde(with = "time::serde::rfc3339")]
@@ -35,8 +36,7 @@ pub struct Message {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct NewMessage {
-    pub author_name: String,
-    pub author_domain: String,
+    pub author_id: Uuid,
     pub body: String,
 }
 

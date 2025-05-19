@@ -9,19 +9,17 @@ pub async fn insert_message(
     channel_id: Uuid,
     new_message: &NewMessage,
 ) -> Result<Message, ApiError> {
-    let new_id = Uuid::new_v4();
-    sqlx::query!(
+    let new_id: Uuid = sqlx::query_scalar!(
         r#"
-        INSERT INTO messages (id, channel_id, author_name, author_domain, body)
-        VALUES ($1, $2, $3, $4, $5);
+        INSERT INTO messages (channel_id, author_id, body)
+        VALUES ($1, $2, $3)
+        RETURNING id;
         "#,
-        new_id,
         channel_id,
-        new_message.author_name,
-        new_message.author_domain,
+        new_message.author_id,
         new_message.body,
     )
-    .execute(pool)
+    .fetch_one(pool)
     .await
     .map_err(ApiError::from)?;
 
@@ -42,8 +40,7 @@ pub async fn get_all_messages(
             m.updated_at,
             to_jsonb(a) AS "author: Json<User>"
         FROM messages m
-        LEFT JOIN users a ON a.name = m.author_name
-                         AND a.domain = m.author_domain
+        LEFT JOIN users a ON a.id = m.author_id
         ORDER BY m.created_at DESC;
         "#
     )
@@ -67,8 +64,7 @@ pub async fn get_messages_by_server(
             m.updated_at,
             to_jsonb(a) AS "author: Json<User>"
         FROM messages m
-        LEFT JOIN users a ON a.name = m.author_name
-                         AND a.domain = m.author_domain
+        LEFT JOIN users a ON a.id = m.author_id
         JOIN channels c ON c.id = m.channel_id
         WHERE c.server_id = $1
         ORDER BY m.created_at DESC;
@@ -95,8 +91,7 @@ pub async fn get_messages_by_channel(
             m.updated_at,
             to_jsonb(a) AS "author: Json<User>"
         FROM messages m
-        LEFT JOIN users a ON a.name = m.author_name
-                         AND a.domain = m.author_domain
+        LEFT JOIN users a ON a.id = m.author_id
         WHERE m.channel_id = $1
         ORDER BY m.created_at DESC;
         "#,
@@ -122,8 +117,7 @@ pub async fn get_message_by_id(
             m.updated_at,
             to_jsonb(a) AS "author: Json<User>"
         FROM messages m
-        LEFT JOIN users a ON a.name = m.author_name
-                         AND a.domain = m.author_domain
+        LEFT JOIN users a ON a.id = m.author_id
         WHERE m.id = $1;
         "#,
         msg_id,

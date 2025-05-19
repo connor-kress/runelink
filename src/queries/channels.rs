@@ -10,15 +10,13 @@ pub async fn insert_channel(
     server_id: Uuid,
     new_channel: &NewChannel,
 ) -> Result<Channel, ApiError> {
-    let new_id = Uuid::new_v4();
     sqlx::query_as!(
         Channel,
         r#"
-        INSERT INTO channels (id, server_id, title, description)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO channels (server_id, title, description)
+        VALUES ($1, $2, $3)
         RETURNING *;
         "#,
-        new_id,
         server_id,
         new_channel.title,
         new_channel.description,

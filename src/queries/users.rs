@@ -1,6 +1,9 @@
-use crate::db::DbPool;
-use crate::error::ApiError;
-use crate::models::{NewUser, User};
+use crate::{
+    db::DbPool,
+    error::ApiError,
+    models::{NewUser, User},
+};
+use uuid::Uuid;
 
 pub async fn insert_user(
     pool: &DbPool,
