@@ -24,6 +24,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/ping", get(api::ping))
 
         .route("/api/users", get(api::list_users).post(api::create_user))
+        .route("/api/users/{id}", get(api::get_user_by_id_handler))
 
         .route("/api/messages", get(api::list_messages))
         .route("/api/messages/{id}", get(api::get_message_by_id_handler))

@@ -30,3 +30,17 @@ pub async fn get_all_users(pool: &DbPool) -> Result<Vec<User>, ApiError> {
         .await
         .map_err(ApiError::from)
 }
+
+pub async fn get_user_by_id(
+    pool: &DbPool,
+    user_id: Uuid,
+) -> Result<User, ApiError> {
+    sqlx::query_as!(
+        User,
+        "SELECT * FROM users WHERE id = $1;",
+        user_id,
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(ApiError::from)
+}
