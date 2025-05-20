@@ -1,6 +1,6 @@
 name: create server
 method: POST
-url: http://localhost:3000/api/servers
+url: $BASE_API_URL/servers
 body:
   content: |-
     {

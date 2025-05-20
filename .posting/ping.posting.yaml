@@ -1,5 +1,5 @@
 name: ping
-url: http://localhost:3000/api/ping
+url: $BASE_API_URL/ping
 params:
 - name: id
   value: '4'

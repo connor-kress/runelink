@@ -1,2 +1,2 @@
 name: get server by id
-url: http://localhost:3000/api/servers/14361760-4010-416c-9b40-f2b8c07e9a54
+url: $BASE_API_URL/servers/$SERVER_ID

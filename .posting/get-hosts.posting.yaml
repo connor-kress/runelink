@@ -1,2 +1,2 @@
 name: get hosts
-url: http://localhost:3000/api/hosts
+url: $BASE_API_URL/hosts

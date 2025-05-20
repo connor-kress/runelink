@@ -1,2 +1,2 @@
 name: get message by id
-url: http://localhost:3000/api/messages/465faa14-9f58-4644-9ed3-e48d8fc3f331
+url: $BASE_API_URL/messages/$MESSAGE_ID

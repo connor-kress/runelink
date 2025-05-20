@@ -1,2 +1,2 @@
 name: get servers
-url: http://localhost:3000/api/servers
+url: $BASE_API_URL/servers

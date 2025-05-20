@@ -1,2 +1,2 @@
 name: get user by id
-url: http://localhost:3000/api/users/2b1252e3-1bbd-43ca-93b3-f35f43f17377
+url: $BASE_API_URL/users/$USER_ID

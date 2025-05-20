@@ -1,6 +1,6 @@
 name: create user
 method: POST
-url: http://localhost:3000/api/users
+url: $BASE_API_URL/users
 body:
   content: |-
     {
