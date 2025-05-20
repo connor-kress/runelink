@@ -2,7 +2,7 @@
 /target/
 
 # Environmental variables
-.env
+*.env
 
 # Personal notes
 NOTES/
