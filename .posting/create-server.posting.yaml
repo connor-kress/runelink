@@ -11,3 +11,5 @@ body:
 headers:
 - name: content-type
   value: application/json
+scripts:
+  on_response: create-server-scripts.py

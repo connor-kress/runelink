@@ -6,3 +6,6 @@
 
 # Personal notes
 NOTES/
+
+# Python cache
+__pycache__/
