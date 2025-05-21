@@ -1,6 +1,7 @@
 use crate::{db::DbPool, error::ApiError, models::NewChannel, queries};
 use axum::{
     extract::{Json, Path, State},
+    http::StatusCode,
     response::IntoResponse,
 };
 use std::sync::Arc;
@@ -12,7 +13,9 @@ pub async fn create_channel(
     Path(server_id): Path<Uuid>,
     Json(new_channel): Json<NewChannel>,
 ) -> Result<impl IntoResponse, ApiError> {
-    queries::insert_channel(&pool, server_id, &new_channel).await.map(Json)
+    queries::insert_channel(&pool, server_id, &new_channel)
+        .await
+        .map(|channel| (StatusCode::CREATED, Json(channel)))
 }
 
 /// GET /api/channels

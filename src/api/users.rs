@@ -1,6 +1,7 @@
 use crate::{db::DbPool, error::ApiError, models::NewUser, queries};
 use axum::{
     extract::{Json, Path, State},
+    http::StatusCode,
     response::IntoResponse,
 };
 use uuid::Uuid;
@@ -11,7 +12,9 @@ pub async fn create_user(
     State(pool): State<Arc<DbPool>>,
     Json(new_user): Json<NewUser>,
 ) -> Result<impl IntoResponse, ApiError> {
-    queries::insert_user(&pool, &new_user).await.map(Json)
+    queries::insert_user(&pool, &new_user)
+        .await
+        .map(|user| (StatusCode::CREATED, Json(user)))
 }
 
 /// GET /api/users

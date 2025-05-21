@@ -1,6 +1,7 @@
 use crate::{db::DbPool, error::ApiError, models::NewMessage, queries};
 use axum::{
     extract::{Json, Path, State},
+    http::StatusCode,
     response::IntoResponse,
 };
 use std::sync::Arc;
@@ -12,7 +13,9 @@ pub async fn create_message(
     Path(channel_id): Path<Uuid>,
     Json(new_message): Json<NewMessage>,
 ) -> Result<impl IntoResponse, ApiError> {
-    queries::insert_message(&pool, channel_id, &new_message).await.map(Json)
+    queries::insert_message(&pool, channel_id, &new_message)
+        .await
+        .map(|message| (StatusCode::CREATED, Json(message)))
 }
 
 /// GET /api/messages

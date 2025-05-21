@@ -6,6 +6,7 @@ use crate::{
 };
 use axum::{
     extract::{Json, Path, State},
+    http::StatusCode,
     response::IntoResponse,
 };
 use std::sync::Arc;
@@ -16,7 +17,9 @@ pub async fn create_server(
     State(pool): State<Arc<DbPool>>,
     Json(new_server): Json<NewServer>,
 ) -> Result<impl IntoResponse, ApiError> {
-    queries::insert_server(&pool, &new_server).await.map(Json)
+    queries::insert_server(&pool, &new_server)
+        .await
+        .map(|server| (StatusCode::CREATED, Json(server)))
 }
 
 /// GET /api/servers
