@@ -1,13 +1,12 @@
 use crate::{db::DbPool, error::ApiError, models::NewChannel, queries};
 use axum::{
-    extract::{Path, State},
+    extract::{Json, Path, State},
     response::IntoResponse,
-    Json,
 };
 use std::sync::Arc;
 use uuid::Uuid;
 
-/// POST /api/servers/{id}/channels
+/// POST /api/servers/{channel_id}/channels
 pub async fn create_channel(
     State(pool): State<Arc<DbPool>>,
     Path(server_id): Path<Uuid>,
@@ -23,7 +22,7 @@ pub async fn list_channels(
     queries::get_all_channels(&pool).await.map(Json)
 }
 
-/// GET /api/servers/{id}/channels
+/// GET /api/servers/{channel_id}/channels
 pub async fn list_channels_by_server(
     State(pool): State<Arc<DbPool>>,
     Path(server_id): Path<Uuid>,
@@ -31,7 +30,7 @@ pub async fn list_channels_by_server(
     queries::get_channels_by_server(&pool, server_id).await.map(Json)
 }
 
-/// GET /api/channels/{id}
+/// GET /api/channels/{channel_id}
 pub async fn get_channel_by_id_handler(
     State(pool): State<Arc<DbPool>>,
     Path(channel_id): Path<Uuid>,

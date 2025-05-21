@@ -21,7 +21,7 @@ pub async fn list_users(
     queries::get_all_users(&pool).await.map(Json)
 }
 
-/// GET /api/users/{id}
+/// GET /api/users/{user_id}
 pub async fn get_user_by_id_handler(
     State(pool): State<Arc<DbPool>>,
     Path(user_id): Path<Uuid>,

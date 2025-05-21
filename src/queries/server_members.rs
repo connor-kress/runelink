@@ -1,7 +1,7 @@
 use crate::{
     db::DbPool,
     error::ApiError,
-    models::{ServerRole, User, ServerMember},
+    models::{NewServerMember, ServerMember, ServerRole, User},
 };
 use sqlx::{types::Json};
 use time::OffsetDateTime;
@@ -32,28 +32,27 @@ impl TryFrom<ServerMemberRow> for ServerMember {
 
 pub async fn add_user_to_server(
     pool: &DbPool,
-    user_id: Uuid,
     server_id: Uuid,
-    role: ServerRole,
+    new_member: &NewServerMember,
 ) -> Result <ServerMember, ApiError> {
     sqlx::query!(
         r#"
-        INSERT INTO server_users (user_id, server_id, role)
+        INSERT INTO server_users (server_id, user_id, role)
         VALUES ($1, $2, $3);
         "#,
-        user_id,
         server_id,
-        role as ServerRole,
+        new_member.user_id,
+        new_member.role as ServerRole,
     )
     .execute(pool)
     .await?;
-    get_server_member(pool, user_id, server_id).await
+    get_server_member(pool, server_id, new_member.user_id).await
 }
 
 pub async fn get_server_member(
     pool: &DbPool,
-    user_id: Uuid,
     server_id: Uuid,
+    user_id: Uuid,
 ) -> Result<ServerMember, ApiError> {
     sqlx::query_as!(
         ServerMemberRow,
@@ -65,11 +64,11 @@ pub async fn get_server_member(
             su.updated_at
         FROM users u
         JOIN server_users su ON u.id = su.user_id
-        WHERE u.id = $1 AND su.server_id = $2
+        WHERE su.server_id = $1 AND u.id = $2
         ORDER BY u.name, u.domain
         "#,
-        user_id,
         server_id,
+        user_id,
     )
     .fetch_one(pool)
     .await?

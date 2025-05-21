@@ -93,6 +93,7 @@ pub struct Host {
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Type)]
 #[sqlx(type_name = "server_role", rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
 pub enum ServerRole {
     Member,
     Admin,
@@ -106,4 +107,10 @@ pub struct ServerMember {
     pub joined_at: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339")]
     pub updated_at: OffsetDateTime,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct NewServerMember {
+    pub user_id: Uuid,
+    pub role: ServerRole,
 }

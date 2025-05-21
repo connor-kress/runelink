@@ -1,0 +1,13 @@
+name: add user to server
+method: POST
+url: $BASE_API_URL/servers/$SERVER_ID/users
+body:
+  content: |-
+    {
+      "user_id": "$USER_ID",
+      "role": "member"
+    }
+  content_type: application/json
+headers:
+- name: content-type
+  value: application/json

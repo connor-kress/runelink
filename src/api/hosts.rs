@@ -1,8 +1,7 @@
 use crate::{db::DbPool, error::ApiError, queries};
 use axum::{
-    extract::{Path, State},
+    extract::{Json, Path, State},
     response::IntoResponse,
-    Json,
 };
 use std::sync::Arc;
 
@@ -13,7 +12,7 @@ pub async fn list_hosts(
     queries::get_all_hosts(&pool).await.map(Json)
 }
 
-/// GET /api/hosts/:domain
+/// GET /api/hosts/{domain}
 pub async fn get_host(
     State(pool): State<Arc<DbPool>>,
     Path(domain): Path<String>,

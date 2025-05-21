@@ -5,9 +5,8 @@ use crate::{
     queries,
 };
 use axum::{
-    extract::{Path, State},
+    extract::{Json, Path, State},
     response::IntoResponse,
-    Json,
 };
 use std::sync::Arc;
 use uuid::Uuid;
@@ -27,7 +26,7 @@ pub async fn list_servers(
     queries::get_all_servers(&pool).await.map(Json)
 }
 
-/// GET /api/servers/{id}
+/// GET /api/servers/{server_id}
 pub async fn get_server_by_id_handler(
     State(pool): State<Arc<DbPool>>,
     Path(server_id): Path<Uuid>,
@@ -35,7 +34,7 @@ pub async fn get_server_by_id_handler(
     queries::get_server_by_id(&pool, server_id).await.map(Json)
 }
 
-/// GET /api/servers/{id}/with_channels
+/// GET /api/servers/{server_id}/with_channels
 pub async fn get_server_with_channels_handler(
     State(pool): State<Arc<DbPool>>,
     Path(server_id): Path<Uuid>,
