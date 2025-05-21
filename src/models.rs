@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use sqlx::{types::Json, FromRow};
+use sqlx::{types::Json, FromRow, Type};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -87,6 +87,23 @@ pub struct Host {
     pub user_count: i32,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
+    pub updated_at: OffsetDateTime,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Type)]
+#[sqlx(type_name = "server_role", rename_all = "lowercase")]
+pub enum ServerRole {
+    Member,
+    Admin,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, FromRow)]
+pub struct ServerMember {
+    pub user: User,
+    pub role: ServerRole,
+    #[serde(with = "time::serde::rfc3339")]
+    pub joined_at: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339")]
     pub updated_at: OffsetDateTime,
 }
