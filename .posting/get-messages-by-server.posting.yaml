@@ -1,0 +1,2 @@
+name: get messages by server
+url: $BASE_API_URL/servers/$SERVER_ID/messages
