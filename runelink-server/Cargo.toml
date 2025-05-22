@@ -1,10 +1,10 @@
 [package]
 name = "runelink-server"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
-runelink-types = { path = "../runelink-types" }
+runelink-types = { path = "../runelink-types", features = [ "sqlx" ] }
 axum = "0.8.4"
 dotenvy = "0.15.7"
 serde = { version = "1.0.219", features = ["derive"]}

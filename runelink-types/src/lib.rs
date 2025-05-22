@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
-use sqlx::{types::Json, FromRow, Type};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-#[derive(Clone, Debug, Serialize, Deserialize, FromRow)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
 pub struct User {
     pub id: Uuid,
     pub name: String,
@@ -22,11 +22,11 @@ pub struct NewUser {
     pub domain: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, FromRow)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Message {
     pub id: Uuid,
     pub channel_id: Uuid,
-    pub author: Option<Json<User>>,
+    pub author: Option<User>,
     pub body: String,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
@@ -40,7 +40,8 @@ pub struct NewMessage {
     pub body: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, FromRow)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
 pub struct Channel {
     pub id: Uuid,
     pub server_id: Uuid,
@@ -58,7 +59,8 @@ pub struct NewChannel {
     pub description: Option<String>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, FromRow)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
 pub struct Server {
     pub id: Uuid,
     pub title: String,
@@ -81,7 +83,8 @@ pub struct ServerWithChannels {
     pub channels: Vec<Channel>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, FromRow)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
 pub struct Host {
     pub domain: String,
     pub user_count: i32,
@@ -91,15 +94,19 @@ pub struct Host {
     pub updated_at: OffsetDateTime,
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Type)]
-#[sqlx(type_name = "server_role", rename_all = "lowercase")]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
+#[cfg_attr(feature = "sqlx", derive(sqlx::Type))]
+#[cfg_attr(
+    feature = "sqlx",
+    sqlx(type_name = "server_role", rename_all = "lowercase")
+)]
 pub enum ServerRole {
     Member,
     Admin,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, FromRow)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ServerMember {
     pub user: User,
     pub role: ServerRole,

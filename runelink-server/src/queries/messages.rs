@@ -1,7 +1,34 @@
 use crate::{db::DbPool, error::ApiError};
 use runelink_types::{Message, NewMessage, User};
+use serde::{Deserialize, Serialize};
 use sqlx::types::Json;
+use time::OffsetDateTime;
 use uuid::Uuid;
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct DbMessage {
+    pub id: Uuid,
+    pub channel_id: Uuid,
+    pub author: Option<Json<User>>,
+    pub body: String,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_at: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
+    pub updated_at: OffsetDateTime,
+}
+
+impl From<DbMessage> for Message {
+    fn from(msg: DbMessage) -> Self {
+        Message {
+            id: msg.id,
+            channel_id: msg.channel_id,
+            author: msg.author.map(|json_user| json_user.0),
+            body: msg.body,
+            created_at: msg.created_at,
+            updated_at: msg.updated_at,
+        }
+    }
+}
 
 pub async fn insert_message(
     pool: &DbPool,
@@ -28,8 +55,8 @@ pub async fn insert_message(
 pub async fn get_all_messages(
     pool: &DbPool,
 ) -> Result<Vec<Message>, ApiError> {
-    sqlx::query_as!(
-        Message,
+    let rows = sqlx::query_as!(
+        DbMessage,
         r#"
         SELECT
             m.id,
@@ -44,16 +71,16 @@ pub async fn get_all_messages(
         "#
     )
     .fetch_all(pool)
-    .await
-    .map_err(ApiError::from)
+    .await?;
+    Ok(rows.into_iter().map(Message::from).collect())
 }
 
 pub async fn get_messages_by_server(
     pool: &DbPool,
     server_id: Uuid,
 ) -> Result<Vec<Message>, ApiError> {
-    sqlx::query_as!(
-        Message,
+    let rows = sqlx::query_as!(
+        DbMessage,
         r#"
         SELECT
             m.id,
@@ -71,16 +98,16 @@ pub async fn get_messages_by_server(
         server_id,
     )
     .fetch_all(pool)
-    .await
-    .map_err(ApiError::from)
+    .await?;
+    Ok(rows.into_iter().map(Message::from).collect())
 }
 
 pub async fn get_messages_by_channel(
     pool: &DbPool,
     channel_id: Uuid,
 ) -> Result<Vec<Message>, ApiError> {
-    sqlx::query_as!(
-        Message,
+    let rows = sqlx::query_as!(
+        DbMessage,
         r#"
         SELECT
             m.id,
@@ -97,8 +124,8 @@ pub async fn get_messages_by_channel(
         channel_id,
     )
     .fetch_all(pool)
-    .await
-    .map_err(ApiError::from)
+    .await?;
+    Ok(rows.into_iter().map(Message::from).collect())
 }
 
 pub async fn get_message_by_id(
@@ -106,7 +133,7 @@ pub async fn get_message_by_id(
     msg_id: Uuid,
 ) -> Result<Message, ApiError> {
     sqlx::query_as!(
-        Message,
+        DbMessage,
         r#"
         SELECT
             m.id,
@@ -124,4 +151,5 @@ pub async fn get_message_by_id(
     .fetch_one(pool)
     .await
     .map_err(ApiError::from)
+    .map(Message::from)
 }
