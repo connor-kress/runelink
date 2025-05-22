@@ -6,7 +6,6 @@ mod api;
 mod db;
 mod queries;
 mod error;
-mod models;
 
 // Embed all sql migrations in binary
 static MIGRATOR: Migrator = sqlx::migrate!();

@@ -1,18 +1,18 @@
-use crate::{
-    db::DbPool,
-    error::ApiError,
-    models::{NewServerMember, ServerMember, ServerRole, User},
-};
-use sqlx::{types::Json};
+use crate::{db::DbPool, error::ApiError};
+use runelink_types::{NewServerMember, ServerMember, ServerRole, User};
+use serde::{Deserialize, Serialize};
+use sqlx::{types::Json, FromRow};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 /// An intermediate type needed because of sqlx limitations
-#[derive(Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize, FromRow)]
 struct ServerMemberRow {
     pub user: Option<Json<User>>,
     pub role: ServerRole,
+    #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
     pub updated_at: OffsetDateTime,
 }
 

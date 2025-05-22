@@ -1,8 +1,5 @@
-use crate::{
-    db::DbPool,
-    error::ApiError,
-    models::{NewUser, User},
-};
+use crate::{db::DbPool, error::ApiError};
+use runelink_types::{NewUser, User};
 use uuid::Uuid;
 
 pub async fn insert_user(

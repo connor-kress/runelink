@@ -1,14 +1,10 @@
-use crate::{
-    db::DbPool,
-    error::ApiError,
-    models::{NewServer, ServerWithChannels},
-    queries,
-};
+use crate::{db::DbPool, error::ApiError, queries};
 use axum::{
     extract::{Json, Path, State},
     http::StatusCode,
     response::IntoResponse,
 };
+use runelink_types::{NewServer, ServerWithChannels};
 use std::sync::Arc;
 use uuid::Uuid;
 

@@ -1,11 +1,12 @@
-use crate::{db::DbPool, error::ApiError, models::NewUser, queries};
+use crate::{db::DbPool, error::ApiError, queries};
 use axum::{
     extract::{Json, Path, State},
     http::StatusCode,
     response::IntoResponse,
 };
-use uuid::Uuid;
+use runelink_types::NewUser;
 use std::sync::Arc;
+use uuid::Uuid;
 
 /// POST /api/users
 pub async fn create_user(

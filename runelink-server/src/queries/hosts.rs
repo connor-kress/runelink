@@ -1,6 +1,5 @@
-use crate::db::DbPool;
-use crate::error::ApiError;
-use crate::models::Host;
+use crate::{db::DbPool, error::ApiError};
+use runelink_types::Host;
 
 pub async fn get_all_hosts(pool: &DbPool) -> Result<Vec<Host>, ApiError> {
     sqlx::query_as!(

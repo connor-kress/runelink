@@ -1,6 +1,5 @@
-use crate::db::DbPool;
-use crate::error::ApiError;
-use crate::models::{Message, NewMessage, User};
+use crate::{db::DbPool, error::ApiError};
+use runelink_types::{Message, NewMessage, User};
 use sqlx::types::Json;
 use uuid::Uuid;
 

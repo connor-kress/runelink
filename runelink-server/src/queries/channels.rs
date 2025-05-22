@@ -1,8 +1,5 @@
-use crate::{
-    db::DbPool,
-    error::ApiError,
-    models::{Channel, NewChannel},
-};
+use crate::{db::DbPool, error::ApiError};
+use runelink_types::{Channel, NewChannel};
 use uuid::Uuid;
 
 pub async fn insert_channel(

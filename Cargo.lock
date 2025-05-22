@@ -1100,6 +1100,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "dotenvy",
+ "runelink-types",
  "serde",
  "serde_json",
  "sqlx",
@@ -1112,6 +1113,13 @@ dependencies = [
 [[package]]
 name = "runelink-types"
 version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sqlx",
+ "time",
+ "uuid",
+]
 
 [[package]]
 name = "rustc-demangle"

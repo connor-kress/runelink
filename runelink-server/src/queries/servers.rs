@@ -1,8 +1,5 @@
-use crate::{
-    db::DbPool,
-    error::ApiError,
-    models::{NewServer, Server},
-};
+use crate::{db::DbPool, error::ApiError};
+use runelink_types::{NewServer, Server};
 use uuid::Uuid;
 
 pub async fn insert_server(
