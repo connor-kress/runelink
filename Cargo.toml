@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "opencord-server",
-    "opencord-types",
+    "runelink-server",
+    "runelink-types",
 ]
 resolver = "2"
