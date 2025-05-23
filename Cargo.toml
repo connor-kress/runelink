@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "runelink-server",
+    "runelink-term",
     "runelink-types",
 ]
 resolver = "2"
