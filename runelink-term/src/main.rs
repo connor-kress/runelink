@@ -4,21 +4,17 @@ use runelink_types::User;
 
 mod error;
 
-const API_BASE_URL: &str = "http://localhost:3000/api";
+fn get_api_url(domain: &str) -> String {
+    format!("http://{}/api", domain)
+}
 
-#[tokio::main]
-async fn main() -> Result<(), CliError> {
-    let client = Client::new();
-
-    // Example: List users
-    let users_url = format!("{}/users", API_BASE_URL);
+async fn fetch_users(client: &Client, domain_api_base: &str) -> Result<Vec<User>, CliError> {
+    let users_url = format!("{}/users", domain_api_base);
     println!("Fetching users from: {}", users_url);
-
     let response = client
         .get(&users_url)
         .send()
         .await?;
-
     // Check the HTTP status code
     if !response.status().is_success() {
         let status = response.status();
@@ -26,13 +22,21 @@ async fn main() -> Result<(), CliError> {
             .text()
             .await
             .unwrap_or_else(|_| "Failed to get error message body".to_string());
-
         return Err(CliError::ApiStatusError { status, message });
     }
+    let users = response.json::<Vec<User>>().await?;
+    Ok(users)
+}
 
-    let users: Vec<User> = response
-        .json()
-        .await?;
+#[tokio::main]
+async fn main() -> Result<(), CliError> {
+    let client = Client::new();
+
+    let domain = "localhost:3000";
+    let api_url = get_api_url(domain);
+
+    // Example: List users
+    let users = fetch_users(&client, &api_url).await?;
 
     println!("Successfully fetched {} users:", users.len());
     for user in users {
