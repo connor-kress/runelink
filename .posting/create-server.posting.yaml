@@ -4,6 +4,7 @@ url: $BASE_API_URL/servers
 body:
   content: |-
     {
+      "user_id": "$USER_ID",
       "title": "Darplex",
       "description": "Check out darplex.com"
     }

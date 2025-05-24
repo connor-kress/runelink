@@ -21,6 +21,9 @@ pub enum ApiError {
     #[error("Database error: {0}")]
     DatabaseError(String),
 
+    #[error("Unauthorized: {0}")]
+    AuthError(String),
+
     #[error("Unknown error: {0}")]
     Unknown(String),
 }
@@ -63,6 +66,7 @@ impl IntoResponse for ApiError {
             | ApiError::Unknown(_) => StatusCode::INTERNAL_SERVER_ERROR,
             ApiError::UniqueViolation => StatusCode::CONFLICT,
             ApiError::NotFound => StatusCode::NOT_FOUND,
+            ApiError::AuthError(_) => StatusCode::UNAUTHORIZED,
         };
         let body = Json(ErrorResponse {
             error: self.to_string(),

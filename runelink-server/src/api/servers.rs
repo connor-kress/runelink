@@ -1,4 +1,4 @@
-use crate::{db::DbPool, error::ApiError, queries};
+use crate::{auth::AuthBuilder, db::DbPool, error::ApiError, queries};
 use axum::{
     extract::{Json, Path, State},
     http::StatusCode,
@@ -13,6 +13,11 @@ pub async fn create_server(
     State(pool): State<Arc<DbPool>>,
     Json(new_server): Json<NewServer>,
 ) -> Result<impl IntoResponse, ApiError> {
+    // TODO: get user id/session tokens
+    AuthBuilder::new(new_server.user_id)
+        .admin()
+        .build(&pool)
+        .await?;
     queries::insert_server(&pool, &new_server)
         .await
         .map(|server| (StatusCode::CREATED, Json(server)))

@@ -16,7 +16,7 @@ pub struct User {
     pub synced_at: Option<OffsetDateTime>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NewUser {
     pub name: String,
     pub domain: String,
@@ -34,7 +34,7 @@ pub struct Message {
     pub updated_at: OffsetDateTime,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NewMessage {
     pub author_id: Uuid,
     pub body: String,
@@ -53,7 +53,7 @@ pub struct Channel {
     pub updated_at: OffsetDateTime,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NewChannel {
     pub title: String,
     pub description: Option<String>,
@@ -71,8 +71,9 @@ pub struct Server {
     pub updated_at: OffsetDateTime,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NewServer {
+    pub user_id: Option<Uuid>, // TODO: remove me
     pub title: String,
     pub description: Option<String>,
 }
@@ -116,7 +117,7 @@ pub struct ServerMember {
     pub updated_at: OffsetDateTime,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NewServerMember {
     pub user_id: Uuid,
     pub role: ServerRole,

@@ -2,6 +2,7 @@ use axum::{routing::get, Router};
 use sqlx::migrate::Migrator;
 use std::sync::Arc;
 use tokio::net::TcpListener;
+mod auth;
 mod api;
 mod db;
 mod queries;
