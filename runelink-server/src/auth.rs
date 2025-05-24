@@ -60,7 +60,7 @@ impl AuthBuilder {
         self
     }
 
-    pub async fn build(self, pool: &DbPool) -> Result<Session, ApiError> {
+    pub async fn build(&self, pool: &DbPool) -> Result<Session, ApiError> {
         let Some(user_id) = self.user_id else {
             return Err(ApiError::AuthError("No credentials provided".into()));
         };

@@ -1,18 +1,16 @@
-mod generic;
-mod users;
-pub use generic::*;
-pub use users::*;
-
 use crate::error::CliError;
 use reqwest::Client;
+use serde::de::DeserializeOwned;
 
-pub async fn do_ping(
+pub async fn fetch_json<T>(
     client: &Client,
-    domain_api_base: &str,
-) -> Result<String, CliError> {
-    let users_url = format!("{}/ping", domain_api_base);
+    url: &str,
+) -> Result<T, CliError>
+where
+    T: DeserializeOwned
+{
     let response = client
-        .get(&users_url)
+        .get(url)
         .send()
         .await?;
     if !response.status().is_success() {
@@ -23,6 +21,6 @@ pub async fn do_ping(
             .unwrap_or_else(|_| "Failed to get error message body".to_string());
         return Err(CliError::ApiStatusError { status, message });
     }
-    let message = response.text().await?;
-    Ok(message)
+    let data = response.json::<T>().await?;
+    Ok(data)
 }

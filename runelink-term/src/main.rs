@@ -2,6 +2,7 @@ use crate::{
     error::CliError,
     requests::{do_ping, fetch_users},
 };
+use requests::fetch_user_by_id;
 use reqwest::Client;
 
 mod error;
@@ -38,6 +39,8 @@ async fn main() -> Result<(), CliError> {
     println!("Successfully fetched {} users:", users.len());
     for user in users {
         println!("{:?}", user);
+        let new_copy = fetch_user_by_id(&client, &api_url, user.id).await?;
+        println!("{:?}", new_copy);
     }
 
     Ok(())
