@@ -1,6 +1,8 @@
 mod generic;
+mod messages;
 mod users;
 pub use generic::*;
+pub use messages::*;
 pub use users::*;
 
 use crate::error::CliError;

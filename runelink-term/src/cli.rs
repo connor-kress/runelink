@@ -38,11 +38,11 @@ pub enum UsersCommands {
     /// List all users
     List,
     /// Get a specific user by ID
-    Get(GetUserArgs),
+    Get(UserGetArgs),
 }
 
 #[derive(Args, Debug)]
-pub struct GetUserArgs {
+pub struct UserGetArgs {
     /// The ID of the user to fetch
     #[clap(long)]
     pub user_id: Uuid,
@@ -56,6 +56,25 @@ pub struct MessagesArgs {
 
 #[derive(Subcommand, Debug)]
 pub enum MessagesCommands {
-    /// List all messages (TODO)
-    List,
+    /// List messages
+    List(MessagesListArgs),
+    Get(MessageGetArgs),
+}
+
+#[derive(Args, Debug)]
+pub struct MessagesListArgs {
+    /// Optional: Filter messages by Server ID
+    #[clap(long)]
+    pub server_id: Option<Uuid>,
+
+    /// Optional: Filter messages by Channel ID
+    #[clap(long)]
+    pub channel_id: Option<Uuid>,
+}
+
+#[derive(Args, Debug)]
+pub struct MessageGetArgs {
+    /// The ID of the message to fetch
+    #[clap(long)]
+    pub message_id: Uuid,
 }

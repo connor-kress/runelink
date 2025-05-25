@@ -4,9 +4,8 @@ use crate::{
     requests::{do_ping, fetch_users},
 };
 use clap::{CommandFactory, Parser};
-use clap_complete::generate;
 use cli::{Commands, MessagesCommands, UsersCommands};
-use requests::fetch_user_by_id;
+use requests::{fetch_all_messages, fetch_message_by_id, fetch_user_by_id};
 use reqwest::Client;
 
 mod cli;
@@ -46,27 +45,54 @@ async fn main() -> Result<(), CliError> {
             UsersCommands::List => {
                 let users = fetch_users(&client, &api_url).await?;
                 for user in users {
-                    println!("{:?}", user);
+                    println!("{}@{}", user.name, user.domain);
                 }
             }
             UsersCommands::Get(get_args) => {
                 let user = fetch_user_by_id(
-                    &client,
-                    &api_url,
+                    &client, &api_url,
                     get_args.user_id,
                 ).await?;
-                println!("{:?}", user);
+                println!("{}@{}", user.name, user.domain);
             }
         },
         Commands::Messages(messages_args) => match &messages_args.command {
-            MessagesCommands::List => {
-                todo!();
+            MessagesCommands::List(list_args) => {
+                let messages;
+                if let Some(_channel_id) = list_args.channel_id {
+                    todo!();
+                }
+                else if let Some(_channel_id) = list_args.channel_id {
+                    todo!();
+                }
+                messages = fetch_all_messages(&client, &api_url).await?;
+                for message in messages {
+                    let author_name = message
+                        .author
+                        .map(|u| u.name)
+                        .unwrap_or("Anon".into());
+                    println!("{}: {}", author_name, message.body);
+                }
+            }
+            MessagesCommands::Get(get_args) => {
+                let message = fetch_message_by_id(
+                    &client, &api_url,
+                    get_args.message_id,
+                ).await?;
+                let author_name = message
+                    .author
+                    .map(|u| u.name)
+                    .unwrap_or("Anon".into());
+                println!("{}: {}", author_name, message.body);
             }
         },
         Commands::Completions(args) => {
             let mut cmd = Cli::command();
             let cmd_name = cmd.get_name().to_string();
-            generate(args.shell, &mut cmd, cmd_name, &mut std::io::stdout());
+            clap_complete::generate(
+                args.shell, &mut cmd,
+                cmd_name, &mut std::io::stdout(),
+            );
         }
     }
 
