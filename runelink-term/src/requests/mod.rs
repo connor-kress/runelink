@@ -1,6 +1,6 @@
-mod generic;
-mod messages;
-mod users;
+pub mod generic;
+pub mod messages;
+pub mod users;
 pub use generic::*;
 pub use messages::*;
 pub use users::*;
