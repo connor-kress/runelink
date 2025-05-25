@@ -1,8 +1,10 @@
 use clap::{Args, Parser, Subcommand};
+use clap_complete::Shell;
 use uuid::Uuid;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
+#[clap(name = "rune")]
 #[clap(propagate_version = true)]
 pub struct Cli {
     #[clap(subcommand)]
@@ -15,6 +17,14 @@ pub enum Commands {
     Users(UsersArgs),
     /// Manage messages
     Messages(MessagesArgs),
+    /// Generate shell completion scripts
+    Completions(CompletionsArgs), // New command
+}
+
+#[derive(Args, Debug)]
+pub struct CompletionsArgs {
+    #[clap(value_parser = clap::value_parser!(Shell))]
+    pub shell: Shell,
 }
 
 #[derive(Args, Debug)]

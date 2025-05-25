@@ -3,7 +3,8 @@ use crate::{
     error::CliError,
     requests::{do_ping, fetch_users},
 };
-use clap::Parser;
+use clap::{CommandFactory, Parser};
+use clap_complete::generate;
 use cli::{Commands, MessagesCommands, UsersCommands};
 use requests::fetch_user_by_id;
 use reqwest::Client;
@@ -62,6 +63,11 @@ async fn main() -> Result<(), CliError> {
                 todo!();
             }
         },
+        Commands::Completions(args) => {
+            let mut cmd = Cli::command();
+            let cmd_name = cmd.get_name().to_string();
+            generate(args.shell, &mut cmd, cmd_name, &mut std::io::stdout());
+        }
     }
 
     Ok(())
