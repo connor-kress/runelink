@@ -13,6 +13,24 @@ pub async fn fetch_all_messages(
     fetch_json::<Vec<Message>>(client, &url).await
 }
 
+pub async fn fetch_messages_by_server(
+    client: &Client,
+    domain_api_base: &str,
+    server_id: Uuid,
+) -> Result<Vec<Message>, CliError> {
+    let url = format!("{}/servers/{}/messages", domain_api_base, server_id);
+    fetch_json::<Vec<Message>>(client, &url).await
+}
+
+pub async fn fetch_messages_by_channel(
+    client: &Client,
+    domain_api_base: &str,
+    channel_id: Uuid,
+) -> Result<Vec<Message>, CliError> {
+    let url = format!("{}/channels/{}/messages", domain_api_base, channel_id);
+    fetch_json::<Vec<Message>>(client, &url).await
+}
+
 pub async fn fetch_message_by_id(
     client: &Client,
     domain_api_base: &str,

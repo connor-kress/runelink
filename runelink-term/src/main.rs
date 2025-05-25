@@ -5,7 +5,7 @@ use crate::{
 };
 use clap::{CommandFactory, Parser};
 use cli::{Commands, MessagesCommands, UsersCommands};
-use requests::{fetch_all_messages, fetch_message_by_id, fetch_user_by_id};
+use requests::{fetch_all_messages, fetch_message_by_id, fetch_messages_by_channel, fetch_messages_by_server, fetch_user_by_id};
 use reqwest::Client;
 
 mod cli;
@@ -59,13 +59,17 @@ async fn main() -> Result<(), CliError> {
         Commands::Messages(messages_args) => match &messages_args.command {
             MessagesCommands::List(list_args) => {
                 let messages;
-                if let Some(_channel_id) = list_args.channel_id {
-                    todo!();
+                if let Some(channel_id) = list_args.channel_id {
+                    messages = fetch_messages_by_channel(
+                        &client, &api_url, channel_id
+                    ).await?;
+                } else if let Some(server_id) = list_args.server_id {
+                    messages = fetch_messages_by_server(
+                        &client, &api_url, server_id
+                    ).await?;
+                } else {
+                    messages = fetch_all_messages(&client, &api_url).await?
                 }
-                else if let Some(_channel_id) = list_args.channel_id {
-                    todo!();
-                }
-                messages = fetch_all_messages(&client, &api_url).await?;
                 for message in messages {
                     let author_name = message
                         .author
