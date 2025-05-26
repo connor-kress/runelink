@@ -1,4 +1,5 @@
 use crate::error::CliError;
+use channels::{handle_channel_commands, ChannelArgs};
 use clap::CommandFactory;
 use clap_complete::Shell;
 use reqwest::Client;
@@ -6,6 +7,7 @@ use messages::{handle_message_commands, MessageArgs};
 use servers::{handle_server_commands, ServerArgs};
 use users::{handle_user_commands, UserArgs};
 
+pub mod channels;
 pub mod messages;
 pub mod servers;
 pub mod users;
@@ -21,6 +23,8 @@ pub struct Cli {
 
 #[derive(clap::Subcommand, Debug)]
 pub enum Commands {
+    /// Manage channels
+    Channels(ChannelArgs),
     /// Manage messages
     Messages(MessageArgs),
     /// Manage servers
@@ -41,6 +45,9 @@ pub async fn handle_cli(
     client: &Client, cli: &Cli, api_url: &str
 ) -> Result<(), CliError> {
     match &cli.command {
+        Commands::Channels(channel_args) => {
+            handle_channel_commands(client, api_url, channel_args).await?
+        },
         Commands::Messages(message_args) => {
             handle_message_commands(client, api_url, message_args).await?
         },

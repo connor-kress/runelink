@@ -1,7 +1,9 @@
+pub mod channels;
 pub mod generic;
 pub mod messages;
 pub mod servers;
 pub mod users;
+pub use channels::*;
 pub use generic::*;
 pub use messages::*;
 pub use servers::*;
