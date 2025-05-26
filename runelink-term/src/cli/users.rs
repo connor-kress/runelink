@@ -3,13 +3,13 @@ use reqwest::Client;
 use uuid::Uuid;
 
 #[derive(clap::Args, Debug)]
-pub struct UsersArgs {
+pub struct UserArgs {
     #[clap(subcommand)]
-    pub command: UsersCommands,
+    pub command: UserCommands,
 }
 
 #[derive(clap::Subcommand, Debug)]
-pub enum UsersCommands {
+pub enum UserCommands {
     /// List all users
     List,
     /// Get a specific user by ID
@@ -24,16 +24,16 @@ pub struct UserGetArgs {
 }
 
 pub async fn handle_user_commands(
-    client: &Client, api_url: &str, users_args: &UsersArgs
+    client: &Client, api_url: &str, user_args: &UserArgs
 ) -> Result<(), CliError> {
-    match &users_args.command {
-        UsersCommands::List => {
+    match &user_args.command {
+        UserCommands::List => {
             let users = requests::fetch_users(&client, &api_url).await?;
             for user in users {
                 println!("{}@{}", user.name, user.domain);
             }
         }
-        UsersCommands::Get(get_args) => {
+        UserCommands::Get(get_args) => {
             let user = requests::fetch_user_by_id(
                 &client, &api_url,
                 get_args.user_id,

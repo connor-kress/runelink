@@ -1,8 +1,10 @@
 pub mod generic;
 pub mod messages;
+pub mod servers;
 pub mod users;
 pub use generic::*;
 pub use messages::*;
+pub use servers::*;
 pub use users::*;
 
 use crate::error::CliError;

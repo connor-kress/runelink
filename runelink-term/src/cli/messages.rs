@@ -3,20 +3,20 @@ use reqwest::Client;
 use uuid::Uuid;
 
 #[derive(clap::Args, Debug)]
-pub struct MessagesArgs {
+pub struct MessageArgs {
     #[clap(subcommand)]
-    pub command: MessagesCommands,
+    pub command: MessageCommands,
 }
 
 #[derive(clap::Subcommand, Debug)]
-pub enum MessagesCommands {
+pub enum MessageCommands {
     /// List messages
-    List(MessagesListArgs),
+    List(MessageListArgs),
     Get(MessageGetArgs),
 }
 
 #[derive(clap::Args, Debug)]
-pub struct MessagesListArgs {
+pub struct MessageListArgs {
     /// Optional: Filter messages by Server ID
     #[clap(long)]
     pub server_id: Option<Uuid>,
@@ -34,10 +34,10 @@ pub struct MessageGetArgs {
 }
 
 pub async fn handle_message_commands(
-    client: &Client, api_url: &str, messages_args: &MessagesArgs
+    client: &Client, api_url: &str, message_args: &MessageArgs
 ) -> Result<(), CliError> {
-    match &messages_args.command {
-        MessagesCommands::List(list_args) => {
+    match &message_args.command {
+        MessageCommands::List(list_args) => {
             let messages;
             if let Some(channel_id) = list_args.channel_id {
                 messages = requests::fetch_messages_by_channel(
@@ -60,7 +60,7 @@ pub async fn handle_message_commands(
                 println!("{}: {}", author_name, message.body);
             }
         }
-        MessagesCommands::Get(get_args) => {
+        MessageCommands::Get(get_args) => {
             let message = requests::fetch_message_by_id(
                 &client, &api_url,
                 get_args.message_id,

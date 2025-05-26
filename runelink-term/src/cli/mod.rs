@@ -1,11 +1,13 @@
 use crate::error::CliError;
 use clap::CommandFactory;
 use clap_complete::Shell;
-use messages::{handle_message_commands, MessagesArgs};
 use reqwest::Client;
-use users::{handle_user_commands, UsersArgs};
+use messages::{handle_message_commands, MessageArgs};
+use servers::{handle_server_commands, ServerArgs};
+use users::{handle_user_commands, UserArgs};
 
 pub mod messages;
+pub mod servers;
 pub mod users;
 
 #[derive(clap::Parser, Debug)]
@@ -19,10 +21,12 @@ pub struct Cli {
 
 #[derive(clap::Subcommand, Debug)]
 pub enum Commands {
-    /// Manage users
-    Users(UsersArgs),
     /// Manage messages
-    Messages(MessagesArgs),
+    Messages(MessageArgs),
+    /// Manage servers
+    Servers(ServerArgs),
+    /// Manage users
+    Users(UserArgs),
     /// Generate shell completion scripts
     Completions(CompletionsArgs),
 }
@@ -37,11 +41,14 @@ pub async fn handle_cli(
     client: &Client, cli: &Cli, api_url: &str
 ) -> Result<(), CliError> {
     match &cli.command {
-        Commands::Users(users_args) => {
-            handle_user_commands(client, api_url, users_args).await?
+        Commands::Messages(message_args) => {
+            handle_message_commands(client, api_url, message_args).await?
         },
-        Commands::Messages(messages_args) => {
-            handle_message_commands(client, api_url, messages_args).await?
+        Commands::Servers(server_args) => {
+            handle_server_commands(client, api_url, server_args).await?
+        },
+        Commands::Users(user_args) => {
+            handle_user_commands(client, api_url, user_args).await?
         },
         Commands::Completions(args) => {
             let mut cmd = Cli::command();
