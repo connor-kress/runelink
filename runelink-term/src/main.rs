@@ -6,7 +6,7 @@ use crate::{
 use clap::{Parser};
 use cli::handle_cli;
 use reqwest::Client;
-use storage::{load_hosts, save_hosts, Host};
+// use storage::{load_config, save_config, AppConfig};
 
 mod cli;
 mod error;
@@ -31,16 +31,9 @@ async fn test_connectivities(client: &Client, domains: Vec<&str>) {
 
 #[tokio::main]
 async fn main() -> Result<(), CliError> {
+    // let config = load_config()?;
+    // dbg!(config);
     let domain = "localhost:3000";
-    // let bad_domain = "localhost:9999";
-    // let hosts = vec![
-    //     Host {domain: domain.into()},
-    //     Host {domain: bad_domain.into()}
-    // ];
-    // save_hosts(&hosts)?;
-    // let new_hosts = load_hosts()?;
-    // dbg!(new_hosts);
-    // return Ok(());
 
     let api_url = get_api_url(domain);
 
