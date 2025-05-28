@@ -6,10 +6,12 @@ use crate::{
 use clap::{Parser};
 use cli::handle_cli;
 use reqwest::Client;
+use storage::{load_hosts, save_hosts, Host};
 
 mod cli;
 mod error;
 mod requests;
+mod storage;
 
 fn get_api_url(domain: &str) -> String {
     format!("http://{}/api", domain)
@@ -31,8 +33,14 @@ async fn test_connectivities(client: &Client, domains: Vec<&str>) {
 async fn main() -> Result<(), CliError> {
     let domain = "localhost:3000";
     // let bad_domain = "localhost:9999";
-    // test_connectivities(&client, vec![domain, bad_domain]).await;
-    // println!();
+    // let hosts = vec![
+    //     Host {domain: domain.into()},
+    //     Host {domain: bad_domain.into()}
+    // ];
+    // save_hosts(&hosts)?;
+    // let new_hosts = load_hosts()?;
+    // dbg!(new_hosts);
+    // return Ok(());
 
     let api_url = get_api_url(domain);
 
