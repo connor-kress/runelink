@@ -5,19 +5,46 @@ use std::fs;
 use std::path::PathBuf;
 use uuid::Uuid;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct AppConfig {
     pub default_host: Option<String>,
     pub default_server: Option<Uuid>,
+    pub servers: Vec<ServerConfig>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+pub struct ServerConfig {
+    pub server_id: Uuid,
     pub default_channel: Option<Uuid>,
 }
 
-impl Default for AppConfig {
-    fn default() -> Self {
-        AppConfig {
-            default_host: None,
-            default_server: None,
-            default_channel: None,
+impl AppConfig {
+    pub fn get_server_config(&self, server_id: Uuid) -> Option<&ServerConfig> {
+        self.servers.iter().find(|sc| sc.server_id == server_id)
+    }
+
+    #[allow(dead_code)]
+    pub fn get_server_config_mut(
+        &mut self,
+        server_id: Uuid,
+    ) -> Option<&mut ServerConfig> {
+        self.servers.iter_mut().find(|sc| sc.server_id == server_id)
+    }
+
+    pub fn get_or_create_server_config_mut(
+        &mut self,
+        server_id: Uuid,
+    ) -> &mut ServerConfig {
+        if let Some(idx) =
+            self.servers.iter().position(|sc| sc.server_id == server_id)
+        {
+            &mut self.servers[idx]
+        } else {
+            self.servers.push(ServerConfig {
+                server_id,
+                default_channel: None,
+            });
+            self.servers.last_mut().unwrap()
         }
     }
 }

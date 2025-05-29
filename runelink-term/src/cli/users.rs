@@ -12,7 +12,7 @@ pub struct UserArgs {
 pub enum UserCommands {
     /// List all users
     List,
-    /// Get a specific user by ID
+    /// Get a user by ID
     Get(UserGetArgs),
 }
 

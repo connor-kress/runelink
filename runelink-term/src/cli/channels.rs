@@ -1,4 +1,8 @@
-use crate::{error::CliError, requests, storage::AppConfig};
+use crate::{
+    error::CliError,
+    requests,
+    storage::{save_config, AppConfig},
+};
 use reqwest::Client;
 use uuid::Uuid;
 
@@ -10,9 +14,43 @@ pub struct ChannelArgs {
 
 #[derive(clap::Subcommand, Debug)]
 pub enum ChannelCommands {
-    /// List channels
+    /// List all channels
     List(ChannelListArgs),
+    /// Get a channel by ID
     Get(ChannelGetArgs),
+    /// Manage default channel
+    Default(DefaultChannelArgs),
+}
+
+#[derive(clap::Args, Debug)]
+pub struct DefaultChannelArgs {
+    #[clap(subcommand)]
+    command: DefaultChannelCommands,
+}
+
+#[derive(clap::Subcommand, Debug)]
+pub enum DefaultChannelCommands {
+    /// Show default channels
+    Get(ChannelGetDefaultArgs),
+    /// Set a server's default channels
+    Set(ChannelSetDefaultArgs),
+}
+
+#[derive(clap::Args, Debug)]
+pub struct ChannelGetDefaultArgs {
+    /// Optional: The ID of the server
+    #[clap(long)]
+    pub server_id: Option<Uuid>,
+}
+
+#[derive(clap::Args, Debug)]
+pub struct ChannelSetDefaultArgs {
+    /// The ID of the server
+    #[clap(long)]
+    pub server_id: Uuid,
+    /// The ID of the new default channel
+    #[clap(long)]
+    pub channel_id: Uuid,
 }
 
 #[derive(clap::Args, Debug)]
@@ -24,15 +62,16 @@ pub struct ChannelListArgs {
 
 #[derive(clap::Args, Debug)]
 pub struct ChannelGetArgs {
-    /// The ID of the channel to fetch
+    /// The ID of the channel
     #[clap(long)]
     pub channel_id: Uuid,
 }
 
+
 pub async fn handle_channel_commands(
     client: &Client,
     api_url: &str,
-    _config: &mut AppConfig,
+    config: &mut AppConfig,
     channel_args: &ChannelArgs,
 ) -> Result<(), CliError> {
     match &channel_args.command {
@@ -48,7 +87,7 @@ pub async fn handle_channel_commands(
                 ).await?
             }
             for channel in channels {
-                println!("{} - {}", channel.title, channel.id);
+                println!("{} ({})", channel.title, channel.id);
             }
         }
         ChannelCommands::Get(get_args) => {
@@ -56,8 +95,87 @@ pub async fn handle_channel_commands(
                 &client, &api_url,
                 get_args.channel_id,
             ).await?;
-            println!("{} - {}", channel.title, channel.id);
+            println!("{} ({})", channel.title, channel.id);
+        }
+        ChannelCommands::Default(default_args) => {
+            handle_default_channel_commands(
+                client, api_url, config, default_args
+            ).await?
         }
     };
+    Ok(())
+}
+
+async fn handle_default_channel_commands(
+    client: &Client,
+    api_url: &str,
+    config: &mut AppConfig,
+    default_args: &DefaultChannelArgs,
+) -> Result<(), CliError> {
+    match &default_args.command {
+        DefaultChannelCommands::Get(get_default_args) => {
+            if let Some(server_id) = get_default_args.server_id {
+                let Some(server_config)
+                    = config.get_server_config(server_id) else
+                {
+                    println!("No default channel set.");
+                    return Ok(());
+                };
+                if let Some(channel_id) = server_config.default_channel {
+                    let channel = requests::fetch_channel_by_id(
+                        client, api_url, channel_id
+                    ).await?;
+                    println!("{} ({})", channel.title, channel.id);
+                } else {
+                    println!("No default channel set.");
+                    return Ok(());
+                }
+                return Ok(());
+            }
+            if config.servers.is_empty() {
+                println!("No default channels set.");
+                return Ok(());
+            }
+            for server_config in config.servers.iter() {
+                // TODO: endpoint for batch fetching servers/channels
+                let server = requests::fetch_server_by_id(
+                    client, api_url, server_config.server_id
+                ).await?;
+                println!("{} ({})", server.title, server.id);
+                if let Some(channel_id) = server_config.default_channel {
+                    let channel = requests::fetch_channel_by_id(
+                        client, api_url, channel_id
+                    ).await?;
+                    println!(
+                        "\tDefault Channel: {} ({})",
+                        channel.title, channel.id,
+                    );
+                } else {
+                    println!("\tDefault Channel: None");
+                }
+            }
+        }
+
+        DefaultChannelCommands::Set(set_default_args) => {
+            let server = requests::fetch_server_by_id(
+                client, api_url, set_default_args.server_id
+            ).await?;
+            let channel = requests::fetch_channel_by_id(
+                client, api_url, set_default_args.channel_id
+            ).await?;
+            let server_channels = requests::fetch_channels_by_server(
+                client, api_url, server.id
+            ).await?;
+            if !server_channels.iter().any(|sc| sc.id == channel.id) {
+                return Err(CliError::InvalidArgument(
+                    "Channel must be in server.".into()
+                ))
+            }
+            let server_config = config
+                .get_or_create_server_config_mut(server.id);
+            server_config.default_channel = Some(channel.id);
+            save_config(&config)?;
+        }
+    }
     Ok(())
 }

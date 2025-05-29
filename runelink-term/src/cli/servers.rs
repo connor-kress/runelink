@@ -16,9 +16,9 @@ pub struct ServerArgs {
 pub enum ServerCommands {
     /// List all servers
     List,
-    /// Get a specific server by ID
+    /// Get a server by ID
     Get(ServerIdArg),
-    /// Get a specific server by ID
+    /// Manage default server
     Default(DefaultServerArgs),
 }
 
@@ -53,7 +53,7 @@ pub async fn handle_server_commands(
         ServerCommands::List => {
             let servers = requests::fetch_servers(&client, &api_url).await?;
             for server in servers {
-                println!("{} - {}", server.title, server.id);
+                println!("{} ({})", server.title, server.id);
             }
         }
         ServerCommands::Get(get_args) => {
@@ -61,7 +61,7 @@ pub async fn handle_server_commands(
                 &client, &api_url,
                 get_args.server_id,
             ).await?;
-            println!("{} - {}", server.title, server.id);
+            println!("{} ({})", server.title, server.id);
         }
         ServerCommands::Default(default_args) => match &default_args.command {
             DefaultServerCommands::Get => {
@@ -69,9 +69,9 @@ pub async fn handle_server_commands(
                     let server = requests::fetch_server_by_id(
                         client, api_url, server_id
                     ).await?;
-                    println!("{} - {}", server.title, server.id);
+                    println!("{} ({})", server.title, server.id);
                 } else {
-                    println!("None");
+                    println!("No default server set.");
                 }
             }
             DefaultServerCommands::Set(set_default_args) => {
