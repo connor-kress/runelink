@@ -6,6 +6,7 @@ use crate::{
 use clap::{Parser};
 use cli::handle_cli;
 use reqwest::Client;
+use storage::load_config;
 // use storage::{load_config, save_config, AppConfig};
 
 mod cli;
@@ -39,7 +40,8 @@ async fn main() -> Result<(), CliError> {
 
     let cli = Cli::parse();
     let client = Client::new();
-    handle_cli(&client, &cli, &api_url).await?;
+    let mut config = load_config()?;
+    handle_cli(&client, &cli, &api_url, &mut config).await?;
 
     Ok(())
 }

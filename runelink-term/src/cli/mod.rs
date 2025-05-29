@@ -1,4 +1,4 @@
-use crate::error::CliError;
+use crate::{error::CliError, storage::AppConfig};
 use channels::{handle_channel_commands, ChannelArgs};
 use clap::CommandFactory;
 use clap_complete::Shell;
@@ -42,20 +42,23 @@ pub struct CompletionsArgs {
 }
 
 pub async fn handle_cli(
-    client: &Client, cli: &Cli, api_url: &str
+    client: &Client,
+    cli: &Cli,
+    api_url: &str,
+    config: &mut AppConfig,
 ) -> Result<(), CliError> {
     match &cli.command {
         Commands::Channels(channel_args) => {
-            handle_channel_commands(client, api_url, channel_args).await?
+            handle_channel_commands(client, api_url, config, channel_args).await?
         },
         Commands::Messages(message_args) => {
-            handle_message_commands(client, api_url, message_args).await?
+            handle_message_commands(client, api_url, config, message_args).await?
         },
         Commands::Servers(server_args) => {
-            handle_server_commands(client, api_url, server_args).await?
+            handle_server_commands(client, api_url, config, server_args).await?
         },
         Commands::Users(user_args) => {
-            handle_user_commands(client, api_url, user_args).await?
+            handle_user_commands(client, api_url, config, user_args).await?
         },
         Commands::Completions(args) => {
             let mut cmd = Cli::command();

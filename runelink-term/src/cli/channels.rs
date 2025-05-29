@@ -1,4 +1,4 @@
-use crate::{error::CliError, requests};
+use crate::{error::CliError, requests, storage::AppConfig};
 use reqwest::Client;
 use uuid::Uuid;
 
@@ -30,7 +30,10 @@ pub struct ChannelGetArgs {
 }
 
 pub async fn handle_channel_commands(
-    client: &Client, api_url: &str, channel_args: &ChannelArgs
+    client: &Client,
+    api_url: &str,
+    _config: &mut AppConfig,
+    channel_args: &ChannelArgs,
 ) -> Result<(), CliError> {
     match &channel_args.command {
         ChannelCommands::List(list_args) => {

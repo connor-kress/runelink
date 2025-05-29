@@ -1,4 +1,4 @@
-use crate::{error::CliError, requests};
+use crate::{error::CliError, requests, storage::AppConfig};
 use reqwest::Client;
 use uuid::Uuid;
 
@@ -34,7 +34,10 @@ pub struct MessageGetArgs {
 }
 
 pub async fn handle_message_commands(
-    client: &Client, api_url: &str, message_args: &MessageArgs
+    client: &Client,
+    api_url: &str,
+    _config: &mut AppConfig,
+    message_args: &MessageArgs,
 ) -> Result<(), CliError> {
     match &message_args.command {
         MessageCommands::List(list_args) => {

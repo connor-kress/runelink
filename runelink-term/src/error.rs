@@ -23,6 +23,10 @@ pub enum CliError {
     UuidError(#[from] UuidError),
 
     #[allow(dead_code)]
+    #[error("Invalid Argument: {0}")]
+    InvalidArgument(String),
+
+    #[allow(dead_code)]
     #[error("Configuration error: {0}")]
     ConfigError(String),
 

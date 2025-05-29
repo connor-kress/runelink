@@ -1,4 +1,4 @@
-use crate::{error::CliError, requests};
+use crate::{error::CliError, requests, storage::AppConfig};
 use reqwest::Client;
 use uuid::Uuid;
 
@@ -24,7 +24,10 @@ pub struct UserGetArgs {
 }
 
 pub async fn handle_user_commands(
-    client: &Client, api_url: &str, user_args: &UserArgs
+    client: &Client,
+    api_url: &str,
+    _config: &mut AppConfig,
+    user_args: &UserArgs,
 ) -> Result<(), CliError> {
     match &user_args.command {
         UserCommands::List => {
