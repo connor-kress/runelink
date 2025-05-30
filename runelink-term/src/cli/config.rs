@@ -3,6 +3,90 @@ use uuid::Uuid;
 
 use crate::{error::CliError, requests, storage::{save_config, AppConfig}};
 
+#[derive(clap::Args, Debug)]
+pub struct ConfigArgs {
+    #[clap(subcommand)]
+    pub command: ConfigCommands,
+}
+
+#[derive(clap::Subcommand, Debug)]
+pub enum ConfigCommands {
+    /// Manage default server
+    DefaultServer(DefaultServerArgs),
+    /// Manage default channels
+    DefaultChannel(DefaultChannelArgs),
+    /// Manage default host (temp)
+    DefaultHost(DefaultHostArgs),
+}
+
+pub async fn handle_config_commands(
+    client: &Client,
+    api_url: &str,
+    config: &mut AppConfig,
+    config_args: &ConfigArgs,
+) -> Result<(), CliError> {
+    match &config_args.command {
+        ConfigCommands::DefaultServer(default_server_args) => {
+            handle_default_server_commands(
+                client, api_url, config, default_server_args
+            ).await?;
+        },
+        ConfigCommands::DefaultChannel(default_channel_args) => {
+            handle_default_channel_commands(
+                client, api_url, config, default_channel_args
+            ).await?;
+        },
+        ConfigCommands::DefaultHost(default_host_args) => {
+            handle_default_host_commands(config, default_host_args).await?;
+        },
+    }
+    Ok(())
+}
+
+// DEFAULT HOST
+
+#[derive(clap::Args, Debug)]
+pub struct DefaultHostArgs {
+    #[clap(subcommand)]
+    pub command: DefaultHostCommands,
+}
+
+#[derive(clap::Subcommand, Debug)]
+pub enum DefaultHostCommands {
+    /// Show the default host
+    Get,
+    /// Set the default host
+    Set(DomainNameArg),
+}
+
+#[derive(clap::Args, Debug)]
+pub struct DomainNameArg {
+    /// The domain name of the host
+    #[clap(long)]
+    pub domain: String,
+}
+
+pub async fn handle_default_host_commands(
+    config: &mut AppConfig,
+    default_args: &DefaultHostArgs,
+) -> Result<(), CliError> {
+    match &default_args.command {
+        DefaultHostCommands::Get => {
+            if let Some(domain_name) = config.default_host.clone() {
+                println!("{}", domain_name);
+            } else {
+                println!("No default host set.");
+            }
+        }
+        DefaultHostCommands::Set(set_default_args) => {
+            config.default_host = Some(set_default_args.domain.clone());
+            save_config(&config)?;
+            println!("Set default host to '{}'", set_default_args.domain);
+        }
+    }
+    Ok(())
+}
+
 // DEFAULT SERVER
 
 #[derive(clap::Args, Debug)]

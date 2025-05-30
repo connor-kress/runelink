@@ -16,7 +16,7 @@ pub enum ChannelCommands {
     List(ChannelListArgs),
     /// Get a channel by ID
     Get(ChannelGetArgs),
-    /// Manage default channel
+    /// Manage default channels
     Default(DefaultChannelArgs),
 }
 
@@ -67,7 +67,7 @@ pub async fn handle_channel_commands(
         ChannelCommands::Default(default_args) => {
             handle_default_channel_commands(
                 client, api_url, config, default_args
-            ).await?
+            ).await?;
         }
     };
     Ok(())

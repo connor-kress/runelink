@@ -10,8 +10,9 @@ pub struct MessageArgs {
 
 #[derive(clap::Subcommand, Debug)]
 pub enum MessageCommands {
-    /// List messages
+    /// List all messages
     List(MessageListArgs),
+    /// Get a message by ID
     Get(MessageGetArgs),
 }
 
@@ -20,7 +21,6 @@ pub struct MessageListArgs {
     /// Optional: Filter messages by Server ID
     #[clap(long)]
     pub server_id: Option<Uuid>,
-
     /// Optional: Filter messages by Channel ID
     #[clap(long)]
     pub channel_id: Option<Uuid>,
