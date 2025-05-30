@@ -8,6 +8,7 @@ use servers::{handle_server_commands, ServerArgs};
 use users::{handle_user_commands, UserArgs};
 
 pub mod channels;
+pub mod config;
 pub mod messages;
 pub mod servers;
 pub mod users;

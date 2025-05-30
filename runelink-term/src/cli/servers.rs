@@ -1,10 +1,8 @@
-use crate::{
-    error::CliError,
-    requests,
-    storage::{save_config, AppConfig},
-};
+use crate::{error::CliError, requests, storage::AppConfig};
 use reqwest::Client;
 use uuid::Uuid;
+
+use super::config::{handle_default_server_commands, DefaultServerArgs};
 
 #[derive(clap::Args, Debug)]
 pub struct ServerArgs {
@@ -20,20 +18,6 @@ pub enum ServerCommands {
     Get(ServerIdArg),
     /// Manage default server
     Default(DefaultServerArgs),
-}
-
-#[derive(clap::Args, Debug)]
-pub struct DefaultServerArgs {
-    #[clap(subcommand)]
-    command: DefaultServerCommands,
-}
-
-#[derive(clap::Subcommand, Debug)]
-pub enum DefaultServerCommands {
-    /// Show the default server
-    Get,
-    /// Set the default server
-    Set(ServerIdArg),
 }
 
 #[derive(clap::Args, Debug)]
@@ -63,24 +47,10 @@ pub async fn handle_server_commands(
             ).await?;
             println!("{} ({})", server.title, server.id);
         }
-        ServerCommands::Default(default_args) => match &default_args.command {
-            DefaultServerCommands::Get => {
-                if let Some(server_id) = config.default_server {
-                    let server = requests::fetch_server_by_id(
-                        client, api_url, server_id
-                    ).await?;
-                    println!("{} ({})", server.title, server.id);
-                } else {
-                    println!("No default server set.");
-                }
-            }
-            DefaultServerCommands::Set(set_default_args) => {
-                let server = requests::fetch_server_by_id(
-                    client, api_url, set_default_args.server_id
-                ).await?;
-                config.default_server = Some(server.id);
-                save_config(&config)?;
-            }
+        ServerCommands::Default(default_args) => {
+            handle_default_server_commands(
+                client, api_url, config, &default_args
+            ).await?;
         }
     }
     Ok(())
