@@ -1,12 +1,19 @@
 use crate::{db::DbPool, error::ApiError, queries};
 use axum::{
-    extract::{Json, Path, State},
+    extract::{Json, Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
 };
 use runelink_types::{NewUser, NewUserAssociatedDomain};
+use serde::Deserialize;
 use std::sync::Arc;
 use uuid::Uuid;
+
+#[derive(Deserialize, Debug)]
+pub struct GetUserByNameDomainQuery {
+    name: String,
+    domain: String,
+}
 
 /// POST /api/users
 pub async fn create_user(
@@ -30,6 +37,16 @@ pub async fn get_user_by_id_handler(
     Path(user_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
     queries::get_user_by_id(&pool, user_id).await.map(Json)
+}
+
+/// GET /api/users/find?name=...&domain=...
+pub async fn find_user_by_name_domain_handler(
+    State(pool): State<Arc<DbPool>>,
+    Query(params): Query<GetUserByNameDomainQuery>,
+) -> Result<impl IntoResponse, ApiError> {
+    queries::get_user_by_name_and_domain(&pool, params.name, params.domain)
+        .await
+        .map(Json)
 }
 
 /// POST /api/users/{user_id}/domains

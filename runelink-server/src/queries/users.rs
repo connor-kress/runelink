@@ -42,6 +42,22 @@ pub async fn get_user_by_id(
     .map_err(ApiError::from)
 }
 
+pub async fn get_user_by_name_and_domain(
+    pool: &DbPool,
+    name: String,
+    domain: String,
+) -> Result<User, ApiError> {
+    sqlx::query_as!(
+        User,
+        "SELECT * FROM users WHERE name = $1 AND domain = $2;",
+        name,
+        domain,
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(ApiError::from)
+}
+
 pub async fn get_associated_domains_for_user(
     pool: &DbPool,
     user_id: Uuid,

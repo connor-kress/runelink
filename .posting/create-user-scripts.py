@@ -10,15 +10,19 @@ def on_response(response: httpx.Response, posting: Posting) -> None:
     try:
         response_data = response.json() 
         user_id = response_data.get("id")
+        user_name = response_data.get("name")
+        user_domain = response_data.get("domain")
     except Exception as e:
         posting.notify(f"Error processing response or setting variable: {e}")
         return
 
-    if user_id:
+    if user_id and user_name and user_domain:
         posting.set_variable("USER_ID", user_id)
-        posting.notify(f"Successfully set USER_ID to: {user_id}")
-        print(f"Successfully set USER_ID to: {user_id}")
+        posting.set_variable("USER_NAME", user_name)
+        posting.set_variable("USER_DOMAIN", user_domain)
+        posting.notify(f"Successfully set user to: {user_name}@{user_domain}")
+        print(f"Successfully set user to: {user_name}@{user_domain}")
     else:
-        posting.notify("Error: 'id' field not found in response JSON.")
-        print("Error: 'id' field not found in response JSON.")
+        posting.notify("Error: valid fields not found in response JSON.")
+        print("Error: valid fields not found in response JSON.")
         print(f"Response data: {response_data}")
