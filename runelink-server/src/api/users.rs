@@ -4,7 +4,7 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
 };
-use runelink_types::NewUser;
+use runelink_types::{NewUser, NewUserAssociatedDomain};
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -13,9 +13,8 @@ pub async fn create_user(
     State(pool): State<Arc<DbPool>>,
     Json(new_user): Json<NewUser>,
 ) -> Result<impl IntoResponse, ApiError> {
-    queries::insert_user(&pool, &new_user)
-        .await
-        .map(|user| (StatusCode::CREATED, Json(user)))
+    let user = queries::insert_user(&pool, &new_user).await?;
+    Ok((StatusCode::CREATED, Json(user)))
 }
 
 /// GET /api/users
@@ -31,4 +30,33 @@ pub async fn get_user_by_id_handler(
     Path(user_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
     queries::get_user_by_id(&pool, user_id).await.map(Json)
+}
+
+/// POST /api/users/{user_id}/domains
+pub async fn add_user_associated_domain(
+    State(pool): State<Arc<DbPool>>,
+    Path(user_id): Path<Uuid>,
+    Json(association): Json<NewUserAssociatedDomain>,
+) -> Result<impl IntoResponse, ApiError> {
+    queries::add_associated_domain_for_user(&pool, user_id, &association.domain)
+        .await
+        .map(|_| StatusCode::NO_CONTENT)
+}
+
+/// DELETE /api/users/{user_id}/domains/{domain}
+pub async fn remove_user_associated_domain(
+    State(pool): State<Arc<DbPool>>,
+    Path((user_id, domain)): Path<(Uuid, String)>,
+) -> Result<impl IntoResponse, ApiError> {
+    queries::remove_associated_domain_for_user(&pool, user_id,&domain)
+        .await
+        .map(|_| StatusCode::NO_CONTENT)
+}
+
+/// GET /api/users/{user_id}/domains
+pub async fn get_user_associated_domains(
+    State(pool): State<Arc<DbPool>>,
+    Path(user_id): Path<Uuid>,
+) -> Result<impl IntoResponse, ApiError> {
+    queries::get_associated_domains_for_user(&pool, user_id).await.map(Json)
 }

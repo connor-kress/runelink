@@ -122,3 +122,8 @@ pub struct NewServerMember {
     pub user_id: Uuid,
     pub role: ServerRole,
 }
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct NewUserAssociatedDomain {
+    pub domain: String,
+}

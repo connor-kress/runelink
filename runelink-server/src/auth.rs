@@ -2,6 +2,7 @@ use crate::{db::DbPool, error::ApiError, queries};
 use runelink_types::User;
 use uuid::Uuid;
 
+#[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub struct Session {
     pub user: User,

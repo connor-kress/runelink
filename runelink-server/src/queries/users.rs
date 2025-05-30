@@ -41,3 +41,58 @@ pub async fn get_user_by_id(
     .await
     .map_err(ApiError::from)
 }
+
+pub async fn get_associated_domains_for_user(
+    pool: &DbPool,
+    user_id: Uuid,
+) -> Result<Vec<String>, ApiError> {
+    sqlx::query_scalar!(
+        r#"
+        SELECT domain
+        FROM user_associated_domains
+        WHERE user_id = $1
+        ORDER BY domain ASC
+        "#,
+        user_id,
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(ApiError::from)
+}
+
+pub async fn add_associated_domain_for_user(
+    pool: &DbPool,
+    user_id: Uuid,
+    domain: &str,
+) -> Result<(), ApiError> {
+    sqlx::query!(
+        r#"
+        INSERT INTO user_associated_domains (user_id, domain)
+        VALUES ($1, $2)
+        ON CONFLICT (user_id, domain) DO NOTHING
+        "#,
+        user_id,
+        domain,
+    )
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+pub async fn remove_associated_domain_for_user(
+    pool: &DbPool,
+    user_id: Uuid,
+    domain: &str,
+) -> Result<(), ApiError> {
+    sqlx::query!(
+        r#"
+        DELETE FROM user_associated_domains
+        WHERE user_id = $1 AND domain = $2
+        "#,
+        user_id,
+        domain,
+    )
+    .execute(pool)
+    .await?;
+    Ok(())
+}
