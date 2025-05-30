@@ -16,19 +16,6 @@ pub async fn do_ping(
     client: &Client,
     api_base: &str,
 ) -> Result<String, CliError> {
-    let users_url = format!("{}/ping", api_base);
-    let response = client
-        .get(&users_url)
-        .send()
-        .await?;
-    if !response.status().is_success() {
-        let status = response.status();
-        let message = response
-            .text()
-            .await
-            .unwrap_or_else(|_| "Failed to get error message body".to_string());
-        return Err(CliError::ApiStatusError { status, message });
-    }
-    let message = response.text().await?;
-    Ok(message)
+    let url = format!("{}/ping", api_base);
+    generic::fetch_text(client, &url).await
 }

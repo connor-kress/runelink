@@ -1,4 +1,5 @@
 use reqwest::Client;
+use runelink_types::NewUser;
 
 use crate::{
     error::CliError,
@@ -18,11 +19,13 @@ pub enum AccountCommands {
     /// List accounts
     List,
     /// Add an existing account
-    Add(AccountAddArgs),
+    Add(NameAndDomainArgs),
+    /// Create a new account
+    Create(NameAndDomainArgs),
 }
 
 #[derive(clap::Args, Debug)]
-pub struct AccountAddArgs {
+pub struct NameAndDomainArgs {
     /// The account's username
     #[clap(long)]
     pub name: String,
@@ -64,6 +67,22 @@ pub async fn handle_account_commands(
             save_config(config)?;
             println!(
                 "Added account: {}@{} ({}).",
+                user.name, user.domain, user.id
+            );
+        },
+        AccountCommands::Create(create_args) => {
+            // TODO: switch for production
+            // let api_url = util::get_api_url(&create_args.domain);
+            let api_url = util::get_api_url("localhost:3000");
+            let new_user = NewUser {
+                name: create_args.name.clone(),
+                domain: create_args.domain.clone(),
+            };
+            let user = requests::create_user(client, &api_url, &new_user).await?;
+            config.get_or_create_account_config(&user);
+            save_config(config)?;
+            println!(
+                "Created account: {}@{} ({}).",
                 user.name, user.domain, user.id
             );
         },

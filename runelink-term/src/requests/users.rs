@@ -1,9 +1,18 @@
 use crate::error::CliError;
 use reqwest::Client;
-use runelink_types::User;
+use runelink_types::{NewUser, User};
 use uuid::Uuid;
 
-use super::fetch_json;
+use super::{fetch_json, post_json};
+
+pub async fn create_user(
+    client: &Client,
+    api_base: &str,
+    new_user: &NewUser,
+) -> Result<User, CliError> {
+    let url = format!("{}/users", api_base);
+    post_json::<NewUser, User>(client, &url, new_user).await
+}
 
 pub async fn fetch_users(
     client: &Client,
