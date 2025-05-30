@@ -1,5 +1,6 @@
 use crate::error::CliError;
 use directories::ProjectDirs;
+use runelink_types::User;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
@@ -9,7 +10,14 @@ use uuid::Uuid;
 pub struct AppConfig {
     pub default_host: Option<String>,
     pub default_server: Option<Uuid>,
+    pub accounts: Vec<AccountConfig>,
     pub servers: Vec<ServerConfig>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+pub struct AccountConfig {
+    pub user_id: Uuid,
+    pub domain: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
@@ -19,8 +27,21 @@ pub struct ServerConfig {
 }
 
 impl AppConfig {
+    #[allow(dead_code)]
+    pub fn get_account_config(&self, user_id: Uuid) -> Option<&AccountConfig> {
+        self.accounts.iter().find(|ac| ac.user_id == user_id)
+    }
+
     pub fn get_server_config(&self, server_id: Uuid) -> Option<&ServerConfig> {
         self.servers.iter().find(|sc| sc.server_id == server_id)
+    }
+
+    #[allow(dead_code)]
+    pub fn get_account_config_mut(
+        &mut self,
+        user_id: Uuid,
+    ) -> Option<&mut AccountConfig> {
+        self.accounts.iter_mut().find(|ac| ac.user_id == user_id)
     }
 
     #[allow(dead_code)]
@@ -31,7 +52,25 @@ impl AppConfig {
         self.servers.iter_mut().find(|sc| sc.server_id == server_id)
     }
 
-    pub fn get_or_create_server_config_mut(
+    pub fn get_or_create_account_config(
+        &mut self,
+        user: &User,
+    ) -> &mut AccountConfig {
+        if let Some(idx) =
+            self.accounts.iter().position(|ac| ac.user_id == user.id)
+        {
+            self.accounts[idx].domain = user.domain.clone();
+            &mut self.accounts[idx]
+        } else {
+            self.accounts.push(AccountConfig {
+                user_id: user.id,
+                domain: user.domain.clone(),
+            });
+            self.accounts.last_mut().unwrap()
+        }
+    }
+
+    pub fn get_or_create_server_config(
         &mut self,
         server_id: Uuid,
     ) -> &mut ServerConfig {

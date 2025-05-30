@@ -3,6 +3,7 @@ use clap::CommandFactory;
 use clap_complete::Shell;
 use reqwest::Client;
 
+pub mod account;
 pub mod channels;
 pub mod config;
 pub mod messages;
@@ -20,6 +21,8 @@ pub struct Cli {
 
 #[derive(clap::Subcommand, Debug)]
 pub enum Commands {
+    /// Manage accounts
+    Account(account::AccountArgs),
     /// Manage channels
     Channels(channels::ChannelArgs),
     /// Manage messages
@@ -47,30 +50,35 @@ pub async fn handle_cli(
     config: &mut AppConfig,
 ) -> Result<(), CliError> {
     match &cli.command {
+        Commands::Account(account_args) => {
+            account::handle_account_commands(
+                client, config, account_args
+            ).await?;
+        },
         Commands::Channels(channel_args) => {
             channels::handle_channel_commands(
                 client, api_url, config, channel_args
-            ).await?
+            ).await?;
         },
         Commands::Messages(message_args) => {
             messages::handle_message_commands(
                 client, api_url, config, message_args
-            ).await?
+            ).await?;
         },
         Commands::Servers(server_args) => {
             servers::handle_server_commands(
                 client, api_url, config, server_args
-            ).await?
+            ).await?;
         },
         Commands::Users(user_args) => {
             users::handle_user_commands(
                 client, api_url, config, user_args
-            ).await?
+            ).await?;
         },
         Commands::Config(config_args) => {
             config::handle_config_commands(
                 client, api_url, config, config_args
-            ).await?
+            ).await?;
         },
         Commands::Completions(args) => {
             let mut cmd = Cli::command();

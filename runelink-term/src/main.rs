@@ -13,16 +13,13 @@ mod cli;
 mod error;
 mod requests;
 mod storage;
-
-fn get_api_url(domain: &str) -> String {
-    format!("http://{}/api", domain)
-}
+mod util;
 
 #[allow(dead_code)]
 async fn test_connectivities(client: &Client, domains: Vec<&str>) {
     println!("Hosts:");
     for domain in domains {
-        let api_url = get_api_url(domain);
+        let api_url = util::get_api_url(domain);
         match do_ping(client, &api_url).await {
             Ok(_) => println!("{} (ready)", domain),
             Err(_) => println!("{} (down)", domain),
@@ -35,7 +32,7 @@ async fn main() -> Result<(), CliError> {
     let mut config = load_config()?;
     // TODO: use default account instead once auth exists
     let domain = config.default_host.clone().unwrap_or("localhost:3000".into());
-    let api_url = get_api_url(&domain);
+    let api_url = util::get_api_url(&domain);
 
     let cli = Cli::parse();
     let client = Client::new();

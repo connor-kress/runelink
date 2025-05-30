@@ -1,7 +1,11 @@
 use reqwest::Client;
 use uuid::Uuid;
 
-use crate::{error::CliError, requests, storage::{save_config, AppConfig}};
+use crate::{
+    error::CliError,
+    requests,
+    storage::{save_config, AppConfig},
+};
 
 #[derive(clap::Args, Debug)]
 pub struct ConfigArgs {
@@ -81,7 +85,7 @@ pub async fn handle_default_host_commands(
         DefaultHostCommands::Set(set_default_args) => {
             config.default_host = Some(set_default_args.domain.clone());
             save_config(&config)?;
-            println!("Set default host to '{}'", set_default_args.domain);
+            println!("Set default host to '{}'.", set_default_args.domain);
         }
     }
     Ok(())
@@ -133,6 +137,7 @@ pub async fn handle_default_server_commands(
             ).await?;
             config.default_server = Some(server.id);
             save_config(&config)?;
+            println!("Set default server to '{}'.", server.title);
         }
     }
     Ok(())
@@ -233,13 +238,16 @@ pub async fn handle_default_channel_commands(
             ).await?;
             if !server_channels.iter().any(|sc| sc.id == channel.id) {
                 return Err(CliError::InvalidArgument(
-                    "Channel must be in server.".into()
-                ))
+                    "Channel not found in server.".into()
+                ));
             }
-            let server_config = config
-                .get_or_create_server_config_mut(server.id);
+            let server_config = config.get_or_create_server_config(server.id);
             server_config.default_channel = Some(channel.id);
             save_config(&config)?;
+            println!(
+                "Set default channel to '{}' for '{}'.",
+                channel.title, server.title
+            );
         }
     }
     Ok(())
