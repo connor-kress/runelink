@@ -1,7 +1,11 @@
 use reqwest::Client;
-use uuid::Uuid;
 
-use crate::{error::CliError, requests, storage::{save_config, AppConfig}, util};
+use crate::{
+    error::CliError,
+    requests,
+    storage::{save_config, AppConfig},
+    util,
+};
 
 #[derive(clap::Args, Debug)]
 pub struct AccountArgs {
@@ -19,9 +23,9 @@ pub enum AccountCommands {
 
 #[derive(clap::Args, Debug)]
 pub struct AccountAddArgs {
-    /// The user ID (TODO: use name instead)
+    /// The account's username
     #[clap(long)]
-    pub user_id: Uuid,
+    pub name: String,
     /// The domain name of the account's host
     #[clap(long)]
     pub domain: String,
@@ -39,13 +43,10 @@ pub async fn handle_account_commands(
                 return Ok(());
             }
             for account in config.accounts.iter() {
-                // TODO: switch for production
-                // let api_url = util::get_api_url(&account.domain);
-                let api_url = util::get_api_url("localhost:3000");
-                let user = requests::fetch_user_by_id(
-                    client, &api_url, account.user_id
-                ).await?;
-                println!("{}@{} ({})", user.name, user.domain, user.id);
+                println!(
+                    "{}@{} ({})",
+                    account.name, account.domain, account.user_id
+                );
             }
 
         },
@@ -53,8 +54,11 @@ pub async fn handle_account_commands(
             // TODO: switch for production
             // let api_url = util::get_api_url(&add_args.domain);
             let api_url = util::get_api_url("localhost:3000");
-            let user = requests::fetch_user_by_id(
-                client, &api_url, add_args.user_id
+            let user = requests::fetch_user_by_name_and_domain(
+                client,
+                &api_url,
+                add_args.name.clone(),
+                add_args.domain.clone(),
             ).await?;
             config.get_or_create_account_config(&user);
             save_config(config)?;

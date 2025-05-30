@@ -14,9 +14,9 @@ use reqwest::Client;
 
 pub async fn do_ping(
     client: &Client,
-    domain_api_base: &str,
+    api_base: &str,
 ) -> Result<String, CliError> {
-    let users_url = format!("{}/ping", domain_api_base);
+    let users_url = format!("{}/ping", api_base);
     let response = client
         .get(&users_url)
         .send()

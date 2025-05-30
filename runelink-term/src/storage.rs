@@ -8,19 +8,20 @@ use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct AppConfig {
-    pub default_host: Option<String>,
+    pub default_host: Option<String>, // TODO: remove
     pub default_server: Option<Uuid>,
     pub accounts: Vec<AccountConfig>,
     pub servers: Vec<ServerConfig>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AccountConfig {
     pub user_id: Uuid,
+    pub name: String,
     pub domain: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ServerConfig {
     pub server_id: Uuid,
     pub default_channel: Option<Uuid>,
@@ -64,6 +65,7 @@ impl AppConfig {
         } else {
             self.accounts.push(AccountConfig {
                 user_id: user.id,
+                name: user.name.clone(),
                 domain: user.domain.clone(),
             });
             self.accounts.last_mut().unwrap()
