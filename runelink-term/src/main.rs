@@ -32,16 +32,27 @@ async fn test_connectivities(client: &Client, domains: Vec<&str>) {
 
 #[tokio::main]
 async fn main() -> Result<(), CliError> {
-    // let config = load_config()?;
-    // dbg!(config);
-    let domain = "localhost:3000";
-
-    let api_url = get_api_url(domain);
+    let mut config = load_config()?;
+    // TODO: use default account instead once auth exists
+    let domain = config.default_host.clone().unwrap_or("localhost:3000".into());
+    let api_url = get_api_url(&domain);
 
     let cli = Cli::parse();
     let client = Client::new();
-    let mut config = load_config()?;
-    handle_cli(&client, &cli, &api_url, &mut config).await?;
+    if let Err(cli_error) =
+        handle_cli(&client, &cli, &api_url, &mut config).await
+    {
+        match cli_error {
+            CliError::ReqwestError(e) => {
+                if let Some(status) = e.status() {
+                    eprintln!("{}: {}", status, e.to_string());
+                } else {
+                    eprintln!("{}", e.to_string());
+                }
+            },
+            _ => return Err(cli_error),
+        }
+    }
 
     Ok(())
 }
