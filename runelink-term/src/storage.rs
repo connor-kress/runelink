@@ -6,9 +6,12 @@ use std::fs;
 use std::path::PathBuf;
 use uuid::Uuid;
 
+const CONFIG_FILENAME: &str = "config.json";
+// const CACHE_FILENAME: &str = "cache.json";
+
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct AppConfig {
-    pub default_host: Option<String>, // TODO: remove
+    pub default_account: Option<Uuid>,
     pub default_server: Option<Uuid>,
     pub accounts: Vec<AccountConfig>,
     pub servers: Vec<ServerConfig>,
@@ -27,17 +30,32 @@ pub struct ServerConfig {
     pub default_channel: Option<Uuid>,
 }
 
+#[allow(dead_code)]
 impl AppConfig {
-    #[allow(dead_code)]
+    pub fn load() -> Result<Self, CliError> {
+        load_data(CONFIG_FILENAME)
+    }
+
+    pub fn save(&self) -> Result<(), CliError> {
+        save_data(self, CONFIG_FILENAME)
+    }
+
+    pub fn get_default_account(&self) -> Option<&AccountConfig> {
+        self.default_account.and_then(|user_id| {
+            self.accounts.iter().find(|ac| ac.user_id == user_id)
+        })
+    }
+
+    pub fn get_default_account_mut(&mut self) -> Option<&mut AccountConfig> {
+        self.default_account.and_then(|user_id| {
+            self.accounts.iter_mut().find(|ac| ac.user_id == user_id)
+        })
+    }
+
     pub fn get_account_config(&self, user_id: Uuid) -> Option<&AccountConfig> {
         self.accounts.iter().find(|ac| ac.user_id == user_id)
     }
 
-    pub fn get_server_config(&self, server_id: Uuid) -> Option<&ServerConfig> {
-        self.servers.iter().find(|sc| sc.server_id == server_id)
-    }
-
-    #[allow(dead_code)]
     pub fn get_account_config_mut(
         &mut self,
         user_id: Uuid,
@@ -45,7 +63,30 @@ impl AppConfig {
         self.accounts.iter_mut().find(|ac| ac.user_id == user_id)
     }
 
-    #[allow(dead_code)]
+    pub fn get_account_config_by_name(
+        &self,
+        name: &str,
+        domain: &str,
+    ) -> Option<&AccountConfig> {
+        self.accounts
+            .iter()
+            .find(|ac| ac.name == name && ac.domain == domain)
+    }
+
+    pub fn get_account_config_by_name_mut(
+        &mut self,
+        name: String,
+        domain: String,
+    ) -> Option<&mut AccountConfig> {
+        self.accounts
+            .iter_mut()
+            .find(|ac| ac.name == name && ac.domain == domain)
+    }
+
+    pub fn get_server_config(&self, server_id: Uuid) -> Option<&ServerConfig> {
+        self.servers.iter().find(|sc| sc.server_id == server_id)
+    }
+
     pub fn get_server_config_mut(
         &mut self,
         server_id: Uuid,
@@ -90,9 +131,6 @@ impl AppConfig {
     }
 }
 
-const CONFIG_FILENAME: &str = "config.json";
-// const CACHE_FILENAME: &str = "cache.json";
-
 pub fn get_data_dir() -> Result<PathBuf, CliError> {
     if let Some(proj_dirs) = ProjectDirs::from("com", "RuneLink", "RuneLink") {
         let data_dir = proj_dirs.data_dir();
@@ -136,14 +174,4 @@ where
     let data_str = serde_json::to_string_pretty(data)?;
     fs::write(&file_path, data_str)?;
     Ok(())
-}
-
-#[allow(dead_code)]
-pub fn load_config() -> Result<AppConfig, CliError> {
-    load_data(CONFIG_FILENAME)
-}
-
-#[allow(dead_code)]
-pub fn save_config(config: &AppConfig) -> Result<(), CliError> {
-    save_data(config, CONFIG_FILENAME)
 }

@@ -56,19 +56,19 @@ pub async fn handle_channel_commands(
             for channel in channels {
                 println!("{} ({})", channel.title, channel.id);
             }
-        }
+        },
         ChannelCommands::Get(get_args) => {
             let channel = requests::fetch_channel_by_id(
                 &client, &api_url,
                 get_args.channel_id,
             ).await?;
             println!("{} ({})", channel.title, channel.id);
-        }
+        },
         ChannelCommands::Default(default_args) => {
             handle_default_channel_commands(
                 client, api_url, config, default_args
             ).await?;
-        }
+        },
     };
     Ok(())
 }

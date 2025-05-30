@@ -1,12 +1,9 @@
 use reqwest::Client;
 use runelink_types::NewUser;
 
-use crate::{
-    error::CliError,
-    requests,
-    storage::{save_config, AppConfig},
-    util,
-};
+use crate::{error::CliError, requests, storage::AppConfig, util};
+
+use super::config::{handle_default_account_commands, DefaultAccountArgs};
 
 #[derive(clap::Args, Debug)]
 pub struct AccountArgs {
@@ -22,6 +19,8 @@ pub enum AccountCommands {
     Add(NameAndDomainArgs),
     /// Create a new account
     Create(NameAndDomainArgs),
+    /// Manage default account
+    Default(DefaultAccountArgs),
 }
 
 #[derive(clap::Args, Debug)]
@@ -64,7 +63,10 @@ pub async fn handle_account_commands(
                 add_args.domain.clone(),
             ).await?;
             config.get_or_create_account_config(&user);
-            save_config(config)?;
+            if config.accounts.len() == 1 {
+                config.default_account = Some(user.id);
+            }
+            config.save()?;
             println!(
                 "Added account: {}@{} ({}).",
                 user.name, user.domain, user.id
@@ -80,11 +82,17 @@ pub async fn handle_account_commands(
             };
             let user = requests::create_user(client, &api_url, &new_user).await?;
             config.get_or_create_account_config(&user);
-            save_config(config)?;
+            if config.accounts.len() == 1 {
+                config.default_account = Some(user.id);
+            }
+            config.save()?;
             println!(
                 "Created account: {}@{} ({}).",
                 user.name, user.domain, user.id
             );
+        },
+        AccountCommands::Default(default_args) => {
+            handle_default_account_commands(config, default_args).await?;
         },
     }
     Ok(())

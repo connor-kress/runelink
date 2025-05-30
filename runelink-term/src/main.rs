@@ -6,8 +6,7 @@ use crate::{
 use clap::{Parser};
 use cli::handle_cli;
 use reqwest::Client;
-use storage::load_config;
-// use storage::{load_config, save_config, AppConfig};
+use storage::AppConfig;
 
 mod cli;
 mod error;
@@ -29,9 +28,12 @@ async fn test_connectivities(client: &Client, domains: Vec<&str>) {
 
 #[tokio::main]
 async fn main() -> Result<(), CliError> {
-    let mut config = load_config()?;
-    // TODO: use default account instead once auth exists
-    let domain = config.default_host.clone().unwrap_or("localhost:3000".into());
+    let mut config = AppConfig::load()?;
+    // TODO: pass Option<Account> from top level argument (or default)
+    let domain = config
+        .get_default_account()
+        .map(|a| a.domain.as_str())
+        .unwrap_or("localhost:3000");
     let api_url = util::get_api_url(&domain);
 
     let cli = Cli::parse();

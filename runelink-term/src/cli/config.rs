@@ -1,11 +1,7 @@
 use reqwest::Client;
 use uuid::Uuid;
 
-use crate::{
-    error::CliError,
-    requests,
-    storage::{save_config, AppConfig},
-};
+use crate::{error::CliError, requests, storage::AppConfig};
 
 #[derive(clap::Args, Debug)]
 pub struct ConfigArgs {
@@ -15,12 +11,12 @@ pub struct ConfigArgs {
 
 #[derive(clap::Subcommand, Debug)]
 pub enum ConfigCommands {
+    /// Manage default account
+    DefaultAccount(DefaultAccountArgs),
     /// Manage default server
     DefaultServer(DefaultServerArgs),
     /// Manage default channels
     DefaultChannel(DefaultChannelArgs),
-    /// Manage default host (temp)
-    DefaultHost(DefaultHostArgs),
 }
 
 pub async fn handle_config_commands(
@@ -40,8 +36,8 @@ pub async fn handle_config_commands(
                 client, api_url, config, default_channel_args
             ).await?;
         },
-        ConfigCommands::DefaultHost(default_host_args) => {
-            handle_default_host_commands(config, default_host_args).await?;
+        ConfigCommands::DefaultAccount(default_account_args) => {
+            handle_default_account_commands(config, default_account_args).await?;
         },
     }
     Ok(())
@@ -50,42 +46,58 @@ pub async fn handle_config_commands(
 // DEFAULT HOST
 
 #[derive(clap::Args, Debug)]
-pub struct DefaultHostArgs {
+pub struct DefaultAccountArgs {
     #[clap(subcommand)]
-    pub command: DefaultHostCommands,
+    pub command: DefaultAccountCommands,
 }
 
 #[derive(clap::Subcommand, Debug)]
-pub enum DefaultHostCommands {
-    /// Show the default host
+pub enum DefaultAccountCommands {
+    /// Show the default account
     Get,
-    /// Set the default host
-    Set(DomainNameArg),
+    /// Set the default account
+    Set(NameAndDomainArgs),
 }
 
 #[derive(clap::Args, Debug)]
-pub struct DomainNameArg {
-    /// The domain name of the host
+pub struct NameAndDomainArgs {
+    /// The account's username
+    #[clap(long)]
+    pub name: String,
+    /// The domain name of the account's host
     #[clap(long)]
     pub domain: String,
 }
 
-pub async fn handle_default_host_commands(
+
+pub async fn handle_default_account_commands(
     config: &mut AppConfig,
-    default_args: &DefaultHostArgs,
+    default_args: &DefaultAccountArgs,
 ) -> Result<(), CliError> {
     match &default_args.command {
-        DefaultHostCommands::Get => {
-            if let Some(domain_name) = config.default_host.clone() {
-                println!("{}", domain_name);
+        DefaultAccountCommands::Get => {
+            if let Some(account) = config.get_default_account() {
+                println!(
+                    "{}@{} ({})",
+                    account.name, account.domain, account.user_id
+                );
             } else {
                 println!("No default host set.");
             }
         }
-        DefaultHostCommands::Set(set_default_args) => {
-            config.default_host = Some(set_default_args.domain.clone());
-            save_config(&config)?;
-            println!("Set default host to '{}'.", set_default_args.domain);
+        DefaultAccountCommands::Set(set_args) => {
+            let account = config.get_account_config_by_name(
+                &set_args.name,
+                &set_args.domain,
+            ).ok_or_else(|| {
+                CliError::InvalidArgument("Account not found.".into())
+            })?.clone();
+            config.default_account = Some(account.user_id);
+            config.save()?;
+            println!(
+                "Set default account: {}@{} ({}).",
+                account.name, account.domain, account.user_id
+            );
         }
     }
     Ok(())
@@ -136,7 +148,7 @@ pub async fn handle_default_server_commands(
                 client, api_url, set_default_args.server_id
             ).await?;
             config.default_server = Some(server.id);
-            save_config(&config)?;
+            config.save()?;
             println!("Set default server to '{}'.", server.title);
         }
     }
@@ -243,7 +255,7 @@ pub async fn handle_default_channel_commands(
             }
             let server_config = config.get_or_create_server_config(server.id);
             server_config.default_channel = Some(channel.id);
-            save_config(&config)?;
+            config.save()?;
             println!(
                 "Set default channel to '{}' for '{}'.",
                 channel.title, server.title
