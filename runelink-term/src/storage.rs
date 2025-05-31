@@ -28,6 +28,7 @@ pub struct AccountConfig {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ServerConfig {
     pub server_id: Uuid,
+    pub title: String,
     pub domain: String,
     pub default_channel: Option<Uuid>,
 }
@@ -127,6 +128,7 @@ impl AppConfig {
         } else {
             self.servers.push(ServerConfig {
                 server_id: server.id,
+                title: server.title.clone(),
                 domain: domain.to_string(),
                 default_channel: None,
             });

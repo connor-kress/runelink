@@ -39,14 +39,13 @@ pub async fn handle_account_commands(
     ctx: &mut CliContext<'_>,
     account_args: &AccountArgs,
 ) -> Result<(), CliError> {
-    let config = &mut ctx.config;
     match &account_args.command {
         AccountCommands::List => {
-            if config.accounts.is_empty() {
+            if ctx.config.accounts.is_empty() {
                 println!("No accounts.");
                 return Ok(());
             }
-            for account in config.accounts.iter() {
+            for account in ctx.config.accounts.iter() {
                 println!(
                     "{}@{} ({})",
                     account.name, account.domain, account.user_id
@@ -55,7 +54,6 @@ pub async fn handle_account_commands(
 
         },
         AccountCommands::Add(add_args) => {
-            // TODO: switch for production
             let api_url = util::get_api_url(&add_args.domain);
             let user = requests::fetch_user_by_name_and_domain(
                 ctx.client,
@@ -63,18 +61,17 @@ pub async fn handle_account_commands(
                 add_args.name.clone(),
                 add_args.domain.clone(),
             ).await?;
-            config.get_or_create_account_config(&user);
-            if config.accounts.len() == 1 {
-                config.default_account = Some(user.id);
+            ctx.config.get_or_create_account_config(&user);
+            if ctx.config.accounts.len() == 1 {
+                ctx.config.default_account = Some(user.id);
             }
-            config.save()?;
+            ctx.config.save()?;
             println!(
                 "Added account: {}@{} ({}).",
                 user.name, user.domain, user.id
             );
         },
         AccountCommands::Create(create_args) => {
-            // TODO: switch for production
             let api_url = util::get_api_url(&create_args.domain);
             let new_user = NewUser {
                 name: create_args.name.clone(),
@@ -82,11 +79,11 @@ pub async fn handle_account_commands(
             };
             let user =
                 requests::create_user(ctx.client, &api_url, &new_user).await?;
-            config.get_or_create_account_config(&user);
-            if config.accounts.len() == 1 {
-                config.default_account = Some(user.id);
+            ctx.config.get_or_create_account_config(&user);
+            if ctx.config.accounts.len() == 1 {
+                ctx.config.default_account = Some(user.id);
             }
-            config.save()?;
+            ctx.config.save()?;
             println!(
                 "Created account: {}@{} ({}).",
                 user.name, user.domain, user.id

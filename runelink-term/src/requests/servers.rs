@@ -1,10 +1,19 @@
 use reqwest::Client;
-use runelink_types::Server;
+use runelink_types::{NewServer, Server};
 use uuid::Uuid;
 
 use crate::error::CliError;
 
-use super::fetch_json;
+use super::{fetch_json, post_json};
+
+pub async fn create_server(
+    client: &Client,
+    api_base: &str,
+    new_server: &NewServer,
+) -> Result<Server, CliError> {
+    let url = format!("{}/servers", api_base);
+    post_json::<NewServer, Server>(client, &url, new_server).await
+}
 
 pub async fn fetch_servers(
     client: &Client,

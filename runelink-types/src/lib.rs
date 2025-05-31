@@ -73,9 +73,9 @@ pub struct Server {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NewServer {
-    pub user_id: Option<Uuid>, // TODO: remove me
     pub title: String,
     pub description: Option<String>,
+    pub user_id: Uuid, // TODO: remove me
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -121,6 +121,22 @@ pub struct ServerMember {
 pub struct NewServerMember {
     pub user_id: Uuid,
     pub role: ServerRole,
+}
+
+impl NewServerMember {
+    pub fn member(user_id: Uuid) -> Self {
+        NewServerMember {
+            user_id,
+            role: ServerRole::Member,
+        }
+    }
+
+    pub fn admin(user_id: Uuid) -> Self {
+        NewServerMember {
+            user_id,
+            role: ServerRole::Admin,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

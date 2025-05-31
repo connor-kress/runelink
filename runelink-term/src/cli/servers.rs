@@ -1,3 +1,4 @@
+use runelink_types::NewServer;
 use uuid::Uuid;
 
 use crate::{
@@ -23,6 +24,8 @@ pub enum ServerCommands {
     List,
     /// Get a server by ID
     Get(ServerIdArg),
+    /// Create a new server
+    Create(NewServerArgs),
     /// Manage default server
     Default(DefaultServerArgs),
 }
@@ -32,6 +35,16 @@ pub struct ServerIdArg {
     /// The ID of the server
     #[clap(long)]
     pub server_id: Uuid,
+}
+
+#[derive(clap::Args, Debug)]
+pub struct NewServerArgs {
+    /// The title of the server
+    #[clap(long)]
+    pub title: String,
+    /// Optional: The description of the server
+    #[clap(long)]
+    pub description: Option<String>,
 }
 
 pub async fn handle_server_commands(
@@ -53,6 +66,29 @@ pub async fn handle_server_commands(
             ).await?;
             println!("{} ({})", server.title, server.id);
         }
+        ServerCommands::Create(create_args) => {
+            let Some(account) = ctx.account else {
+                return Err(CliError::MissingAccount);
+            };
+            let api_url = ctx.account.try_get_api_url()?;
+            let new_server = NewServer {
+                title: create_args.title.clone(),
+                description: create_args.description.clone(),
+                user_id: account.user_id,
+            };
+            let server = requests::create_server(
+                ctx.client, &api_url, &new_server
+            ).await?;
+            ctx.config.get_or_create_server_config(&server, &account.domain);
+            if ctx.config.servers.len() == 1 {
+                ctx.config.default_server = Some(server.id);
+            }
+            ctx.config.save()?;
+            println!(
+                "Created server: {} ({}).",
+                server.title, server.id
+            );
+        },
         ServerCommands::Default(default_args) => {
             handle_default_server_commands(ctx, &default_args).await?;
         }

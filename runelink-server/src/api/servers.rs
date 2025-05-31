@@ -4,7 +4,7 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
 };
-use runelink_types::{NewServer, ServerWithChannels};
+use runelink_types::{NewServer, NewServerMember, ServerWithChannels};
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -14,13 +14,14 @@ pub async fn create_server(
     Json(new_server): Json<NewServer>,
 ) -> Result<impl IntoResponse, ApiError> {
     // TODO: get user id/session tokens
-    AuthBuilder::new(new_server.user_id)
+    AuthBuilder::new(Some(new_server.user_id))
         .admin()
         .build(&pool)
         .await?;
-    queries::insert_server(&pool, &new_server)
-        .await
-        .map(|server| (StatusCode::CREATED, Json(server)))
+    let server = queries::insert_server(&pool, &new_server).await?;
+    let new_member = NewServerMember::admin(new_server.user_id);
+    queries::add_user_to_server(&pool, server.id, &new_member).await?;
+    Ok((StatusCode::CREATED, Json(server)))
 }
 
 /// GET /api/servers
