@@ -1,13 +1,15 @@
-use reqwest::Client;
 use uuid::Uuid;
 
 use crate::{
     error::CliError,
     requests,
-    storage::{AccountConfig, AppConfig, TryGetDomainName},
+    storage::TryGetDomainName,
 };
 
-use super::config::{handle_default_server_commands, DefaultServerArgs};
+use super::{
+    config::{handle_default_server_commands, DefaultServerArgs},
+    context::CliContext,
+};
 
 #[derive(clap::Args, Debug)]
 pub struct ServerArgs {
@@ -33,31 +35,26 @@ pub struct ServerIdArg {
 }
 
 pub async fn handle_server_commands(
-    client: &Client,
-    account: Option<&AccountConfig>,
-    config: &mut AppConfig,
+    ctx: &mut CliContext<'_>,
     server_args: &ServerArgs,
 ) -> Result<(), CliError> {
     match &server_args.command {
         ServerCommands::List => {
-            let api_url = account.try_get_api_url()?;
-            let servers = requests::fetch_servers(&client, &api_url).await?;
+            let api_url = ctx.account.try_get_api_url()?;
+            let servers = requests::fetch_servers(ctx.client, &api_url).await?;
             for server in servers {
                 println!("{} ({})", server.title, server.id);
             }
         }
         ServerCommands::Get(get_args) => {
-            let api_url = account.try_get_api_url()?;
+            let api_url = ctx.account.try_get_api_url()?;
             let server = requests::fetch_server_by_id(
-                &client, &api_url,
-                get_args.server_id,
+                ctx.client, &api_url, get_args.server_id
             ).await?;
             println!("{} ({})", server.title, server.id);
         }
         ServerCommands::Default(default_args) => {
-            handle_default_server_commands(
-                client, account, config, &default_args
-            ).await?;
+            handle_default_server_commands(ctx, &default_args).await?;
         }
     }
     Ok(())

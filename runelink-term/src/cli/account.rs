@@ -1,9 +1,11 @@
-use reqwest::Client;
 use runelink_types::NewUser;
 
-use crate::{error::CliError, requests, storage::AppConfig, util};
+use crate::{error::CliError, requests, util};
 
-use super::config::{handle_default_account_commands, DefaultAccountArgs};
+use super::{
+    config::{handle_default_account_commands, DefaultAccountArgs},
+    context::CliContext,
+};
 
 #[derive(clap::Args, Debug)]
 pub struct AccountArgs {
@@ -34,10 +36,10 @@ pub struct NameAndDomainArgs {
 }
 
 pub async fn handle_account_commands(
-    client: &Client,
-    config: &mut AppConfig,
+    ctx: &mut CliContext<'_>,
     account_args: &AccountArgs,
 ) -> Result<(), CliError> {
+    let config = &mut ctx.config;
     match &account_args.command {
         AccountCommands::List => {
             if config.accounts.is_empty() {
@@ -56,7 +58,7 @@ pub async fn handle_account_commands(
             // TODO: switch for production
             let api_url = util::get_api_url(&add_args.domain);
             let user = requests::fetch_user_by_name_and_domain(
-                client,
+                ctx.client,
                 &api_url,
                 add_args.name.clone(),
                 add_args.domain.clone(),
@@ -78,7 +80,8 @@ pub async fn handle_account_commands(
                 name: create_args.name.clone(),
                 domain: create_args.domain.clone(),
             };
-            let user = requests::create_user(client, &api_url, &new_user).await?;
+            let user =
+                requests::create_user(ctx.client, &api_url, &new_user).await?;
             config.get_or_create_account_config(&user);
             if config.accounts.len() == 1 {
                 config.default_account = Some(user.id);
@@ -90,7 +93,7 @@ pub async fn handle_account_commands(
             );
         },
         AccountCommands::Default(default_args) => {
-            handle_default_account_commands(config, default_args).await?;
+            handle_default_account_commands(ctx, default_args).await?;
         },
     }
     Ok(())

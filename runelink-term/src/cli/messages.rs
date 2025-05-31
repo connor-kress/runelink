@@ -1,11 +1,8 @@
-use reqwest::Client;
 use uuid::Uuid;
 
-use crate::{
-    error::CliError,
-    requests,
-    storage::{AccountConfig, AppConfig, TryGetDomainName},
-};
+use crate::{error::CliError, requests, storage::TryGetDomainName};
+
+use super::context::CliContext;
 
 #[derive(clap::Args, Debug)]
 pub struct MessageArgs {
@@ -39,26 +36,24 @@ pub struct MessageGetArgs {
 }
 
 pub async fn handle_message_commands(
-    client: &Client,
-    account: Option<&AccountConfig>,
-    _config: &mut AppConfig,
+    ctx: &mut CliContext<'_>,
     message_args: &MessageArgs,
 ) -> Result<(), CliError> {
     match &message_args.command {
         MessageCommands::List(list_args) => {
-            let api_url = account.try_get_api_url()?;
+            let api_url = ctx.account.try_get_api_url()?;
             let messages;
             if let Some(channel_id) = list_args.channel_id {
                 messages = requests::fetch_messages_by_channel(
-                    &client, &api_url, channel_id
+                    ctx.client, &api_url, channel_id
                 ).await?;
             } else if let Some(server_id) = list_args.server_id {
                 messages = requests::fetch_messages_by_server(
-                    &client, &api_url, server_id
+                    ctx.client, &api_url, server_id
                 ).await?;
             } else {
                 messages = requests::fetch_all_messages(
-                    &client, &api_url
+                    ctx.client, &api_url
                 ).await?
             }
             for message in messages {
@@ -70,10 +65,9 @@ pub async fn handle_message_commands(
             }
         }
         MessageCommands::Get(get_args) => {
-            let api_url = account.try_get_api_url()?;
+            let api_url = ctx.account.try_get_api_url()?;
             let message = requests::fetch_message_by_id(
-                &client, &api_url,
-                get_args.message_id,
+                ctx.client, &api_url, get_args.message_id
             ).await?;
             let author_name = message
                 .author

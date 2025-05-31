@@ -1,5 +1,6 @@
 use clap::CommandFactory;
 use clap_complete::Shell;
+use context::CliContext;
 use reqwest::Client;
 
 use crate::{error::CliError, storage::AppConfig};
@@ -7,6 +8,7 @@ use crate::{error::CliError, storage::AppConfig};
 pub mod account;
 pub mod channels;
 pub mod config;
+pub mod context;
 pub mod messages;
 pub mod servers;
 pub mod users;
@@ -55,43 +57,37 @@ pub async fn handle_cli(
     cli: &Cli,
     config: &mut AppConfig,
 ) -> Result<(), CliError> {
-    let account = if let (Some(name), Some(domain)) = (&cli.name, &cli.domain) {
-        config.get_account_config_by_name(name, domain)
-    } else {
-        config.get_default_account()
+    let account_owned = match (&cli.name, &cli.domain) {
+        (Some(name), Some(domain)) => {
+            config.get_account_config_by_name(name, domain)
+        },
+        _ => config.get_default_account(),
     }.map(|a| a.clone());
-    let account = account.as_ref();
+    let mut ctx_owned = CliContext {
+        client,
+        config,
+        account: account_owned.as_ref(),
+    };
+    let ctx = &mut ctx_owned;
 
     match &cli.command {
-        Commands::Account(account_args) => {
-            account::handle_account_commands(
-                client, config, account_args
-            ).await?;
+        Commands::Account(args) => {
+            account::handle_account_commands(ctx, args).await?;
         },
-        Commands::Channels(channel_args) => {
-            channels::handle_channel_commands(
-                client, account, config, channel_args
-            ).await?;
+        Commands::Channels(args) => {
+            channels::handle_channel_commands(ctx, args).await?;
         },
-        Commands::Messages(message_args) => {
-            messages::handle_message_commands(
-                client, account, config, message_args
-            ).await?;
+        Commands::Messages(args) => {
+            messages::handle_message_commands(ctx, args).await?;
         },
-        Commands::Servers(server_args) => {
-            servers::handle_server_commands(
-                client, account, config, server_args
-            ).await?;
+        Commands::Servers(args) => {
+            servers::handle_server_commands(ctx, args).await?;
         },
-        Commands::Users(user_args) => {
-            users::handle_user_commands(
-                client, account, config, user_args
-            ).await?;
+        Commands::Users(args) => {
+            users::handle_user_commands(ctx, args).await?;
         },
-        Commands::Config(config_args) => {
-            config::handle_config_commands(
-                client, account, config, config_args
-            ).await?;
+        Commands::Config(args) => {
+            config::handle_config_commands(ctx, args).await?;
         },
         Commands::Completions(args) => {
             let mut cmd = Cli::command();

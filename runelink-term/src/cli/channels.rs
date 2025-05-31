@@ -1,13 +1,11 @@
-use reqwest::Client;
 use uuid::Uuid;
 
-use crate::{
-    error::CliError,
-    requests,
-    storage::{AccountConfig, AppConfig, TryGetDomainName},
-};
+use crate::{error::CliError, requests, storage::TryGetDomainName};
 
-use super::config::{handle_default_channel_commands, DefaultChannelArgs};
+use super::{
+    config::{handle_default_channel_commands, DefaultChannelArgs},
+    context::CliContext,
+};
 
 #[derive(clap::Args, Debug)]
 pub struct ChannelArgs {
@@ -41,22 +39,20 @@ pub struct ChannelGetArgs {
 
 
 pub async fn handle_channel_commands(
-    client: &Client,
-    account: Option<&AccountConfig>,
-    config: &mut AppConfig,
+    ctx: &mut CliContext<'_>,
     channel_args: &ChannelArgs,
 ) -> Result<(), CliError> {
     match &channel_args.command {
         ChannelCommands::List(list_args) => {
-            let api_url = account.try_get_api_url()?;
+            let api_url = ctx.account.try_get_api_url()?;
             let channels;
             if let Some(server_id) = list_args.server_id {
                 channels = requests::fetch_channels_by_server(
-                    &client, &api_url, server_id
+                    ctx.client, &api_url, server_id
                 ).await?;
             } else {
                 channels = requests::fetch_all_channels(
-                    &client, &api_url
+                    ctx.client, &api_url
                 ).await?
             }
             for channel in channels {
@@ -64,17 +60,14 @@ pub async fn handle_channel_commands(
             }
         },
         ChannelCommands::Get(get_args) => {
-            let api_url = account.try_get_api_url()?;
+            let api_url = ctx.account.try_get_api_url()?;
             let channel = requests::fetch_channel_by_id(
-                &client, &api_url,
-                get_args.channel_id,
+                ctx.client, &api_url, get_args.channel_id
             ).await?;
             println!("{} ({})", channel.title, channel.id);
         },
         ChannelCommands::Default(default_args) => {
-            handle_default_channel_commands(
-                client, account, config, default_args
-            ).await?;
+            handle_default_channel_commands(ctx, default_args).await?;
         },
     };
     Ok(())
