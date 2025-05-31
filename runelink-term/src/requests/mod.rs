@@ -1,3 +1,7 @@
+use reqwest::Client;
+
+use crate::error::CliError;
+
 pub mod channels;
 pub mod generic;
 pub mod messages;
@@ -8,9 +12,6 @@ pub use generic::*;
 pub use messages::*;
 pub use servers::*;
 pub use users::*;
-
-use crate::error::CliError;
-use reqwest::Client;
 
 pub async fn do_ping(
     client: &Client,

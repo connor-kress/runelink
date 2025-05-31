@@ -1,9 +1,6 @@
 use reqwest::StatusCode;
-use std::io::Error as IoError;
-use thiserror::Error;
-use uuid::Error as UuidError;
 
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum CliError {
     #[error("API request failed: {0}")]
     ReqwestError(#[from] reqwest::Error),
@@ -14,23 +11,25 @@ pub enum CliError {
     #[error("Failed to parse JSON response: {0}")]
     JsonDeserializeError(#[from] serde_json::Error),
 
-    // #[error("CLI argument parsing error: {0}")]
-    // ClapError(#[from] clap::Error),
     #[error("I/O error: {0}")]
-    IoError(#[from] IoError),
+    IoError(#[from] std::io::Error),
 
     #[error("Invalid UUID: {0}")]
-    UuidError(#[from] UuidError),
-
-    #[allow(dead_code)]
-    #[error("Invalid Argument: {0}")]
-    InvalidArgument(String),
+    UuidError(#[from] uuid::Error),
 
     #[allow(dead_code)]
     #[error("Configuration error: {0}")]
     ConfigError(String),
 
+    #[error("Invalid Argument: {0}")]
+    InvalidArgument(String),
+
+    #[error("Missing account: Specify an account or set a default account")]
+    MissingAccount,
+
     #[allow(dead_code)]
     #[error("Unexpected error: {0}")]
     Unknown(String),
+    // #[error("CLI argument parsing error: {0}")]
+    // ClapError(#[from] clap::Error),
 }

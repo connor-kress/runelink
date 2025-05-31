@@ -54,8 +54,7 @@ pub async fn handle_account_commands(
         },
         AccountCommands::Add(add_args) => {
             // TODO: switch for production
-            // let api_url = util::get_api_url(&add_args.domain);
-            let api_url = util::get_api_url("localhost:3000");
+            let api_url = util::get_api_url(&add_args.domain);
             let user = requests::fetch_user_by_name_and_domain(
                 client,
                 &api_url,
@@ -74,8 +73,7 @@ pub async fn handle_account_commands(
         },
         AccountCommands::Create(create_args) => {
             // TODO: switch for production
-            // let api_url = util::get_api_url(&create_args.domain);
-            let api_url = util::get_api_url("localhost:3000");
+            let api_url = util::get_api_url(&create_args.domain);
             let new_user = NewUser {
                 name: create_args.name.clone(),
                 domain: create_args.domain.clone(),

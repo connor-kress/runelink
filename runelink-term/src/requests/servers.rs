@@ -1,7 +1,8 @@
-use crate::error::CliError;
 use reqwest::Client;
 use runelink_types::Server;
 use uuid::Uuid;
+
+use crate::error::CliError;
 
 use super::fetch_json;
 

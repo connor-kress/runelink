@@ -1,10 +1,11 @@
-use crate::error::CliError;
 use directories::ProjectDirs;
-use runelink_types::User;
+use runelink_types::{Server, User};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 use uuid::Uuid;
+
+use crate::{error::CliError, util::get_api_url};
 
 const CONFIG_FILENAME: &str = "config.json";
 // const CACHE_FILENAME: &str = "cache.json";
@@ -27,6 +28,7 @@ pub struct AccountConfig {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ServerConfig {
     pub server_id: Uuid,
+    pub domain: String,
     pub default_channel: Option<Uuid>,
 }
 
@@ -115,19 +117,38 @@ impl AppConfig {
 
     pub fn get_or_create_server_config(
         &mut self,
-        server_id: Uuid,
+        server: &Server,
+        domain: &str,
     ) -> &mut ServerConfig {
         if let Some(idx) =
-            self.servers.iter().position(|sc| sc.server_id == server_id)
+            self.servers.iter().position(|sc| sc.server_id == server.id)
         {
             &mut self.servers[idx]
         } else {
             self.servers.push(ServerConfig {
-                server_id,
+                server_id: server.id,
+                domain: domain.to_string(),
                 default_channel: None,
             });
             self.servers.last_mut().unwrap()
         }
+    }
+}
+
+pub trait TryGetDomainName {
+    fn try_get_domain_name(&self) -> Result<&str, CliError>;
+    fn try_get_api_url(&self) -> Result<String, CliError>;
+}
+
+impl TryGetDomainName for Option<&AccountConfig> {
+    fn try_get_domain_name(&self) -> Result<&str, CliError> {
+        self.map(|ac| ac.domain.as_str())
+            .ok_or(CliError::MissingAccount)
+    }
+
+    fn try_get_api_url(&self) -> Result<String, CliError> {
+        let domain = self.try_get_domain_name()?;
+        Ok(get_api_url(domain))
     }
 }
 

@@ -1,6 +1,11 @@
-use crate::{error::CliError, requests, storage::AppConfig};
 use reqwest::Client;
 use uuid::Uuid;
+
+use crate::{
+    error::CliError,
+    requests,
+    storage::{AccountConfig, AppConfig, TryGetDomainName},
+};
 
 #[derive(clap::Args, Debug)]
 pub struct UserArgs {
@@ -25,21 +30,22 @@ pub struct UserGetArgs {
 
 pub async fn handle_user_commands(
     client: &Client,
-    api_url: &str,
+    account: Option<&AccountConfig>,
     _config: &mut AppConfig,
     user_args: &UserArgs,
 ) -> Result<(), CliError> {
     match &user_args.command {
         UserCommands::List => {
+            let api_url = account.try_get_api_url()?;
             let users = requests::fetch_users(&client, &api_url).await?;
             for user in users {
                 println!("{}@{} ({})", user.name, user.domain, user.id);
             }
         }
         UserCommands::Get(get_args) => {
+            let api_url = account.try_get_api_url()?;
             let user = requests::fetch_user_by_id(
-                &client, &api_url,
-                get_args.user_id,
+                &client, &api_url, get_args.user_id
             ).await?;
             println!("{}@{} ({})", user.name, user.domain, user.id);
         }

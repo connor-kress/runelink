@@ -1,6 +1,11 @@
-use crate::{error::CliError, requests, storage::AppConfig};
 use reqwest::Client;
 use uuid::Uuid;
+
+use crate::{
+    error::CliError,
+    requests,
+    storage::{AccountConfig, AppConfig, TryGetDomainName},
+};
 
 #[derive(clap::Args, Debug)]
 pub struct MessageArgs {
@@ -35,12 +40,13 @@ pub struct MessageGetArgs {
 
 pub async fn handle_message_commands(
     client: &Client,
-    api_url: &str,
+    account: Option<&AccountConfig>,
     _config: &mut AppConfig,
     message_args: &MessageArgs,
 ) -> Result<(), CliError> {
     match &message_args.command {
         MessageCommands::List(list_args) => {
+            let api_url = account.try_get_api_url()?;
             let messages;
             if let Some(channel_id) = list_args.channel_id {
                 messages = requests::fetch_messages_by_channel(
@@ -64,6 +70,7 @@ pub async fn handle_message_commands(
             }
         }
         MessageCommands::Get(get_args) => {
+            let api_url = account.try_get_api_url()?;
             let message = requests::fetch_message_by_id(
                 &client, &api_url,
                 get_args.message_id,

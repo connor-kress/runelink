@@ -1,7 +1,8 @@
-use crate::{error::CliError, storage::AppConfig};
 use clap::CommandFactory;
 use clap_complete::Shell;
 use reqwest::Client;
+
+use crate::{error::CliError, storage::AppConfig};
 
 pub mod account;
 pub mod channels;
@@ -17,6 +18,12 @@ pub mod users;
 pub struct Cli {
     #[clap(subcommand)]
     pub command: Commands,
+    /// Optional: The account's username
+    #[clap(long)]
+    pub name: Option<String>,
+    /// Optional: The domain name of the account's host
+    #[clap(long)]
+    pub domain: Option<String>,
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -46,9 +53,15 @@ pub struct CompletionsArgs {
 pub async fn handle_cli(
     client: &Client,
     cli: &Cli,
-    api_url: &str,
     config: &mut AppConfig,
 ) -> Result<(), CliError> {
+    let account = if let (Some(name), Some(domain)) = (&cli.name, &cli.domain) {
+        config.get_account_config_by_name(name, domain)
+    } else {
+        config.get_default_account()
+    }.map(|a| a.clone());
+    let account = account.as_ref();
+
     match &cli.command {
         Commands::Account(account_args) => {
             account::handle_account_commands(
@@ -57,27 +70,27 @@ pub async fn handle_cli(
         },
         Commands::Channels(channel_args) => {
             channels::handle_channel_commands(
-                client, api_url, config, channel_args
+                client, account, config, channel_args
             ).await?;
         },
         Commands::Messages(message_args) => {
             messages::handle_message_commands(
-                client, api_url, config, message_args
+                client, account, config, message_args
             ).await?;
         },
         Commands::Servers(server_args) => {
             servers::handle_server_commands(
-                client, api_url, config, server_args
+                client, account, config, server_args
             ).await?;
         },
         Commands::Users(user_args) => {
             users::handle_user_commands(
-                client, api_url, config, user_args
+                client, account, config, user_args
             ).await?;
         },
         Commands::Config(config_args) => {
             config::handle_config_commands(
-                client, api_url, config, config_args
+                client, account, config, config_args
             ).await?;
         },
         Commands::Completions(args) => {

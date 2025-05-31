@@ -1,7 +1,8 @@
-use crate::error::CliError;
 use reqwest::Client;
 use runelink_types::{NewUser, User};
 use uuid::Uuid;
+
+use crate::error::CliError;
 
 use super::{fetch_json, post_json};
 

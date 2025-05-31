@@ -1,12 +1,13 @@
+use clap::{Parser};
+use cli::handle_cli;
+use reqwest::Client;
+use storage::AppConfig;
+
 use crate::{
     cli::Cli,
     error::CliError,
     requests::do_ping,
 };
-use clap::{Parser};
-use cli::handle_cli;
-use reqwest::Client;
-use storage::AppConfig;
 
 mod cli;
 mod error;
@@ -29,18 +30,9 @@ async fn test_connectivities(client: &Client, domains: Vec<&str>) {
 #[tokio::main]
 async fn main() -> Result<(), CliError> {
     let mut config = AppConfig::load()?;
-    // TODO: pass Option<Account> from top level argument (or default)
-    let domain = config
-        .get_default_account()
-        .map(|a| a.domain.as_str())
-        .unwrap_or("localhost:3000");
-    let api_url = util::get_api_url(&domain);
-
     let cli = Cli::parse();
     let client = Client::new();
-    if let Err(cli_error) =
-        handle_cli(&client, &cli, &api_url, &mut config).await
-    {
+    if let Err(cli_error) = handle_cli(&client, &cli, &mut config).await {
         match cli_error {
             CliError::ReqwestError(e) => {
                 if let Some(status) = e.status() {

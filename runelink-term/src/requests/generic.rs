@@ -1,6 +1,7 @@
-use crate::error::CliError;
 use reqwest::Client;
 use serde::{de::DeserializeOwned, Serialize};
+
+use crate::error::CliError;
 
 pub async fn fetch_text(
     client: &Client,

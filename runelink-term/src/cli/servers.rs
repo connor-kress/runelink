@@ -1,6 +1,11 @@
-use crate::{error::CliError, requests, storage::AppConfig};
 use reqwest::Client;
 use uuid::Uuid;
+
+use crate::{
+    error::CliError,
+    requests,
+    storage::{AccountConfig, AppConfig, TryGetDomainName},
+};
 
 use super::config::{handle_default_server_commands, DefaultServerArgs};
 
@@ -29,18 +34,20 @@ pub struct ServerIdArg {
 
 pub async fn handle_server_commands(
     client: &Client,
-    api_url: &str,
+    account: Option<&AccountConfig>,
     config: &mut AppConfig,
     server_args: &ServerArgs,
 ) -> Result<(), CliError> {
     match &server_args.command {
         ServerCommands::List => {
+            let api_url = account.try_get_api_url()?;
             let servers = requests::fetch_servers(&client, &api_url).await?;
             for server in servers {
                 println!("{} ({})", server.title, server.id);
             }
         }
         ServerCommands::Get(get_args) => {
+            let api_url = account.try_get_api_url()?;
             let server = requests::fetch_server_by_id(
                 &client, &api_url,
                 get_args.server_id,
@@ -49,7 +56,7 @@ pub async fn handle_server_commands(
         }
         ServerCommands::Default(default_args) => {
             handle_default_server_commands(
-                client, api_url, config, &default_args
+                client, account, config, &default_args
             ).await?;
         }
     }
