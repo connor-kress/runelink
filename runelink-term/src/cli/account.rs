@@ -62,9 +62,6 @@ pub async fn handle_account_commands(
                 add_args.domain.clone(),
             ).await?;
             ctx.config.get_or_create_account_config(&user);
-            if ctx.config.accounts.len() == 1 {
-                ctx.config.default_account = Some(user.id);
-            }
             ctx.config.save()?;
             println!(
                 "Added account: {}@{} ({}).",
@@ -80,9 +77,6 @@ pub async fn handle_account_commands(
             let user =
                 requests::create_user(ctx.client, &api_url, &new_user).await?;
             ctx.config.get_or_create_account_config(&user);
-            if ctx.config.accounts.len() == 1 {
-                ctx.config.default_account = Some(user.id);
-            }
             ctx.config.save()?;
             println!(
                 "Created account: {}@{} ({}).",

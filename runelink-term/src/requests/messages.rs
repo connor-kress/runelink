@@ -1,10 +1,20 @@
 use reqwest::Client;
-use runelink_types::Message;
+use runelink_types::{Message, NewMessage};
 use uuid::Uuid;
 
 use crate::error::CliError;
 
-use super::fetch_json;
+use super::{fetch_json, post_json};
+
+pub async fn send_message(
+    client: &Client,
+    api_base: &str,
+    channel_id: Uuid,
+    new_message: &NewMessage,
+) -> Result<Message, CliError> {
+    let url = format!("{}/channels/{}/messages", api_base, channel_id);
+    post_json::<NewMessage, Message>(client, &url, new_message).await
+}
 
 pub async fn fetch_all_messages(
     client: &Client,

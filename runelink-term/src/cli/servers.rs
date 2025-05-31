@@ -80,9 +80,6 @@ pub async fn handle_server_commands(
                 ctx.client, &api_url, &new_server
             ).await?;
             ctx.config.get_or_create_server_config(&server, &account.domain);
-            if ctx.config.servers.len() == 1 {
-                ctx.config.default_server = Some(server.id);
-            }
             ctx.config.save()?;
             println!(
                 "Created server: {} ({}).",

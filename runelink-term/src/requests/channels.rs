@@ -1,10 +1,20 @@
 use reqwest::Client;
-use runelink_types::Channel;
+use runelink_types::{Channel, NewChannel};
 use uuid::Uuid;
 
 use crate::error::CliError;
 
-use super::fetch_json;
+use super::{fetch_json, post_json};
+
+pub async fn create_channel(
+    client: &Client,
+    api_base: &str,
+    server_id: Uuid,
+    new_channel: &NewChannel,
+) -> Result<Channel, CliError> {
+    let url = format!("{}/servers/{}/channels", api_base, server_id);
+    post_json::<NewChannel, Channel>(client, &url, new_channel).await
+}
 
 pub async fn fetch_all_channels(
     client: &Client,

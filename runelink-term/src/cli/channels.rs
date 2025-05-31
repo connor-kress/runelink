@@ -1,3 +1,4 @@
+use runelink_types::NewChannel;
 use uuid::Uuid;
 
 use crate::{error::CliError, requests, storage::TryGetDomainName};
@@ -19,6 +20,8 @@ pub enum ChannelCommands {
     List(ChannelListArgs),
     /// Get a channel by ID
     Get(ChannelGetArgs),
+    /// Create a new channel
+    Create(NewChannelArgs),
     /// Manage default channels
     Default(DefaultChannelArgs),
 }
@@ -37,6 +40,18 @@ pub struct ChannelGetArgs {
     pub channel_id: Uuid,
 }
 
+#[derive(clap::Args, Debug)]
+pub struct NewChannelArgs {
+    /// The title of the channel
+    #[clap(long)]
+    pub title: String,
+    /// Optional: The description of the channel
+    #[clap(long)]
+    pub description: Option<String>,
+    /// The server ID
+    #[clap(long)]
+    pub server_id: Uuid,
+}
 
 pub async fn handle_channel_commands(
     ctx: &mut CliContext<'_>,
@@ -65,6 +80,37 @@ pub async fn handle_channel_commands(
                 ctx.client, &api_url, get_args.channel_id
             ).await?;
             println!("{} ({})", channel.title, channel.id);
+        },
+        ChannelCommands::Create(create_args) => {
+            let Some(account) = ctx.account else {
+                return Err(CliError::MissingAccount);
+            };
+            let api_url = ctx.account.try_get_api_url()?;
+            let new_channel = NewChannel {
+                title: create_args.title.clone(),
+                description: create_args.description.clone(),
+            };
+            let channel = requests::create_channel(
+                ctx.client, &api_url, create_args.server_id, &new_channel
+            ).await?;
+            if let Some(server_config) =
+                ctx.config.get_server_config_mut(channel.server_id)
+            {
+                if server_config.default_channel.is_none() {
+                    server_config.default_channel = Some(channel.id);
+                    ctx.config.save()?;
+                }
+            } else {
+                let server = requests::fetch_server_by_id(
+                    ctx.client, &api_url, channel.server_id
+                ).await?;
+                ctx.config.get_or_create_server_config(&server, &account.domain);
+                ctx.config.save()?;
+            }
+            println!(
+                "Created channel: {} ({}).",
+                channel.title, channel.id
+            );
         },
         ChannelCommands::Default(default_args) => {
             handle_default_channel_commands(ctx, default_args).await?;

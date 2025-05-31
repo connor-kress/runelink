@@ -107,6 +107,9 @@ impl AppConfig {
             self.accounts[idx].domain = user.domain.clone();
             &mut self.accounts[idx]
         } else {
+            if self.accounts.is_empty() {
+                self.default_account = Some(user.id);
+            }
             self.accounts.push(AccountConfig {
                 user_id: user.id,
                 name: user.name.clone(),
@@ -126,6 +129,9 @@ impl AppConfig {
         {
             &mut self.servers[idx]
         } else {
+            if self.servers.is_empty() {
+                self.default_server = Some(server.id);
+            }
             self.servers.push(ServerConfig {
                 server_id: server.id,
                 title: server.title.clone(),
