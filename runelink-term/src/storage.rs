@@ -55,6 +55,11 @@ impl AppConfig {
         })
     }
 
+    pub fn get_default_channel(&self, server_id: Uuid) -> Option<Uuid> {
+        self.get_server_config(server_id)
+            .and_then(|sc| sc.default_channel)
+    }
+
     pub fn get_account_config(&self, user_id: Uuid) -> Option<&AccountConfig> {
         self.accounts.iter().find(|ac| ac.user_id == user_id)
     }

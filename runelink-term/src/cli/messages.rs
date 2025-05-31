@@ -1,3 +1,4 @@
+use runelink_types::NewMessage;
 use uuid::Uuid;
 
 use crate::{error::CliError, requests, storage::TryGetDomainName};
@@ -16,6 +17,8 @@ pub enum MessageCommands {
     List(MessageListArgs),
     /// Get a message by ID
     Get(MessageGetArgs),
+    /// Send a message
+    Send(MessageSendArgs),
 }
 
 #[derive(clap::Args, Debug)]
@@ -33,6 +36,19 @@ pub struct MessageGetArgs {
     /// The ID of the message to fetch
     #[clap(long)]
     pub message_id: Uuid,
+}
+
+#[derive(clap::Args, Debug)]
+pub struct MessageSendArgs {
+    /// The body of the message
+    #[clap(long)]
+    pub body: String,
+    /// Optional: The server ID (otherwise default)
+    #[clap(long)]
+    pub server_id: Option<Uuid>,
+    /// Optional: The channel ID (otherwise default)
+    #[clap(long)]
+    pub channel_id: Option<Uuid>,
 }
 
 pub async fn handle_message_commands(
@@ -56,14 +72,15 @@ pub async fn handle_message_commands(
                     ctx.client, &api_url
                 ).await?
             }
-            for message in messages {
+            for message in messages.iter().rev() {
                 let author_name = message
                     .author
-                    .map(|u| u.name)
-                    .unwrap_or("Anon".into());
+                    .as_ref()
+                    .map(|u| u.name.as_str())
+                    .unwrap_or("Anon");
                 println!("{}: {}", author_name, message.body);
             }
-        }
+        },
         MessageCommands::Get(get_args) => {
             let api_url = ctx.account.try_get_api_url()?;
             let message = requests::fetch_message_by_id(
@@ -74,7 +91,35 @@ pub async fn handle_message_commands(
                 .map(|u| u.name)
                 .unwrap_or("Anon".into());
             println!("{}: {}", author_name, message.body);
-        }
+        },
+        MessageCommands::Send(send_args) => {
+            let Some(account) = ctx.account else {
+                return Err(CliError::MissingAccount);
+            };
+            let api_url = ctx.account.try_get_api_url()?;
+            let new_message = NewMessage {
+                body: send_args.body.clone(),
+                author_id: account.user_id,
+            };
+            let channel_id = match (send_args.channel_id, send_args.server_id) {
+                (Some(channel_id), _) => Some(channel_id),
+                (None, Some(server_id)) => {
+                    ctx.config.get_default_channel(server_id)
+                },
+                (None, None) => {
+                    ctx.config.default_server.and_then(|server_id| {
+                        ctx.config.get_default_channel(server_id)
+                    })
+                },
+            }
+            .ok_or_else(|| CliError::InvalidArgument(
+                "Channel could not be determined from inputs or defaults".into()
+            ))?;
+            let message = requests::send_message(
+                ctx.client, &api_url, channel_id, &new_message
+            ).await?;
+            println!("Send message: {}", message.body);
+        },
     };
     Ok(())
 }
