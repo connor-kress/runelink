@@ -10,6 +10,7 @@ pub mod channels;
 pub mod config;
 pub mod context;
 pub mod messages;
+pub mod select;
 pub mod servers;
 pub mod users;
 

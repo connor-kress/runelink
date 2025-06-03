@@ -19,3 +19,4 @@ uuid = { version = "1.16.0", features = ["v4", "serde"] }
 clap = { version = "4.5.38", features = ["derive"] }
 clap_complete = "4.5.50"
 directories = "6.0.0"
+crossterm = "0.29.0"
