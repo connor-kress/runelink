@@ -4,7 +4,7 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
 };
-use runelink_types::{NewUser, NewUserAssociatedDomain};
+use runelink_types::NewUser;
 use serde::Deserialize;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -47,27 +47,6 @@ pub async fn find_user_by_name_domain_handler(
     queries::get_user_by_name_and_domain(&pool, params.name, params.domain)
         .await
         .map(Json)
-}
-
-/// POST /api/users/{user_id}/domains
-pub async fn add_user_associated_domain(
-    State(pool): State<Arc<DbPool>>,
-    Path(user_id): Path<Uuid>,
-    Json(association): Json<NewUserAssociatedDomain>,
-) -> Result<impl IntoResponse, ApiError> {
-    queries::add_associated_domain_for_user(&pool, user_id, &association.domain)
-        .await
-        .map(|_| StatusCode::NO_CONTENT)
-}
-
-/// DELETE /api/users/{user_id}/domains/{domain}
-pub async fn remove_user_associated_domain(
-    State(pool): State<Arc<DbPool>>,
-    Path((user_id, domain)): Path<(Uuid, String)>,
-) -> Result<impl IntoResponse, ApiError> {
-    queries::remove_associated_domain_for_user(&pool, user_id,&domain)
-        .await
-        .map(|_| StatusCode::NO_CONTENT)
 }
 
 /// GET /api/users/{user_id}/domains

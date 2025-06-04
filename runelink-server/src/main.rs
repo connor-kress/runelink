@@ -1,7 +1,4 @@
-use axum::{
-    routing::{delete, get},
-    Router,
-};
+use axum::{routing::get, Router};
 use sqlx::migrate::Migrator;
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -32,14 +29,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "/api/users/{user_id}",
             get(api::get_user_by_id_handler),
         )
-        .route(
-            "/api/users/{user_id}/domains",
-            get(api::get_user_associated_domains)
-                .post(api::add_user_associated_domain),
-        )
-        .route(
-            "/api/users/{user_id}/domains/{domain}",
-            delete(api::remove_user_associated_domain),
+        .route("/api/users/{user_id}/domains",
+            get(api::get_user_associated_domains),
         )
 
         .route("/api/messages", get(api::list_messages))

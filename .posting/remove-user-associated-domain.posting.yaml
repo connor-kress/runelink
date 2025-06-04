@@ -1,3 +1,0 @@
-name: remove user associated domain
-method: DELETE
-url: $BASE_API_URL/users/$USER_ID/domains/example.com
