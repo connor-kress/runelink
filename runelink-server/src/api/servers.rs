@@ -52,3 +52,11 @@ pub async fn get_server_with_channels_handler(
         channels: channels?,
     }))
 }
+
+/// GET /api/users/{user_id}/servers
+pub async fn list_server_memberships_by_user(
+    State(state): State<AppState>,
+    Path(user_id): Path<Uuid>,
+) -> Result<impl IntoResponse, ApiError> {
+    queries::get_all_memberships_for_user(&state, user_id).await.map(Json)
+}

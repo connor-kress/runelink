@@ -41,6 +41,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/users/{user_id}/domains",
             get(api::get_user_associated_domains),
         )
+        .route("/api/users/{user_id}/servers",
+            get(api::list_server_memberships_by_user),
+        )
 
         .route("/api/messages", get(api::list_messages))
         .route(

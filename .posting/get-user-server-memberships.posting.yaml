@@ -1,0 +1,2 @@
+name: get user server memberships
+url: $BASE_API_URL/users/$USER_ID/servers

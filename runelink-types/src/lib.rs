@@ -120,6 +120,16 @@ pub struct ServerMember {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ServerMembership {
+    pub server: Server,
+    pub role: ServerRole,
+    #[serde(with = "time::serde::rfc3339")]
+    pub joined_at: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339::option")]
+    pub synced_at: Option<OffsetDateTime>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NewServerMember {
     pub user_id: Uuid,
     pub role: ServerRole,
