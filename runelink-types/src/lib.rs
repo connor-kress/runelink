@@ -64,6 +64,7 @@ pub struct NewChannel {
 #[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
 pub struct Server {
     pub id: Uuid,
+    pub domain: String,
     pub title: String,
     pub description: Option<String>,
     #[serde(with = "time::serde::rfc3339")]
