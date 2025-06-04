@@ -146,6 +146,27 @@ impl AppConfig {
             self.servers.last_mut().unwrap()
         }
     }
+
+    pub fn try_get_server_domain(
+        &self,
+        server_id: Uuid,
+    ) -> Result<String, CliError> {
+        self.get_server_config(server_id)
+            .map(|sc| sc.domain.clone())
+            .ok_or_else(|| {
+                CliError::MissingContext(
+                    "Server domain could not be determined.".into(),
+                )
+            })
+    }
+
+    pub fn try_get_server_api_url(
+        &self,
+        server_id: Uuid,
+    ) -> Result<String, CliError> {
+        self.try_get_server_domain(server_id)
+            .map(|ref domain| get_api_url(domain))
+    }
 }
 
 pub trait TryGetDomainName {

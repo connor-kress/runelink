@@ -25,6 +25,9 @@ pub enum CliError {
     #[error("Invalid Argument: {0}")]
     InvalidArgument(String),
 
+    #[error("Missing Context: {0}")]
+    MissingContext(String),
+
     #[error("Missing account: Specify an account or set a default account")]
     MissingAccount,
 
@@ -85,6 +88,7 @@ impl Into<ExitCode> for CliError {
                 status_to_exit_code(status)
             }
             CliError::InvalidArgument(_) => EX_USAGE,
+            CliError::MissingContext(_) => EX_USAGE,
             CliError::JsonDeserializeError(_) => EX_DATAERR,
             CliError::IoError(_) => EX_IOERR,
             CliError::UuidError(_) => EX_DATAERR,

@@ -104,29 +104,44 @@ pub async fn get_channel_selection(
     channel_id: Option<Uuid>,
     server_id: Option<Uuid>,
 ) -> Result<Channel, CliError> {
-    let api_url = ctx.account.try_get_api_url()?;
-    let channel_id = match (channel_id, server_id) {
-        (Some(channel_id), _) => Some(channel_id),
+    match (channel_id, server_id) {
+        (Some(channel_id), Some(server_id)) => {
+            let server_api_url = ctx.config.try_get_server_api_url(server_id)?;
+            requests::fetch_channel_by_id(
+                ctx.client,
+                &server_api_url,
+                channel_id,
+            ).await
+        },
+        (Some(_channel_id), None) => {
+            Err(CliError::MissingContext(
+                "Server ID must be passed with channel ID.".into(),
+            ))
+        }
         (None, Some(server_id)) => {
             // ctx.config.get_default_channel(server_id)
+            let server_api_url = ctx.config.try_get_server_api_url(server_id)?;
             let channels = requests::fetch_channels_by_server(
-                ctx.client, &api_url, server_id
+                ctx.client, &server_api_url, server_id
             ).await?;
             let channel = select_inline(
                 &channels,
                 "Select channel",
                 Channel::to_string,
             )?
-            .ok_or(CliError::Cancellation)
-            .cloned();
+            .ok_or(CliError::Cancellation)?;
             println!();
-            return channel;
+            Ok(channel.clone())
         },
         (None, None) => {
             // ctx.config.default_server.and_then(|server_id| {
             //     ctx.config.get_default_channel(server_id)
             // })
-            let servers = requests::fetch_servers(ctx.client, &api_url).await?;
+            let account_api_url = ctx.account.try_get_api_url()?;
+            let servers = requests::fetch_servers(
+                ctx.client,
+                &account_api_url,
+            ).await?;
             let server = select_inline(
                 &servers,
                 "Select server",
@@ -134,22 +149,18 @@ pub async fn get_channel_selection(
             )?
             .ok_or(CliError::Cancellation)?;
             println!();
+            let server_api_url = ctx.config.try_get_server_api_url(server.id)?;
             let channels = requests::fetch_channels_by_server(
-                ctx.client, &api_url, server.id
+                ctx.client, &server_api_url, server.id
             ).await?;
             let channel = select_inline(
                 &channels,
                 "Select channel",
                 Channel::to_string,
             )?
-            .ok_or(CliError::Cancellation)
-            .cloned();
+            .ok_or(CliError::Cancellation)?;
             println!();
-            return channel;
+            Ok(channel.clone())
         },
     }
-    .ok_or_else(|| CliError::InvalidArgument(
-        "Channel could not be determined from inputs or defaults".into()
-    ))?;
-    requests::fetch_channel_by_id(ctx.client, &api_url, channel_id).await
 }

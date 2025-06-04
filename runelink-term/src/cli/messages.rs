@@ -60,7 +60,6 @@ pub async fn handle_message_commands(
 ) -> Result<(), CliError> {
     match &message_args.command {
         MessageCommands::List(list_args) => {
-            let api_url = ctx.account.try_get_api_url()?;
             // TODO: add cli arguments for each of these cases
             // let messages;
             // if let Some(channel_id) = list_args.channel_id {
@@ -81,6 +80,7 @@ pub async fn handle_message_commands(
                 list_args.channel_id,
                 list_args.server_id,
             ).await?;
+            let api_url = ctx.config.try_get_server_api_url(channel.server_id)?;
             let messages = requests::fetch_messages_by_channel(
                 ctx.client,
                 &api_url,
