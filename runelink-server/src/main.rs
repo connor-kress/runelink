@@ -1,12 +1,16 @@
 use axum::{routing::get, Router};
+use config::ServerConfig;
 use sqlx::migrate::Migrator;
+use state::AppState;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 mod auth;
 mod api;
+mod config;
 mod db;
 mod queries;
 mod error;
+mod state;
 
 // Embed all sql migrations in binary
 static MIGRATOR: Migrator = sqlx::migrate!();
@@ -15,7 +19,12 @@ static MIGRATOR: Migrator = sqlx::migrate!();
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenvy::dotenv().ok();
 
-    let pool = Arc::new(db::get_pool().await?);
+    let config = Arc::new(ServerConfig::from_env()?);
+    let pool = Arc::new(db::get_pool(config.as_ref()).await?);
+    let app_state = AppState {
+        db_pool: pool.clone(),
+        config: config.clone(),
+    };
 
     MIGRATOR.run(pool.as_ref()).await?;
     println!("Migrations are up to date.");
@@ -78,7 +87,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/hosts", get(api::list_hosts))
         .route("/api/hosts/{domain}", get(api::get_host))
 
-        .with_state(pool.clone());
+        .with_state(app_state);
 
     let listener = TcpListener::bind("0.0.0.0:3000").await?;
 
