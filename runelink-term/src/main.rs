@@ -32,7 +32,6 @@ async fn test_connectivities(client: &Client, domains: Vec<&str>) {
 #[tokio::main]
 async fn main() -> ExitCode {
     async fn run_app() -> Result<(), CliError> {
-        crate::cli::select::demo_select_inline()?; // for testing
         let mut config = AppConfig::load()?;
         let cli = Cli::parse();
         let client = Client::new();

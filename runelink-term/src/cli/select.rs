@@ -5,10 +5,13 @@ use crossterm::{
     style::Print,
     terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType},
 };
-use runelink_types::Server;
+use runelink_types::{Channel, Server};
 use std::io::Write;
-use time::OffsetDateTime;
 use uuid::Uuid;
+
+use crate::{error::CliError, requests, storage::TryGetDomainName};
+
+use super::context::CliContext;
 
 pub fn select_inline<'a, T, F>(
     items: &'a [T],
@@ -96,52 +99,57 @@ where
     }
 }
 
-pub fn demo_select_inline() -> std::io::Result<()> {
-    let servers = vec![
-        Server {
-            id: Uuid::new_v4(),
-            title: "Darplex".into(),
-            description: Some("We play games".into()),
-            created_at: OffsetDateTime::now_utc(),
-            updated_at: OffsetDateTime::now_utc(),
+pub async fn get_channel_selection(
+    ctx: &CliContext<'_>,
+    channel_id: Option<Uuid>,
+    server_id: Option<Uuid>,
+) -> Result<Channel, CliError> {
+    let api_url = ctx.account.try_get_api_url()?;
+    let channel_id = match (channel_id, server_id) {
+        (Some(channel_id), _) => Some(channel_id),
+        (None, Some(server_id)) => {
+            // ctx.config.get_default_channel(server_id)
+            let channels = requests::fetch_channels_by_server(
+                ctx.client, &api_url, server_id
+            ).await?;
+            let channel = select_inline(
+                &channels,
+                "Select channel",
+                Channel::to_string,
+            )?
+            .ok_or(CliError::Cancellation)
+            .cloned();
+            println!();
+            return channel;
         },
-        Server {
-            id: Uuid::new_v4(),
-            title: "Other server".into(),
-            description: None,
-            created_at: OffsetDateTime::now_utc(),
-            updated_at: OffsetDateTime::now_utc(),
+        (None, None) => {
+            // ctx.config.default_server.and_then(|server_id| {
+            //     ctx.config.get_default_channel(server_id)
+            // })
+            let servers = requests::fetch_servers(ctx.client, &api_url).await?;
+            let server = select_inline(
+                &servers,
+                "Select server",
+                Server::to_string,
+            )?
+            .ok_or(CliError::Cancellation)?;
+            println!();
+            let channels = requests::fetch_channels_by_server(
+                ctx.client, &api_url, server.id
+            ).await?;
+            let channel = select_inline(
+                &channels,
+                "Select channel",
+                Channel::to_string,
+            )?
+            .ok_or(CliError::Cancellation)
+            .cloned();
+            println!();
+            return channel;
         },
-        Server {
-            id: Uuid::new_v4(),
-            title: "Mandar fanclub".into(),
-            description: Some("Very large".into()),
-            created_at: OffsetDateTime::now_utc(),
-            updated_at: OffsetDateTime::now_utc(),
-        },
-    ];
-
-    let show = |s: &Server| {
-        if let Some(desc) = &s.description {
-            format!("{} - {}", s.title, desc)
-        } else {
-            s.title.clone()
-        }
-    };
-
-    if let Some(sel) = select_inline(&servers, "Select primary server:", show)?
-    {
-        println!("You picked: {} ({})", sel.title, sel.id);
-    } else {
-        println!("Primary selection cancelled.");
     }
-    println!();
-
-    if let Some(sel) = select_inline(&servers, "Select another server:", show)?
-    {
-        println!("You picked: {} ({})", sel.title, sel.id);
-    } else {
-        println!("Other selection cancelled.");
-    }
-    Ok(())
+    .ok_or_else(|| CliError::InvalidArgument(
+        "Channel could not be determined from inputs or defaults".into()
+    ))?;
+    requests::fetch_channel_by_id(ctx.client, &api_url, channel_id).await
 }

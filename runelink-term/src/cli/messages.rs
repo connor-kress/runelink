@@ -3,7 +3,10 @@ use uuid::Uuid;
 
 use crate::{error::CliError, requests, storage::TryGetDomainName};
 
-use super::context::CliContext;
+use super::{
+    context::CliContext,
+    select::get_channel_selection,
+};
 
 #[derive(clap::Args, Debug)]
 pub struct MessageArgs {
@@ -58,20 +61,31 @@ pub async fn handle_message_commands(
     match &message_args.command {
         MessageCommands::List(list_args) => {
             let api_url = ctx.account.try_get_api_url()?;
-            let messages;
-            if let Some(channel_id) = list_args.channel_id {
-                messages = requests::fetch_messages_by_channel(
-                    ctx.client, &api_url, channel_id
-                ).await?;
-            } else if let Some(server_id) = list_args.server_id {
-                messages = requests::fetch_messages_by_server(
-                    ctx.client, &api_url, server_id
-                ).await?;
-            } else {
-                messages = requests::fetch_all_messages(
-                    ctx.client, &api_url
-                ).await?
-            }
+            // TODO: add cli arguments for each of these cases
+            // let messages;
+            // if let Some(channel_id) = list_args.channel_id {
+            //     messages = requests::fetch_messages_by_channel(
+            //         ctx.client, &api_url, channel_id
+            //     ).await?;
+            // } else if let Some(server_id) = list_args.server_id {
+            //     messages = requests::fetch_messages_by_server(
+            //         ctx.client, &api_url, server_id
+            //     ).await?;
+            // } else {
+            //     messages = requests::fetch_all_messages(
+            //         ctx.client, &api_url
+            //     ).await?
+            // }
+            let channel = get_channel_selection(
+                ctx,
+                list_args.channel_id,
+                list_args.server_id,
+            ).await?;
+            let messages = requests::fetch_messages_by_channel(
+                ctx.client,
+                &api_url,
+                channel.id,
+            ).await?;
             for message in messages.iter().rev() {
                 let author_name = message
                     .author
@@ -101,24 +115,15 @@ pub async fn handle_message_commands(
                 body: send_args.body.clone(),
                 author_id: account.user_id,
             };
-            let channel_id = match (send_args.channel_id, send_args.server_id) {
-                (Some(channel_id), _) => Some(channel_id),
-                (None, Some(server_id)) => {
-                    ctx.config.get_default_channel(server_id)
-                },
-                (None, None) => {
-                    ctx.config.default_server.and_then(|server_id| {
-                        ctx.config.get_default_channel(server_id)
-                    })
-                },
-            }
-            .ok_or_else(|| CliError::InvalidArgument(
-                "Channel could not be determined from inputs or defaults".into()
-            ))?;
-            let message = requests::send_message(
-                ctx.client, &api_url, channel_id, &new_message
+            let channel = get_channel_selection(
+                ctx,
+                send_args.channel_id,
+                send_args.server_id,
             ).await?;
-            println!("Send message: {}", message.body);
+            let message = requests::send_message(
+                ctx.client, &api_url, channel.id, &new_message
+            ).await?;
+            println!("Sent message: {}", message.body);
         },
     };
     Ok(())

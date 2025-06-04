@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -142,4 +143,24 @@ impl NewServerMember {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NewUserAssociatedDomain {
     pub domain: String,
+}
+
+impl fmt::Display for Server {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(desc) = &self.description {
+            write!(f, "{} - {}", self.title, desc)
+        } else {
+            write!(f, "{}", self.title)
+        }
+    }
+}
+
+impl fmt::Display for Channel {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(desc) = &self.description {
+            write!(f, "#{} - {}", self.title, desc)
+        } else {
+            write!(f, "#{}", self.title)
+        }
+    }
 }

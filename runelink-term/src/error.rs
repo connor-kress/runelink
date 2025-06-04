@@ -28,6 +28,9 @@ pub enum CliError {
     #[error("Missing account: Specify an account or set a default account")]
     MissingAccount,
 
+    #[error("Operation Canceled")]
+    Cancellation,
+
     #[allow(dead_code)]
     #[error("Unexpected error: {0}")]
     Unknown(String),
@@ -62,6 +65,7 @@ const EX_TEMPFAIL: u8 = 75; // temp failure; user is invited to retry
 const EX_PROTOCOL: u8 = 76; // remote error in protocol
 const EX_NOPERM: u8 = 77; // permission denied
 const EX_CONFIG: u8 = 78; // configuration error
+const EX_USER_CANCEL: u8 = 130; // Standard for SIGINT / user interrupt
 
 impl Into<ExitCode> for CliError {
     fn into(self) -> ExitCode {
@@ -86,6 +90,7 @@ impl Into<ExitCode> for CliError {
             CliError::UuidError(_) => EX_DATAERR,
             CliError::ConfigError(_) => EX_CONFIG,
             CliError::MissingAccount => EX_USAGE,
+            CliError::Cancellation => EX_USER_CANCEL,
             CliError::Unknown(_) => EX_SOFTWARE,
         })
     }
