@@ -164,6 +164,7 @@ impl AppConfig {
         &self,
         server_id: Uuid,
     ) -> Result<String, CliError> {
+        // TODO: use user membership endpoint of account home server
         self.try_get_server_domain(server_id)
             .map(|ref domain| get_api_url(domain))
     }

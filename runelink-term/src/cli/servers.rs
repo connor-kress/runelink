@@ -1,10 +1,10 @@
-use runelink_types::NewServer;
+use runelink_types::{NewServer, ServerRole};
 use uuid::Uuid;
 
 use crate::{
     error::CliError,
     requests,
-    storage::TryGetDomainName,
+    storage::TryGetDomainName, util::get_api_url,
 };
 
 use super::{
@@ -45,6 +45,7 @@ pub struct NewServerArgs {
     /// Optional: The description of the server
     #[clap(long)]
     pub description: Option<String>,
+    // TODO: pass domain for remote server creation
 }
 
 pub async fn handle_server_commands(
@@ -53,10 +54,23 @@ pub async fn handle_server_commands(
 ) -> Result<(), CliError> {
     match &server_args.command {
         ServerCommands::List => {
-            let api_url = ctx.account.try_get_api_url()?;
-            let servers = requests::fetch_servers(ctx.client, &api_url).await?;
-            for server in servers {
-                println!("{} ({})", server.title, server.id);
+            let account = ctx.account.ok_or(CliError::MissingAccount)?;
+            let api_url = get_api_url(&account.domain);
+            let memberships = requests::fetch_server_memberships_by_user(
+                ctx.client,
+                &api_url,
+                account.user_id,
+            ).await?;
+            if memberships.is_empty() {
+                println!("No servers joined. See `rune servers join --help`.");
+            }
+            for membership in memberships {
+                let server = &membership.server;
+                if membership.role == ServerRole::Admin {
+                    println!("{} ({}) - admin", server.title, server.id);
+                } else {
+                    println!("{} ({})", server.title, server.id);
+                }
             }
         }
         ServerCommands::Get(get_args) => {

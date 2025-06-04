@@ -1,5 +1,5 @@
 use reqwest::Client;
-use runelink_types::{NewServer, Server};
+use runelink_types::{NewServer, Server, ServerMembership};
 use uuid::Uuid;
 
 use crate::error::CliError;
@@ -30,4 +30,13 @@ pub async fn fetch_server_by_id(
 ) -> Result<Server, CliError> {
     let url = format!("{}/servers/{}", api_base, server_id);
     fetch_json::<Server>(client, &url).await
+}
+
+pub async fn fetch_server_memberships_by_user(
+    client: &Client,
+    api_base: &str,
+    user_id: Uuid,
+) -> Result<Vec<ServerMembership>, CliError> {
+    let url = format!("{}/users/{}/servers", api_base, user_id);
+    fetch_json::<Vec<ServerMembership>>(client, &url).await
 }

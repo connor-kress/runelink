@@ -9,7 +9,7 @@ use runelink_types::{Channel, Server};
 use std::io::Write;
 use uuid::Uuid;
 
-use crate::{error::CliError, requests, storage::TryGetDomainName};
+use crate::{error::CliError, requests, util::get_api_url};
 
 use super::context::CliContext;
 
@@ -137,11 +137,22 @@ pub async fn get_channel_selection(
             // ctx.config.default_server.and_then(|server_id| {
             //     ctx.config.get_default_channel(server_id)
             // })
-            let account_api_url = ctx.account.try_get_api_url()?;
-            let servers = requests::fetch_servers(
+            let account = ctx.account.ok_or(CliError::MissingAccount)?;
+            let account_api_url = get_api_url(&account.domain);
+            let memberships = requests::fetch_server_memberships_by_user(
                 ctx.client,
                 &account_api_url,
+                account.user_id,
             ).await?;
+            if memberships.is_empty() {
+                return Err(CliError::NoActionPossible(
+                    "No servers joined. See `rune servers --help`.".into()
+                ));
+            }
+            let servers = memberships
+                .into_iter()
+                .map(|m| m.server)
+                .collect::<Vec<Server>>();
             let server = select_inline(
                 &servers,
                 "Select server",
@@ -149,10 +160,16 @@ pub async fn get_channel_selection(
             )?
             .ok_or(CliError::Cancellation)?;
             println!();
-            let server_api_url = ctx.config.try_get_server_api_url(server.id)?;
+            let server_api_url = get_api_url(&server.domain);
             let channels = requests::fetch_channels_by_server(
                 ctx.client, &server_api_url, server.id
             ).await?;
+            if channels.is_empty() {
+                return Err(CliError::NoActionPossible(
+                    "No channels available. See `rune channels create --help`."
+                        .into()
+                ));
+            }
             let channel = select_inline(
                 &channels,
                 "Select channel",

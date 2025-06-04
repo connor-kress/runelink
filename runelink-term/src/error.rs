@@ -28,8 +28,11 @@ pub enum CliError {
     #[error("Missing Context: {0}")]
     MissingContext(String),
 
-    #[error("Missing account: Specify an account or set a default account")]
+    #[error("Missing Account: Specify an account or set a default account")]
     MissingAccount,
+
+    #[error("No Action Possible: {0}")]
+    NoActionPossible(String),
 
     #[error("Operation Canceled")]
     Cancellation,
@@ -52,6 +55,7 @@ impl CliError {
                 }
             }
             CliError::InvalidArgument(msg) => eprintln!("{}", msg),
+            CliError::NoActionPossible(msg) => eprintln!("{}", msg),
             other_error => eprintln!("{}", other_error),
         }
     }
@@ -88,12 +92,13 @@ impl Into<ExitCode> for CliError {
                 status_to_exit_code(status)
             }
             CliError::InvalidArgument(_) => EX_USAGE,
-            CliError::MissingContext(_) => EX_USAGE,
             CliError::JsonDeserializeError(_) => EX_DATAERR,
             CliError::IoError(_) => EX_IOERR,
             CliError::UuidError(_) => EX_DATAERR,
             CliError::ConfigError(_) => EX_CONFIG,
+            CliError::MissingContext(_) => EX_USAGE,
             CliError::MissingAccount => EX_USAGE,
+            CliError::NoActionPossible(_) => EX_USAGE,
             CliError::Cancellation => EX_USER_CANCEL,
             CliError::Unknown(_) => EX_SOFTWARE,
         })
