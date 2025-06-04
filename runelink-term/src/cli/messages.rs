@@ -1,11 +1,11 @@
 use runelink_types::NewMessage;
 use uuid::Uuid;
 
-use crate::{error::CliError, requests, storage::TryGetDomainName};
+use crate::{error::CliError, requests, storage::TryGetDomainName, util::get_api_url};
 
 use super::{
     context::CliContext,
-    select::get_channel_selection,
+    select::get_channel_selection_with_inputs,
 };
 
 #[derive(clap::Args, Debug)]
@@ -75,12 +75,12 @@ pub async fn handle_message_commands(
             //         ctx.client, &api_url
             //     ).await?
             // }
-            let channel = get_channel_selection(
+            let (server, channel) = get_channel_selection_with_inputs(
                 ctx,
                 list_args.channel_id,
                 list_args.server_id,
             ).await?;
-            let api_url = ctx.config.try_get_server_api_url(channel.server_id)?;
+            let api_url = get_api_url(&server.domain);
             let messages = requests::fetch_messages_by_channel(
                 ctx.client,
                 &api_url,
@@ -115,7 +115,7 @@ pub async fn handle_message_commands(
                 body: send_args.body.clone(),
                 author_id: account.user_id,
             };
-            let channel = get_channel_selection(
+            let (_, channel) = get_channel_selection_with_inputs(
                 ctx,
                 send_args.channel_id,
                 send_args.server_id,

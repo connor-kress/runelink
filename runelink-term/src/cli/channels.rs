@@ -1,11 +1,11 @@
 use runelink_types::NewChannel;
 use uuid::Uuid;
 
-use crate::{error::CliError, requests, storage::TryGetDomainName};
+use crate::{error::CliError, requests, storage::TryGetDomainName, util::get_api_url};
 
 use super::{
     config::{handle_default_channel_commands, DefaultChannelArgs},
-    context::CliContext,
+    context::CliContext, select::get_server_selection,
 };
 
 #[derive(clap::Args, Debug)]
@@ -21,7 +21,7 @@ pub enum ChannelCommands {
     /// Get a channel by ID
     Get(ChannelGetArgs),
     /// Create a new channel
-    Create(NewChannelArgs),
+    Create(ChannelCreateArgs),
     /// Manage default channels
     Default(DefaultChannelArgs),
 }
@@ -31,6 +31,9 @@ pub struct ChannelListArgs {
     /// Optional: Filter channels by Server ID
     #[clap(long)]
     pub server_id: Option<Uuid>,
+    /// Include channels from all servers you are a member of
+    #[clap(short, long)]
+    pub all: bool,
 }
 
 #[derive(clap::Args, Debug)]
@@ -41,7 +44,7 @@ pub struct ChannelGetArgs {
 }
 
 #[derive(clap::Args, Debug)]
-pub struct NewChannelArgs {
+pub struct ChannelCreateArgs {
     /// The title of the channel
     #[clap(long)]
     pub title: String,
@@ -59,15 +62,24 @@ pub async fn handle_channel_commands(
 ) -> Result<(), CliError> {
     match &channel_args.command {
         ChannelCommands::List(list_args) => {
-            let api_url = ctx.account.try_get_api_url()?;
             let channels;
             if let Some(server_id) = list_args.server_id {
+                let api_url = ctx.config.try_get_server_api_url(server_id)?;
                 channels = requests::fetch_channels_by_server(
                     ctx.client, &api_url, server_id
                 ).await?;
-            } else {
+            } else if list_args.all {
+                // TODO: only include servers the user is a member of
+                let api_url = ctx.account.try_get_api_url()?;
                 channels = requests::fetch_all_channels(
                     ctx.client, &api_url
+                ).await?
+                // Also, group by server for printing
+            } else {
+                let server = get_server_selection(ctx).await?;
+                let api_url = get_api_url(&server.domain);
+                channels = requests::fetch_channels_by_server(
+                    ctx.client, &api_url, server.id
                 ).await?
             }
             for channel in channels {
