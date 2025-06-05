@@ -92,9 +92,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         .with_state(app_state);
 
-    let listener = TcpListener::bind("0.0.0.0:7000").await?;
+    let ip_addr = format!("0.0.0.0:{}", config.port);
+    let listener = TcpListener::bind(&ip_addr).await?;
 
-    println!("Starting server on 0.0.0.0:7000");
+    println!("Starting server on {}", ip_addr);
     axum::serve(listener, app).await?;
     Ok(())
 }

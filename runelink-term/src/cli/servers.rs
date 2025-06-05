@@ -81,7 +81,7 @@ pub async fn handle_server_commands(
                 account.user_id,
             ).await?;
             if memberships.is_empty() {
-                println!("No servers joined. See `rune servers join --help`.");
+                println!("No servers joined. See `rune server --help`.");
             }
             for membership in memberships {
                 let server = &membership.server;
