@@ -1,7 +1,7 @@
 use runelink_types::NewMessage;
 use uuid::Uuid;
 
-use crate::{error::CliError, requests, storage::TryGetDomainName, util::get_api_url};
+use crate::{cli::input::read_input, error::CliError, requests, storage::TryGetDomainName, util::get_api_url};
 
 use super::{
     context::CliContext,
@@ -45,11 +45,11 @@ pub struct MessageGetArgs {
 pub struct MessageSendArgs {
     /// The body of the message
     #[clap(long)]
-    pub body: String,
-    /// Optional: The server ID (otherwise default)
+    pub body: Option<String>,
+    /// The server ID
     #[clap(long)]
     pub server_id: Option<Uuid>,
-    /// Optional: The channel ID (otherwise default)
+    /// The channel ID
     #[clap(long)]
     pub channel_id: Option<Uuid>,
 }
@@ -113,15 +113,20 @@ pub async fn handle_message_commands(
                 return Err(CliError::MissingAccount);
             };
             let api_url = ctx.account.try_get_api_url()?;
-            let new_message = NewMessage {
-                body: send_args.body.clone(),
-                author_id: account.user_id,
-            };
             let (_, channel) = get_channel_selection_with_inputs(
                 ctx,
                 send_args.channel_id,
                 send_args.server_id,
             ).await?;
+            let body = if let Some(body) = &send_args.body {
+                body.clone()
+            } else {
+                read_input("Message: ")?
+            };
+            let new_message = NewMessage {
+                body,
+                author_id: account.user_id,
+            };
             let message = requests::send_message(
                 ctx.client, &api_url, channel.id, &new_message
             ).await?;

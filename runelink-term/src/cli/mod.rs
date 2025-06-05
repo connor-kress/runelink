@@ -9,6 +9,7 @@ pub mod account;
 pub mod channels;
 pub mod config;
 pub mod context;
+pub mod input;
 pub mod messages;
 pub mod select;
 pub mod servers;
