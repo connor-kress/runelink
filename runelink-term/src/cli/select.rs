@@ -1,6 +1,6 @@
 use crossterm::{
     cursor::{Hide, MoveToColumn, MoveUp, Show},
-    event::{Event, KeyCode, KeyEvent, KeyModifiers},
+    event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
     execute,
     style::Print,
     terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType},
@@ -43,7 +43,10 @@ where
     let mut selected = 0;
     loop {
         if let Event::Key(KeyEvent {
-            code, modifiers, ..
+            kind: KeyEventKind::Press,
+            code,
+            modifiers,
+            ..
         }) = crossterm::event::read()?
         {
             match (code, modifiers) {
