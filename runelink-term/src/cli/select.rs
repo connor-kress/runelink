@@ -151,7 +151,7 @@ pub async fn get_server_selection(
             return Err(CliError::NoActionPossible(
                 format!(
                     "No applicable servers (viewing {:?}).\n\
-                    For more information, try `rune servers --help`.",
+                    For more information, try `rune server --help`.",
                     selection_type,
                 )
             ));
@@ -178,7 +178,7 @@ pub async fn get_channel_selection(
             return Err(CliError::NoActionPossible(
                 format!(
                     "No channels available.\n\
-                    For more information, try `rune channels --help`."
+                    For more information, try `rune channel --help`."
                 )
             ));
         }

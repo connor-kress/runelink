@@ -34,13 +34,13 @@ pub enum Commands {
     /// Manage accounts
     Account(account::AccountArgs),
     /// Manage channels
-    Channels(channels::ChannelArgs),
+    Channel(channels::ChannelArgs),
     /// Manage messages
-    Messages(messages::MessageArgs),
+    Message(messages::MessageArgs),
     /// Manage servers
-    Servers(servers::ServerArgs),
+    Server(servers::ServerArgs),
     /// Manage users
-    Users(users::UserArgs),
+    User(users::UserArgs),
     /// Manage config
     Config(config::ConfigArgs),
     /// Generate shell completion scripts
@@ -75,16 +75,16 @@ pub async fn handle_cli(
         Commands::Account(args) => {
             account::handle_account_commands(ctx, args).await?;
         }
-        Commands::Channels(args) => {
+        Commands::Channel(args) => {
             channels::handle_channel_commands(ctx, args).await?;
         }
-        Commands::Messages(args) => {
+        Commands::Message(args) => {
             messages::handle_message_commands(ctx, args).await?;
         }
-        Commands::Servers(args) => {
+        Commands::Server(args) => {
             servers::handle_server_commands(ctx, args).await?;
         }
-        Commands::Users(args) => {
+        Commands::User(args) => {
             users::handle_user_commands(ctx, args).await?;
         }
         Commands::Config(args) => {
