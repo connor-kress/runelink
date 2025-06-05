@@ -16,6 +16,7 @@ pub async fn send_message(
     post_json::<NewMessage, Message>(client, &url, new_message).await
 }
 
+#[allow(dead_code)]
 pub async fn fetch_all_messages(
     client: &Client,
     api_base: &str,
@@ -24,6 +25,7 @@ pub async fn fetch_all_messages(
     fetch_json::<Vec<Message>>(client, &url).await
 }
 
+#[allow(dead_code)]
 pub async fn fetch_messages_by_server(
     client: &Client,
     api_base: &str,

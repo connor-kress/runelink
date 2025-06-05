@@ -24,6 +24,25 @@ pub fn get_api_url(domain: &str) -> String {
     format!("http://{}/api", host_with_port)
 }
 
+/// Returns the prefix for a list item given an optional default value
+pub fn get_prefix<T: PartialEq>(
+    val: T,
+    default: Option<T>,
+    len: usize,
+) -> &'static str {
+    if len == 1 {
+        return "";
+    }
+    let Some(default) = default else {
+        return "";
+    };
+    if val == default {
+        "* "
+    } else {
+        "  "
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

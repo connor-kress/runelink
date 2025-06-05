@@ -46,9 +46,14 @@ pub async fn handle_account_commands(
                 return Ok(());
             }
             for account in ctx.config.accounts.iter() {
+                let prefix = util::get_prefix(
+                    account.user_id,
+                    ctx.config.default_account,
+                    ctx.config.accounts.len(),
+                );
                 println!(
-                    "{}@{} ({})",
-                    account.name, account.domain, account.user_id
+                    "{}{}@{} ({})",
+                    prefix, account.name, account.domain, account.user_id
                 );
             }
 
