@@ -6,7 +6,7 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType},
 };
 use runelink_types::{Channel, Server};
-use std::io::Write;
+use std::{collections::HashSet, io::Write};
 use uuid::Uuid;
 
 use crate::{error::CliError, requests, util::get_api_url};
@@ -99,25 +99,63 @@ where
     }
 }
 
+#[allow(dead_code)]
+#[derive(Clone, Debug)]
+pub enum ServerSelectionType {
+    All,
+    MemberOnly,
+    NonMemberOnly,
+}
+
 pub async fn get_server_selection(
     ctx: &CliContext<'_>,
+    selection_type: ServerSelectionType,
 ) -> Result<Server, CliError> {
         let account = ctx.account.ok_or(CliError::MissingAccount)?;
         let account_api_url = get_api_url(&account.domain);
-        let memberships = requests::fetch_server_memberships_by_user(
-            ctx.client,
-            &account_api_url,
-            account.user_id,
-        ).await?;
-        if memberships.is_empty() {
+        let servers = match selection_type {
+            ServerSelectionType::All => {
+                requests::fetch_servers(
+                    ctx.client,
+                    &account_api_url,
+                ).await?
+            }
+            ServerSelectionType::MemberOnly => {
+                requests::fetch_servers_by_user(
+                    ctx.client,
+                    &account_api_url,
+                    account.user_id,
+                ).await?
+            }
+            ServerSelectionType::NonMemberOnly => {
+                let all_servers = requests::fetch_servers(
+                    ctx.client,
+                    &account_api_url,
+                ).await?;
+                let member_servers = requests::fetch_servers_by_user(
+                    ctx.client,
+                    &account_api_url,
+                    account.user_id,
+                ).await?;
+                let member_server_ids = member_servers
+                    .iter()
+                    .map(|s| s.id)
+                    .collect::<HashSet<Uuid>>();
+                all_servers
+                .into_iter()
+                .filter(|s| !member_server_ids.contains(&s.id))
+                .collect()
+            }
+        };
+        if servers.is_empty() {
             return Err(CliError::NoActionPossible(
-                "No servers joined. See `rune servers --help`.".into()
+                format!(
+                    "No applicable servers (viewing {:?}).\n\
+                    For more information, try `rune servers --help`.",
+                    selection_type,
+                )
             ));
         }
-        let servers = memberships
-            .into_iter()
-            .map(|m| m.server)
-            .collect::<Vec<Server>>();
         let server = select_inline(
             &servers,
             "Select server",
@@ -138,8 +176,10 @@ pub async fn get_channel_selection(
         ).await?;
         if channels.is_empty() {
             return Err(CliError::NoActionPossible(
-                "No channels available. See `rune channels create --help`."
-                    .into()
+                format!(
+                    "No channels available.\n\
+                    For more information, try `rune channels --help`."
+                )
             ));
         }
         let channel = select_inline(
@@ -189,7 +229,9 @@ pub async fn get_channel_selection_with_inputs(
             Ok((server, channel))
         },
         (None, None) => {
-            let server = get_server_selection(ctx).await?;
+            let server = get_server_selection(
+                ctx, ServerSelectionType::MemberOnly
+            ).await?;
             let api_url = get_api_url(&server.domain);
             let channel =
                 get_channel_selection(ctx, &api_url, server.id).await?;

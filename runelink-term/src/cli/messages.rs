@@ -95,6 +95,7 @@ pub async fn handle_message_commands(
                 println!("{}: {}", author_name, message.body);
             }
         },
+
         MessageCommands::Get(get_args) => {
             let api_url = ctx.account.try_get_api_url()?;
             let message = requests::fetch_message_by_id(
@@ -106,6 +107,7 @@ pub async fn handle_message_commands(
                 .unwrap_or("Anon".into());
             println!("{}: {}", author_name, message.body);
         },
+
         MessageCommands::Send(send_args) => {
             let Some(account) = ctx.account else {
                 return Err(CliError::MissingAccount);

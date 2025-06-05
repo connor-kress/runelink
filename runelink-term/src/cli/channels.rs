@@ -5,7 +5,7 @@ use crate::{error::CliError, requests, storage::TryGetDomainName, util::get_api_
 
 use super::{
     config::{handle_default_channel_commands, DefaultChannelArgs},
-    context::CliContext, select::get_server_selection,
+    context::CliContext, select::{get_server_selection, ServerSelectionType},
 };
 
 #[derive(clap::Args, Debug)]
@@ -76,7 +76,9 @@ pub async fn handle_channel_commands(
                 ).await?
                 // Also, group by server for printing
             } else {
-                let server = get_server_selection(ctx).await?;
+                let server = get_server_selection(
+                    ctx, ServerSelectionType::MemberOnly
+                ).await?;
                 let api_url = get_api_url(&server.domain);
                 channels = requests::fetch_channels_by_server(
                     ctx.client, &api_url, server.id
@@ -85,14 +87,16 @@ pub async fn handle_channel_commands(
             for channel in channels {
                 println!("{} ({})", channel.title, channel.id);
             }
-        },
+        }
+
         ChannelCommands::Get(get_args) => {
             let api_url = ctx.account.try_get_api_url()?;
             let channel = requests::fetch_channel_by_id(
                 ctx.client, &api_url, get_args.channel_id
             ).await?;
             println!("{} ({})", channel.title, channel.id);
-        },
+        }
+
         ChannelCommands::Create(create_args) => {
             let Some(account) = ctx.account else {
                 return Err(CliError::MissingAccount);
@@ -123,10 +127,11 @@ pub async fn handle_channel_commands(
                 "Created channel: {} ({}).",
                 channel.title, channel.id
             );
-        },
+        }
+
         ChannelCommands::Default(default_args) => {
             handle_default_channel_commands(ctx, default_args).await?;
-        },
+        }
     };
     Ok(())
 }

@@ -1,10 +1,12 @@
-use runelink_types::{NewServer, ServerRole};
+use runelink_types::{NewServer, NewServerMember, ServerRole};
 use uuid::Uuid;
 
 use crate::{
+    cli::select::{get_server_selection, ServerSelectionType},
     error::CliError,
     requests,
-    storage::TryGetDomainName, util::get_api_url,
+    storage::TryGetDomainName,
+    util::get_api_url,
 };
 
 use super::{
@@ -25,7 +27,9 @@ pub enum ServerCommands {
     /// Get a server by ID
     Get(ServerIdArg),
     /// Create a new server
-    Create(NewServerArgs),
+    Create(ServerCreateArgs),
+    /// Create a new server
+    Join(ServerJoinArgs),
     /// Manage default server
     Default(DefaultServerArgs),
 }
@@ -38,14 +42,26 @@ pub struct ServerIdArg {
 }
 
 #[derive(clap::Args, Debug)]
-pub struct NewServerArgs {
+pub struct ServerCreateArgs {
     /// The title of the server
     #[clap(long)]
     pub title: String,
     /// Optional: The description of the server
     #[clap(long)]
     pub description: Option<String>,
-    // TODO: pass domain for remote server creation
+    /// The domain of the server
+    #[clap(long)]
+    pub domain: Option<String>,
+}
+
+#[derive(clap::Args, Debug)]
+pub struct ServerJoinArgs {
+    /// The ID of the server
+    #[clap(long)]
+    pub server_id: Option<Uuid>,
+    /// The domain of the server
+    #[clap(long)]
+    pub domain: Option<String>,
 }
 
 pub async fn handle_server_commands(
@@ -73,6 +89,7 @@ pub async fn handle_server_commands(
                 }
             }
         }
+
         ServerCommands::Get(get_args) => {
             let api_url = ctx.account.try_get_api_url()?;
             let server = requests::fetch_server_by_id(
@@ -80,11 +97,19 @@ pub async fn handle_server_commands(
             ).await?;
             println!("{} ({})", server.title, server.id);
         }
+
         ServerCommands::Create(create_args) => {
             let Some(account) = ctx.account else {
                 return Err(CliError::MissingAccount);
             };
-            let api_url = ctx.account.try_get_api_url()?;
+            let api_url = if let Some(domain) = &create_args.domain {
+                get_api_url(domain)
+            } else {
+                ctx.account.try_get_api_url()?
+            };
+            // TODO: servers can't handle cross host server membership yet.
+            // We need to sync the membership with another request to the home
+            // server too.
             let new_server = NewServer {
                 title: create_args.title.clone(),
                 description: create_args.description.clone(),
@@ -99,7 +124,40 @@ pub async fn handle_server_commands(
                 "Created server: {} ({}).",
                 server.title, server.id
             );
-        },
+        }
+
+        ServerCommands::Join(join_args) => {
+            let Some(account) = ctx.account else {
+                return Err(CliError::MissingAccount);
+            };
+            let api_url = if let Some(domain) = &join_args.domain {
+                get_api_url(domain)
+            } else if let Some(server_id) = join_args.server_id {
+                ctx.config.try_get_server_api_url(server_id)?
+            } else {
+                ctx.account.try_get_api_url()?
+            };
+            let server = if let Some(server_id) = join_args.server_id {
+                requests::fetch_server_by_id(
+                    ctx.client, &api_url, server_id
+                ).await?
+            } else {
+                get_server_selection(
+                    ctx, ServerSelectionType::NonMemberOnly
+                ).await?
+            };
+            let new_member = NewServerMember::member(account.user_id);
+            let _member = requests::join_server(
+                ctx.client, &api_url, server.id, &new_member
+            ).await?;
+            ctx.config.get_or_create_server_config(&server, &account.domain);
+            ctx.config.save()?;
+            println!(
+                "Joined server: {} ({}).",
+                server.title, server.id
+            );
+        }
+
         ServerCommands::Default(default_args) => {
             handle_default_server_commands(ctx, &default_args).await?;
         }

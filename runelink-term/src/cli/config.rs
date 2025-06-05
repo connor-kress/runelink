@@ -32,13 +32,13 @@ pub async fn handle_config_commands(
     match &config_args.command {
         ConfigCommands::DefaultServer(default_server_args) => {
             handle_default_server_commands(ctx, default_server_args).await?;
-        },
+        }
         ConfigCommands::DefaultChannel(default_channel_args) => {
             handle_default_channel_commands(ctx, default_channel_args).await?;
-        },
+        }
         ConfigCommands::DefaultAccount(default_account_args) => {
             handle_default_account_commands(ctx, default_account_args).await?;
-        },
+        }
     }
     Ok(())
 }
@@ -84,7 +84,7 @@ pub async fn handle_default_account_commands(
             } else {
                 println!("No default host set.");
             }
-        },
+        }
 
         DefaultAccountCommands::Set(set_args) => {
             let account = ctx.config.get_account_config_by_name(
@@ -99,7 +99,7 @@ pub async fn handle_default_account_commands(
                 "Set default account: {}@{} ({}).",
                 account.name, account.domain, account.user_id
             );
-        },
+        }
     }
     Ok(())
 }
@@ -142,7 +142,7 @@ pub async fn handle_default_server_commands(
             } else {
                 println!("No default server set.");
             }
-        },
+        }
 
         DefaultServerCommands::Set(set_args) => {
             let api_url = ctx.account.try_get_api_url()?;
@@ -152,7 +152,7 @@ pub async fn handle_default_server_commands(
             ctx.config.default_server = Some(server.id);
             ctx.config.save()?;
             println!("Set default server to '{}'.", server.title);
-        },
+        }
     }
     Ok(())
 }
@@ -241,7 +241,7 @@ pub async fn handle_default_channel_commands(
                     println!("\tDefault Channel: None");
                 }
             }
-        },
+        }
 
         DefaultChannelCommands::Set(set_args) => {
             let api_url = get_api_url(&set_args.server_domain);
@@ -269,7 +269,7 @@ pub async fn handle_default_channel_commands(
                 "Set default channel to '{}' for '{}'.",
                 channel.title, server.title
             );
-        },
+        }
     }
     Ok(())
 }

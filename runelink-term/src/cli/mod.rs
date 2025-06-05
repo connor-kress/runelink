@@ -74,22 +74,22 @@ pub async fn handle_cli(
     match &cli.command {
         Commands::Account(args) => {
             account::handle_account_commands(ctx, args).await?;
-        },
+        }
         Commands::Channels(args) => {
             channels::handle_channel_commands(ctx, args).await?;
-        },
+        }
         Commands::Messages(args) => {
             messages::handle_message_commands(ctx, args).await?;
-        },
+        }
         Commands::Servers(args) => {
             servers::handle_server_commands(ctx, args).await?;
-        },
+        }
         Commands::Users(args) => {
             users::handle_user_commands(ctx, args).await?;
-        },
+        }
         Commands::Config(args) => {
             config::handle_config_commands(ctx, args).await?;
-        },
+        }
         Commands::Completions(args) => {
             let mut cmd = Cli::command();
             let cmd_name = cmd.get_name().to_string();
