@@ -2,7 +2,7 @@ use runelink_types::{NewServer, NewServerMember, ServerRole};
 use uuid::Uuid;
 
 use crate::{
-    cli::select::{get_server_selection, ServerSelectionType},
+    cli::{input::read_input, select::{get_server_selection, ServerSelectionType}},
     error::CliError,
     requests,
     storage::TryGetDomainName,
@@ -45,10 +45,13 @@ pub struct ServerIdArg {
 pub struct ServerCreateArgs {
     /// The title of the server
     #[clap(long)]
-    pub title: String,
-    /// Optional: The description of the server
+    pub title: Option<String>,
+    /// The description of the server
     #[clap(long)]
     pub description: Option<String>,
+    /// Skip description cli prompt
+    #[clap(long)]
+    pub no_description: bool,
     /// The domain of the server
     #[clap(long)]
     pub domain: Option<String>,
@@ -110,9 +113,24 @@ pub async fn handle_server_commands(
             // TODO: servers can't handle cross host server membership yet.
             // We need to sync the membership with another request to the home
             // server too.
+            let title = if let Some(title) = &create_args.title {
+                title.clone()
+            } else {
+                read_input("Server Title: ")?
+                    .ok_or_else(|| CliError::InvalidArgument(
+                        "Server title is required.".into()
+                    ))?
+            };
+            let desc = if create_args.description.is_some() {
+                create_args.description.clone()
+            } else if create_args.no_description {
+                None
+            } else {
+                read_input("Server Description (leave blank for none):\n> ")?
+            };
             let new_server = NewServer {
-                title: create_args.title.clone(),
-                description: create_args.description.clone(),
+                title,
+                description: desc,
                 user_id: account.user_id,
             };
             let server = requests::create_server(

@@ -122,6 +122,9 @@ pub async fn handle_message_commands(
                 body.clone()
             } else {
                 read_input("Message: ")?
+                    .ok_or_else(|| CliError::InvalidArgument(
+                        "Message body is required.".into()
+                    ))?
             };
             let new_message = NewMessage {
                 body,

@@ -1,11 +1,15 @@
 use runelink_types::NewChannel;
 use uuid::Uuid;
 
-use crate::{error::CliError, requests, storage::TryGetDomainName, util::get_api_url};
+use crate::{
+    error::CliError, requests, storage::TryGetDomainName, util::get_api_url,
+};
 
 use super::{
     config::{handle_default_channel_commands, DefaultChannelArgs},
-    context::CliContext, select::{get_server_selection, ServerSelectionType},
+    context::CliContext,
+    input::read_input,
+    select::{get_server_selection, ServerSelectionType},
 };
 
 #[derive(clap::Args, Debug)]
@@ -47,13 +51,16 @@ pub struct ChannelGetArgs {
 pub struct ChannelCreateArgs {
     /// The title of the channel
     #[clap(long)]
-    pub title: String,
-    /// Optional: The description of the channel
+    pub title: Option<String>,
+    /// The description of the channel
     #[clap(long)]
     pub description: Option<String>,
+    /// Skip description cli prompt
+    #[clap(long)]
+    pub no_description: bool,
     /// The server ID
     #[clap(long)]
-    pub server_id: Uuid,
+    pub server_id: Option<Uuid>,
 }
 
 pub async fn handle_channel_commands(
@@ -102,12 +109,36 @@ pub async fn handle_channel_commands(
                 return Err(CliError::MissingAccount);
             };
             let api_url = ctx.account.try_get_api_url()?;
+            let server = if let Some(server_id) = create_args.server_id {
+                requests::fetch_server_by_id(
+                    ctx.client, &api_url, server_id
+                ).await?
+            } else {
+                get_server_selection(
+                    ctx, ServerSelectionType::MemberOnly
+                ).await?
+            };
+            let title = if let Some(title) = &create_args.title {
+                title.clone()
+            } else {
+                read_input("Channel Title: ")?
+                    .ok_or_else(|| CliError::InvalidArgument(
+                        "Channel title is required.".into()
+                    ))?
+            };
+            let desc = if create_args.description.is_some() {
+                create_args.description.clone()
+            } else if create_args.no_description {
+                None
+            } else {
+                read_input("Channel Description (leave blank for none):\n> ")?
+            };
             let new_channel = NewChannel {
-                title: create_args.title.clone(),
-                description: create_args.description.clone(),
+                title: title,
+                description: desc,
             };
             let channel = requests::create_channel(
-                ctx.client, &api_url, create_args.server_id, &new_channel
+                ctx.client, &api_url, server.id, &new_channel
             ).await?;
             if let Some(server_config) =
                 ctx.config.get_server_config_mut(channel.server_id)
