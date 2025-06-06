@@ -87,11 +87,14 @@ pub async fn handle_server_commands(
                     For more information, try `rune server --help`."
                 )
             }
-            let grouped_memberships = group_memberships_by_host(&memberships);
-            for (i, (domain, memberships)) in grouped_memberships
-                .iter()
-                .enumerate()
+            let mut is_first = true;
+            for (domain, memberships) in group_memberships_by_host(&memberships)
             {
+                if is_first {
+                    is_first = false
+                } else {
+                    println!(); // separation between host groups
+                }
                 println!("{}", domain);
                 for membership in memberships {
                     let server = &membership.server;
@@ -101,9 +104,6 @@ pub async fn handle_server_commands(
                     } else {
                         println!();
                     }
-                }
-                if i != grouped_memberships.len() - 1 {
-                    println!();
                 }
             }
         }

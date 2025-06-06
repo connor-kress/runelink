@@ -1,5 +1,6 @@
 use crate::{db::DbPool, error::ApiError};
 use runelink_types::{NewUser, User};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 pub async fn insert_user(
@@ -15,6 +16,29 @@ pub async fn insert_user(
         "#,
         new_user.name,
         new_user.domain,
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(ApiError::from)
+}
+
+pub async fn insert_remote_user(
+    pool: &DbPool,
+    remote_user: &User,
+) -> Result<User, ApiError> {
+    sqlx::query_as!(
+        User,
+        r#"
+        INSERT INTO users (id, name, domain, created_at, updated_at, synced_at)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING *;
+        "#,
+        remote_user.id,
+        remote_user.name,
+        remote_user.domain,
+        remote_user.created_at,
+        remote_user.updated_at,
+        OffsetDateTime::now_utc(),
     )
     .fetch_one(pool)
     .await

@@ -4,6 +4,7 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
 };
+use runelink_client::{requests, util::get_api_url};
 use runelink_types::NewServerMember;
 use uuid::Uuid;
 
@@ -13,6 +14,21 @@ pub async fn add_server_member(
     Path(server_id): Path<Uuid>,
     Json(new_member): Json<NewServerMember>,
 ) -> Result<impl IntoResponse, ApiError> {
+    if new_member.user_domain != state.config.local_domain_with_port() {
+        let remote_user =
+            queries::get_user_by_id(&state.db_pool, new_member.user_id).await;
+        if matches!(remote_user, Err(ApiError::NotFound)) {
+            // Remote user is not in the local database
+            let api_url = get_api_url(&new_member.user_domain);
+            let user = requests::fetch_user_by_id(
+                &state.http_client, &api_url, new_member.user_id
+            ).await?;
+            queries::insert_remote_user(&state.db_pool, &user).await?;
+        } else {
+            // Raise other potential errors
+            remote_user?;
+        }
+    }
     queries::add_user_to_server(&state.db_pool, server_id, &new_member)
         .await
         .map(|member| (StatusCode::CREATED, Json(member)))

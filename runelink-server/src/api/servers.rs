@@ -18,7 +18,10 @@ pub async fn create_server(
         .build(&state.db_pool)
         .await?;
     let server = queries::insert_server(&state, &new_server).await?;
-    let new_member = NewServerMember::admin(new_server.user_id);
+    let new_member = NewServerMember::admin(
+        new_server.user_id,
+        new_server.user_domain,
+    );
     queries::add_user_to_server(&state.db_pool, server.id, &new_member).await?;
     Ok((StatusCode::CREATED, Json(server)))
 }
