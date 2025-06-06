@@ -1,9 +1,8 @@
+use runelink_client::requests;
 use runelink_types::NewMessage;
 use uuid::Uuid;
 
-use crate::{
-    error::CliError, requests, storage::TryGetDomain, util::get_api_url,
-};
+use crate::{error::CliError, storage::TryGetDomain, util::get_api_url};
 
 use super::{
     context::CliContext,

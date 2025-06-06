@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "runelink-client",
     "runelink-server",
     "runelink-term",
     "runelink-types",

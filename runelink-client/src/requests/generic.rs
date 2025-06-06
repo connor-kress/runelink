@@ -1,12 +1,12 @@
 use reqwest::Client;
 use serde::{de::DeserializeOwned, Serialize};
 
-use crate::error::CliError;
+use crate::error::{Error, Result};
 
 pub async fn fetch_text(
     client: &Client,
     url: &str,
-) -> Result<String, CliError> {
+) -> Result<String> {
     let response = client
         .get(url)
         .send()
@@ -19,7 +19,7 @@ pub async fn fetch_text(
             .unwrap_or_else(
                 |e| format!("Failed to get error message body: {}", e)
             );
-        return Err(CliError::ApiStatusError { status, message });
+        return Err(Error::Status(status, message));
     }
     let text_data = response.text().await?;
     Ok(text_data)
@@ -28,7 +28,7 @@ pub async fn fetch_text(
 pub async fn fetch_json<T>(
     client: &Client,
     url: &str,
-) -> Result<T, CliError>
+) -> Result<T>
 where
     T: DeserializeOwned
 {
@@ -44,7 +44,7 @@ where
             .unwrap_or_else(
                 |e| format!("Failed to get error message body: {}", e)
             );
-        return Err(CliError::ApiStatusError { status, message });
+        return Err(Error::Status(status, message));
     }
     let data = response.json::<T>().await?;
     Ok(data)
@@ -54,7 +54,7 @@ pub async fn post_json<I, O>(
     client: &Client,
     url: &str,
     request_body: &I,
-) -> Result<O, CliError>
+) -> Result<O>
 where
     I: Serialize,
     O: DeserializeOwned,
@@ -72,7 +72,7 @@ where
             .unwrap_or_else(
                 |e| format!("Failed to get error message body: {}", e)
             );
-        return Err(CliError::ApiStatusError { status, message });
+        return Err(Error::Status(status, message));
     }
     let data = response.json::<O>().await?;
     Ok(data)

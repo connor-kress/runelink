@@ -1,14 +1,9 @@
 [package]
-name = "runelink-term"
+name = "runelink-client"
 version = "0.1.0"
 edition = "2024"
 
-[[bin]]
-name = "rune"
-path = "src/main.rs"
-
 [dependencies]
-runelink-client = { path = "../runelink-client" }
 runelink-types = { path = "../runelink-types" }
 reqwest = { version = "0.12.15", features = ["json"] }
 serde = { version = "1.0.219", features = ["derive"] }
@@ -17,7 +12,3 @@ thiserror = "2.0.12"
 time = { version = "0.3.41", features = ["serde", "formatting", "parsing"] }
 tokio = { version = "1.44.2", features = ["rt-multi-thread", "macros"] }
 uuid = { version = "1.16.0", features = ["v4", "serde"] }
-clap = { version = "4.5.38", features = ["derive"] }
-clap_complete = "4.5.50"
-directories = "6.0.0"
-crossterm = "0.29.0"

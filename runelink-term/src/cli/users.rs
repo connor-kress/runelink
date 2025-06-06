@@ -1,6 +1,7 @@
+use runelink_client::requests;
 use uuid::Uuid;
 
-use crate::{error::CliError, requests, storage::TryGetDomain};
+use crate::{error::CliError, storage::TryGetDomain};
 
 use super::context::CliContext;
 

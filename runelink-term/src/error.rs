@@ -1,6 +1,8 @@
 use reqwest::StatusCode;
+use runelink_client::Error as ClientError;
 use std::process::ExitCode;
 
+#[allow(dead_code)]
 #[derive(thiserror::Error, Debug)]
 pub enum CliError {
     #[error("API request failed: {0}")]
@@ -9,8 +11,8 @@ pub enum CliError {
     #[error("API returned error status {status}: {message}")]
     ApiStatusError { status: StatusCode, message: String },
 
-    #[error("Failed to parse JSON response: {0}")]
-    JsonDeserializeError(#[from] serde_json::Error),
+    #[error("Failed to deserialize JSON: {0}")]
+    JsonError(#[from] serde_json::Error),
 
     #[error("I/O error: {0}")]
     IoError(#[from] std::io::Error),
@@ -18,7 +20,6 @@ pub enum CliError {
     #[error("Invalid UUID: {0}")]
     UuidError(#[from] uuid::Error),
 
-    #[allow(dead_code)]
     #[error("Configuration error: {0}")]
     ConfigError(String),
 
@@ -37,11 +38,20 @@ pub enum CliError {
     #[error("Operation Canceled")]
     Cancellation,
 
-    #[allow(dead_code)]
     #[error("Unexpected error: {0}")]
     Unknown(String),
-    // #[error("CLI argument parsing error: {0}")]
-    // ClapError(#[from] clap::Error),
+}
+
+impl From<ClientError> for CliError {
+    fn from(err: ClientError) -> CliError {
+        match err {
+            ClientError::Reqwest(e) => CliError::ReqwestError(e),
+            ClientError::Status(status, message) => {
+                CliError::ApiStatusError { status, message }
+            }
+            ClientError::Json(e) => CliError::JsonError(e),
+        }
+    }
 }
 
 impl CliError {
@@ -92,7 +102,7 @@ impl Into<ExitCode> for CliError {
                 status_to_exit_code(status)
             }
             CliError::InvalidArgument(_) => EX_USAGE,
-            CliError::JsonDeserializeError(_) => EX_DATAERR,
+            CliError::JsonError(_) => EX_DATAERR,
             CliError::IoError(_) => EX_IOERR,
             CliError::UuidError(_) => EX_DATAERR,
             CliError::ConfigError(_) => EX_CONFIG,

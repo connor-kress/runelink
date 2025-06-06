@@ -1586,6 +1586,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "runelink-client"
+version = "0.1.0"
+dependencies = [
+ "reqwest",
+ "runelink-types",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "time",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
 name = "runelink-server"
 version = "0.1.0"
 dependencies = [
@@ -1610,6 +1624,7 @@ dependencies = [
  "crossterm",
  "directories",
  "reqwest",
+ "runelink-client",
  "runelink-types",
  "serde",
  "serde_json",

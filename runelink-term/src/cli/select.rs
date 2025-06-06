@@ -5,11 +5,12 @@ use crossterm::{
     style::Print,
     terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType},
 };
+use runelink_client::requests;
 use runelink_types::{Channel, Server};
 use std::{collections::HashSet, io::Write};
 use uuid::Uuid;
 
-use crate::{error::CliError, requests, util::get_api_url};
+use crate::{error::CliError, util::get_api_url};
 
 use super::context::CliContext;
 

@@ -1,9 +1,9 @@
+use runelink_client::requests;
 use runelink_types::{NewServer, NewServerMember, ServerRole};
 use uuid::Uuid;
 
 use crate::{
     error::CliError,
-    requests,
     storage::TryGetDomain,
     util::{get_api_url, group_memberships_by_host},
 };
@@ -146,6 +146,7 @@ pub async fn handle_server_commands(
             let new_server = NewServer {
                 title,
                 description: desc,
+                user_domain: account.domain.clone(),
                 user_id: account.user_id,
             };
             let server = requests::create_server(
@@ -180,7 +181,10 @@ pub async fn handle_server_commands(
                     ctx, ServerSelectionType::NonMemberOnly { domain: &domain }
                 ).await?
             };
-            let new_member = NewServerMember::member(account.user_id);
+            let new_member = NewServerMember::member(
+                account.user_id,
+                account.domain.clone(),
+            );
             let _member = requests::join_server(
                 ctx.client, &api_url, server.id, &new_member
             ).await?;

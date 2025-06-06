@@ -77,7 +77,8 @@ pub struct Server {
 pub struct NewServer {
     pub title: String,
     pub description: Option<String>,
-    pub user_id: Uuid, // TODO: remove me
+    pub user_id: Uuid,
+    pub user_domain: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -132,28 +133,26 @@ pub struct ServerMembership {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NewServerMember {
     pub user_id: Uuid,
+    pub user_domain: String,
     pub role: ServerRole,
 }
 
 impl NewServerMember {
-    pub fn member(user_id: Uuid) -> Self {
+    pub fn member(user_id: Uuid, user_domain: String) -> Self {
         NewServerMember {
             user_id,
+            user_domain,
             role: ServerRole::Member,
         }
     }
 
-    pub fn admin(user_id: Uuid) -> Self {
+    pub fn admin(user_id: Uuid, user_domain: String) -> Self {
         NewServerMember {
             user_id,
+            user_domain,
             role: ServerRole::Admin,
         }
     }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct NewUserAssociatedDomain {
-    pub domain: String,
 }
 
 impl fmt::Display for Server {

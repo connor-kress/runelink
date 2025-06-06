@@ -1,6 +1,7 @@
+use runelink_client::requests;
 use runelink_types::NewUser;
 
-use crate::{error::CliError, requests, util};
+use crate::{error::CliError, util};
 
 use super::{
     config::{handle_default_account_commands, DefaultAccountArgs},
