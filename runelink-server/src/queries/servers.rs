@@ -22,13 +22,7 @@ impl ServerMembershipRow {
         config: &ServerConfig,
     ) -> Result<ServerMembership, ApiError> {
         let server_domain = self.server_domain_from_db
-            .unwrap_or_else(|| {
-                if config.port == 7000 {
-                    config.local_domain.clone()
-                } else {
-                    format!("{}:{}", &config.local_domain, config.port)
-                }
-            });
+            .unwrap_or_else(|| config.local_domain_with_port());
 
         // Needed because of weird sqlx limitations (or misuse)
         let get_error = || {
@@ -61,10 +55,10 @@ struct LocalServerRow {
 }
 
 impl LocalServerRow {
-    fn into_server(self, domain: &str) -> Server {
+    fn into_server(self, config: &ServerConfig) -> Server {
         Server {
             id: self.id,
-            domain: domain.to_string(),
+            domain: config.local_domain_with_port(),
             title: self.title,
             description: self.description,
             created_at: self.created_at,

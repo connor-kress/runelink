@@ -33,4 +33,12 @@ impl ServerConfig {
             port,
         })
     }
+
+    pub fn local_domain_with_port(&self) -> String {
+        if self.port == 7000 {
+            self.local_domain.clone()
+        } else {
+            format!("{}:{}", &self.local_domain, self.port)
+        }
+    }
 }
