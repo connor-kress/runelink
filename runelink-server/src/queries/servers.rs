@@ -12,13 +12,15 @@ struct ServerMembershipRow {
     server_created_at: Option<OffsetDateTime>,
     server_updated_at: Option<OffsetDateTime>,
     role: Option<ServerRole>,
-    joined_at: Option<OffsetDateTime>,
+    created_at: Option<OffsetDateTime>,
+    updated_at: Option<OffsetDateTime>,
     synced_at: Option<OffsetDateTime>,
 }
 
 impl ServerMembershipRow {
     fn try_into_server_membership(
         self,
+        user_id: Uuid,
         config: &ServerConfig,
     ) -> Result<ServerMembership, ApiError> {
         let server_domain = self.server_domain_from_db
@@ -37,8 +39,10 @@ impl ServerMembershipRow {
                 created_at: self.server_created_at.ok_or_else(get_error)?,
                 updated_at: self.server_updated_at.ok_or_else(get_error)?,
             },
+            user_id,
             role: self.role.ok_or_else(get_error)?,
-            joined_at: self.joined_at.ok_or_else(get_error)?,
+            joined_at: self.created_at.ok_or_else(get_error)?,
+            updated_at: self.updated_at.ok_or_else(get_error)?,
             synced_at: self.synced_at,
         })
     }
@@ -120,7 +124,6 @@ pub async fn get_all_memberships_for_user(
     state: &AppState,
     user_id: Uuid,
 ) -> Result<Vec<ServerMembership>, ApiError> {
-    // TODO: searching cached_remote_servers isn't needed for remote users
     let rows = sqlx::query_as!(
         ServerMembershipRow,
         r#"
@@ -133,7 +136,8 @@ pub async fn get_all_memberships_for_user(
             s.created_at AS server_created_at,
             s.updated_at AS server_updated_at,
             su.role AS "role!: Option<ServerRole>",
-            su.created_at AS joined_at,
+            su.created_at,
+            su.updated_at,
             NULL::TIMESTAMPTZ AS synced_at
         FROM servers s
         JOIN server_users su ON s.id = su.server_id
@@ -147,10 +151,11 @@ pub async fn get_all_memberships_for_user(
             crs.title AS server_title,
             crs.description AS server_description,
             crs.domain AS server_domain_from_db,
-            crs.created_at AS server_created_at,
-            crs.updated_at AS server_updated_at,
+            crs.remote_created_at AS server_created_at,
+            crs.remote_updated_at AS server_updated_at,
             ursm.role AS "role!: Option<ServerRole>",
-            ursm.created_at AS joined_at,
+            ursm.remote_created_at AS created_at,
+            ursm.remote_updated_at AS updated_at,
             ursm.synced_at AS synced_at
         FROM cached_remote_servers crs
         JOIN user_remote_server_memberships ursm
@@ -165,6 +170,6 @@ pub async fn get_all_memberships_for_user(
     .await?;
 
     rows.into_iter()
-        .map(|row| row.try_into_server_membership(&state.config))
+        .map(|row| row.try_into_server_membership(user_id, &state.config))
         .collect()
 }

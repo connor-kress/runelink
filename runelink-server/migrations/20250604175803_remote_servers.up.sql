@@ -4,8 +4,8 @@ CREATE TABLE cached_remote_servers (
     domain TEXT NOT NULL,
     title TEXT NOT NULL,
     description TEXT,
-    created_at TIMESTAMPTZ NOT NULL,
-    updated_at TIMESTAMPTZ NOT NULL,
+    remote_created_at TIMESTAMPTZ NOT NULL,
+    remote_updated_at TIMESTAMPTZ NOT NULL,
     synced_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -18,7 +18,8 @@ CREATE TABLE user_remote_server_memberships (
         REFERENCES cached_remote_servers (id)
         ON DELETE CASCADE,
     role server_role NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL,
+    remote_created_at TIMESTAMPTZ NOT NULL,
+    remote_updated_at TIMESTAMPTZ NOT NULL,
     synced_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (user_id, remote_server_id)
 );

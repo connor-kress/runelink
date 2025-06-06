@@ -1,5 +1,7 @@
 use crate::{db::DbPool, error::ApiError};
-use runelink_types::{NewServerMember, ServerMember, ServerRole, User};
+use runelink_types::{
+    NewServerMember, Server, ServerMember, ServerMembership, ServerRole, User,
+};
 use serde::{Deserialize, Serialize};
 use sqlx::{types::Json, FromRow};
 use time::OffsetDateTime;
@@ -99,4 +101,101 @@ pub async fn get_all_server_members(
     .into_iter()
     .map(ServerMember::try_from)
     .collect()
+}
+
+pub async fn upsert_cached_remote_server(
+    pool: &DbPool,
+    server:  &Server,
+) -> Result<(), ApiError> {
+    sqlx::query!(
+        r#"
+        INSERT INTO cached_remote_servers (
+            id, domain, title, description, remote_created_at,
+            remote_updated_at, synced_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        ON CONFLICT(id) DO UPDATE
+            SET domain = EXCLUDED.domain,
+                title = EXCLUDED.title,
+                description = EXCLUDED.description,
+                remote_created_at = EXCLUDED.remote_created_at,
+                remote_updated_at = EXCLUDED.remote_updated_at,
+                synced_at = NOW()
+        "#,
+        server.id,
+        server.domain,
+        server.title,
+        server.description,
+        server.created_at,
+        server.updated_at,
+    )
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+pub async fn insert_user_remote_server_membership(
+    pool: &DbPool,
+    user_id: Uuid,
+    membership: ServerMembership,
+) -> Result<ServerMembership, ApiError> {
+    let server = &membership.server;
+    // create (or no-op if already exists)
+    sqlx::query!(
+        r#"
+        INSERT INTO user_remote_server_memberships (
+            user_id, remote_server_id, role, remote_created_at,
+            remote_updated_at, synced_at
+        )
+        VALUES ($1, $2, $3, $4, $5, NOW())
+        ON CONFLICT(user_id, remote_server_id) DO NOTHING
+        "#,
+        user_id,
+        server.id,
+        membership.role as ServerRole,
+        membership.joined_at,
+        membership.updated_at,
+    )
+    .execute(pool)
+    .await?;
+
+    let row = sqlx::query!(
+        r#"
+        SELECT
+          s.id,
+          s.domain,
+          s.title,
+          s.description,
+          s.remote_created_at AS server_created_at,
+          s.remote_updated_at AS server_updated_at,
+          m.role AS "role: ServerRole",
+          m.remote_created_at AS membership_created_at,
+          m.remote_updated_at AS membership_updated_at,
+          m.synced_at
+        FROM cached_remote_servers s
+        JOIN user_remote_server_memberships m
+          ON s.id = m.remote_server_id
+        WHERE m.user_id = $1 AND m.remote_server_id = $2
+        "#,
+        user_id,
+        server.id,
+    )
+    .fetch_one(pool)
+    .await?;
+
+    Ok(ServerMembership {
+        server: Server {
+            id: row.id,
+            domain: row.domain,
+            title: row.title,
+            description: row.description,
+            created_at: row.server_created_at,
+            updated_at: row.server_updated_at,
+        },
+        user_id,
+        role: row.role,
+        joined_at: row.membership_created_at,
+        updated_at: row.membership_updated_at,
+        synced_at: Some(row.synced_at),
+    })
 }

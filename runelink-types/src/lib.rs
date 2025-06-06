@@ -111,6 +111,19 @@ pub enum ServerRole {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ServerMembership {
+    pub server: Server,
+    pub user_id: Uuid,
+    pub role: ServerRole,
+    #[serde(with = "time::serde::rfc3339")]
+    pub joined_at: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
+    pub updated_at: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339::option")]
+    pub synced_at: Option<OffsetDateTime>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ServerMember {
     pub user: User,
     pub role: ServerRole,
@@ -118,16 +131,6 @@ pub struct ServerMember {
     pub joined_at: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339")]
     pub updated_at: OffsetDateTime,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ServerMembership {
-    pub server: Server,
-    pub role: ServerRole,
-    #[serde(with = "time::serde::rfc3339")]
-    pub joined_at: OffsetDateTime,
-    #[serde(with = "time::serde::rfc3339::option")]
-    pub synced_at: Option<OffsetDateTime>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
