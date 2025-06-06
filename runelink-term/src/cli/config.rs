@@ -3,7 +3,7 @@ use uuid::Uuid;
 use crate::{
     error::CliError,
     requests,
-    storage::TryGetDomainName,
+    storage::TryGetDomain,
     util::get_api_url,
 };
 

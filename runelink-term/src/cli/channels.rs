@@ -2,7 +2,7 @@ use runelink_types::NewChannel;
 use uuid::Uuid;
 
 use crate::{
-    error::CliError, requests, storage::TryGetDomainName, util::get_api_url,
+    error::CliError, requests, storage::TryGetDomain, util::get_api_url,
 };
 
 use super::{

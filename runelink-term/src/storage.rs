@@ -170,20 +170,19 @@ impl AppConfig {
     }
 }
 
-pub trait TryGetDomainName {
-    fn try_get_domain_name(&self) -> Result<&str, CliError>;
+pub trait TryGetDomain {
+    fn try_get_domain(&self) -> Result<&str, CliError>;
     fn try_get_api_url(&self) -> Result<String, CliError>;
 }
 
-impl TryGetDomainName for Option<&AccountConfig> {
-    fn try_get_domain_name(&self) -> Result<&str, CliError> {
+impl TryGetDomain for Option<&AccountConfig> {
+    fn try_get_domain(&self) -> Result<&str, CliError> {
         self.map(|ac| ac.domain.as_str())
             .ok_or(CliError::MissingAccount)
     }
 
     fn try_get_api_url(&self) -> Result<String, CliError> {
-        let domain = self.try_get_domain_name()?;
-        Ok(get_api_url(domain))
+        self.try_get_domain().map(|domain| get_api_url(domain))
     }
 }
 

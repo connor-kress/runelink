@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-use crate::{error::CliError, requests, storage::TryGetDomainName};
+use crate::{error::CliError, requests, storage::TryGetDomain};
 
 use super::context::CliContext;
 

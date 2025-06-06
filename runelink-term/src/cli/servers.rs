@@ -4,7 +4,7 @@ use uuid::Uuid;
 use crate::{
     error::CliError,
     requests,
-    storage::TryGetDomainName,
+    storage::TryGetDomain,
     util::{get_api_url, group_memberships_by_host},
 };
 
@@ -113,7 +113,7 @@ pub async fn handle_server_commands(
             let server = requests::fetch_server_by_id(
                 ctx.client, &api_url, get_args.server_id
             ).await?;
-            println!("{} ({})", server.title, server.id);
+            println!("{} / {} ({})", server.domain, server.title, server.id);
         }
 
         ServerCommands::Create(create_args) => {
@@ -163,20 +163,21 @@ pub async fn handle_server_commands(
             let Some(account) = ctx.account else {
                 return Err(CliError::MissingAccount);
             };
-            let api_url = if let Some(domain) = &join_args.domain {
-                get_api_url(domain)
+            let domain = if let Some(domain) = &join_args.domain {
+                domain.to_string()
             } else if let Some(server_id) = join_args.server_id {
-                ctx.config.try_get_server_api_url(server_id)?
+                ctx.config.try_get_server_domain(server_id)?
             } else {
-                ctx.account.try_get_api_url()?
+                ctx.account.try_get_domain()?.to_string()
             };
+            let api_url = get_api_url(&domain);
             let server = if let Some(server_id) = join_args.server_id {
                 requests::fetch_server_by_id(
                     ctx.client, &api_url, server_id
                 ).await?
             } else {
                 get_server_selection(
-                    ctx, ServerSelectionType::NonMemberOnly
+                    ctx, ServerSelectionType::NonMemberOnly { domain: &domain }
                 ).await?
             };
             let new_member = NewServerMember::member(account.user_id);

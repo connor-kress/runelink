@@ -104,23 +104,28 @@ where
 
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
-pub enum ServerSelectionType {
-    All,
+pub enum ServerSelectionType<'a> {
     MemberOnly,
-    NonMemberOnly,
+    All {
+        domain: &'a str,
+    },
+    NonMemberOnly{
+        domain: &'a str,
+    },
 }
 
 pub async fn get_server_selection(
     ctx: &CliContext<'_>,
-    selection_type: ServerSelectionType,
+    selection_type: ServerSelectionType<'_>,
 ) -> Result<Server, CliError> {
         let account = ctx.account.ok_or(CliError::MissingAccount)?;
         let account_api_url = get_api_url(&account.domain);
         let servers = match selection_type {
-            ServerSelectionType::All => {
+            ServerSelectionType::All { domain } => {
+                let api_url = get_api_url(domain);
                 requests::fetch_servers(
                     ctx.client,
-                    &account_api_url,
+                    &api_url,
                 ).await?
             }
             ServerSelectionType::MemberOnly => {
@@ -130,10 +135,11 @@ pub async fn get_server_selection(
                     account.user_id,
                 ).await?
             }
-            ServerSelectionType::NonMemberOnly => {
+            ServerSelectionType::NonMemberOnly{ domain } => {
+                let api_url = get_api_url(domain);
                 let all_servers = requests::fetch_servers(
                     ctx.client,
-                    &account_api_url,
+                    &api_url,
                 ).await?;
                 let member_servers = requests::fetch_servers_by_user(
                     ctx.client,

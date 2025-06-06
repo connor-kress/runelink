@@ -1,10 +1,13 @@
 use runelink_types::NewMessage;
 use uuid::Uuid;
 
-use crate::{cli::input::read_input, error::CliError, requests, storage::TryGetDomainName, util::get_api_url};
+use crate::{
+    error::CliError, requests, storage::TryGetDomain, util::get_api_url,
+};
 
 use super::{
     context::CliContext,
+    input::read_input,
     select::get_channel_selection_with_inputs,
 };
 
