@@ -1,3 +1,6 @@
+use runelink_types::ServerMembership;
+use std::collections::HashMap;
+
 pub fn get_api_url(domain: &str) -> String {
     let host_with_port = if domain.starts_with('[') {
         // IPv6 literal
@@ -41,6 +44,17 @@ pub fn get_prefix<T: PartialEq>(
     } else {
         "  "
     }
+}
+
+pub fn group_memberships_by_host<'a>(
+    memberships: &'a Vec<ServerMembership>,
+) -> HashMap<&'a str, Vec<&'a ServerMembership>> {
+    let mut map = HashMap::<&'a str, Vec<&'a ServerMembership>>::new();
+    for membership in memberships {
+        let domain = membership.server.domain.as_str();
+        map.entry(domain).or_default().push(membership);
+    }
+    map
 }
 
 #[cfg(test)]

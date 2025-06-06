@@ -120,6 +120,7 @@ pub async fn get_all_memberships_for_user(
     state: &AppState,
     user_id: Uuid,
 ) -> Result<Vec<ServerMembership>, ApiError> {
+    // TODO: searching cached_remote_servers isn't needed for remote users
     let rows = sqlx::query_as!(
         ServerMembershipRow,
         r#"

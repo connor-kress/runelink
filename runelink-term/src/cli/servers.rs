@@ -2,16 +2,17 @@ use runelink_types::{NewServer, NewServerMember, ServerRole};
 use uuid::Uuid;
 
 use crate::{
-    cli::{input::read_input, select::{get_server_selection, ServerSelectionType}},
     error::CliError,
     requests,
     storage::TryGetDomainName,
-    util::get_api_url,
+    util::{get_api_url, group_memberships_by_host},
 };
 
 use super::{
     config::{handle_default_server_commands, DefaultServerArgs},
     context::CliContext,
+    input::read_input,
+    select::{get_server_selection, ServerSelectionType},
 };
 
 #[derive(clap::Args, Debug)]
@@ -86,12 +87,23 @@ pub async fn handle_server_commands(
                     For more information, try `rune server --help`."
                 )
             }
-            for membership in memberships {
-                let server = &membership.server;
-                if membership.role == ServerRole::Admin {
-                    println!("{} ({}) - admin", server.title, server.id);
-                } else {
-                    println!("{} ({})", server.title, server.id);
+            let grouped_memberships = group_memberships_by_host(&memberships);
+            for (i, (domain, memberships)) in grouped_memberships
+                .iter()
+                .enumerate()
+            {
+                println!("{}", domain);
+                for membership in memberships {
+                    let server = &membership.server;
+                    print!("    {} ({})", server.title, server.id);
+                    if membership.role == ServerRole::Admin {
+                        println!(" - admin");
+                    } else {
+                        println!();
+                    }
+                }
+                if i != grouped_memberships.len() - 1 {
+                    println!();
                 }
             }
         }
