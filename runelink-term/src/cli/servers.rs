@@ -26,7 +26,7 @@ pub enum ServerCommands {
     /// List all servers
     List,
     /// Get a server by ID
-    Get(ServerIdArg),
+    Get(ServerGetArg),
     /// Create a new server
     Create(ServerCreateArgs),
     /// Create a new server
@@ -36,10 +36,13 @@ pub enum ServerCommands {
 }
 
 #[derive(clap::Args, Debug)]
-pub struct ServerIdArg {
+pub struct ServerGetArg {
     /// The ID of the server
     #[clap(long)]
     pub server_id: Uuid,
+    /// The domain of the server
+    #[clap(long)]
+    pub domain: Option<String>,
 }
 
 #[derive(clap::Args, Debug)]
@@ -109,7 +112,13 @@ pub async fn handle_server_commands(
         }
 
         ServerCommands::Get(get_args) => {
-            let api_url = ctx.account.try_get_api_url()?;
+            let api_url = if let Some(domain) = &get_args.domain {
+                get_api_url(domain)
+            } else {
+                ctx.config
+                    .try_get_server_api_url(get_args.server_id)
+                    .unwrap_or(ctx.account.try_get_api_url()?)
+            };
             let server = requests::fetch_server_by_id(
                 ctx.client, &api_url, get_args.server_id
             ).await?;
