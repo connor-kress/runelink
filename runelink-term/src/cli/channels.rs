@@ -80,7 +80,9 @@ pub async fn handle_channel_commands(
             let api_url = if let Some(domain) = &list_args.domain {
                 get_api_url(domain)
             } else if let Some(server_id) = list_args.server_id {
-                ctx.config.try_get_server_api_url(server_id)?
+                ctx.config
+                    .try_get_server_api_url(server_id)
+                    .unwrap_or(ctx.account.try_get_api_url()?)
             } else {
                 ctx.account.try_get_api_url()?
             };
@@ -120,7 +122,9 @@ pub async fn handle_channel_commands(
             let api_url = if let Some(domain) = &get_args.domain {
                 get_api_url(domain)
             } else if let Some(server_id) = get_args.server_id {
-                ctx.config.try_get_server_api_url(server_id)?
+                ctx.config
+                    .try_get_server_api_url(server_id)
+                    .unwrap_or(ctx.account.try_get_api_url()?)
             } else {
                 ctx.account.try_get_api_url()?
             };

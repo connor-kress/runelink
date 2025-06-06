@@ -176,7 +176,9 @@ pub async fn handle_server_commands(
             let domain = if let Some(domain) = &join_args.domain {
                 domain.to_string()
             } else if let Some(server_id) = join_args.server_id {
-                ctx.config.try_get_server_domain(server_id)?
+                ctx.config
+                    .try_get_server_api_url(server_id)
+                    .unwrap_or(ctx.account.try_get_api_url()?)
             } else {
                 ctx.account.try_get_domain()?.to_string()
             };
