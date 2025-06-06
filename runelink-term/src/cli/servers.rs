@@ -1,11 +1,11 @@
-use runelink_client::requests;
+use runelink_client::{requests, util::get_api_url};
 use runelink_types::{NewServer, NewServerMember, ServerRole};
 use uuid::Uuid;
 
 use crate::{
     error::CliError,
     storage::TryGetDomain,
-    util::{get_api_url, group_memberships_by_host},
+    util::group_memberships_by_host,
 };
 
 use super::{

@@ -1,8 +1,8 @@
-use runelink_client::requests;
+use runelink_client::{requests, util::get_api_url};
 use runelink_types::NewChannel;
 use uuid::Uuid;
 
-use crate::{error::CliError, storage::TryGetDomain, util::get_api_url};
+use crate::{error::CliError, storage::TryGetDomain};
 
 use super::{
     config::{handle_default_channel_commands, DefaultChannelArgs},

@@ -1,4 +1,4 @@
-use runelink_client::requests;
+use runelink_client::{requests, util::get_api_url};
 use runelink_types::NewUser;
 
 use crate::{error::CliError, util};
@@ -60,7 +60,7 @@ pub async fn handle_account_commands(
 
         },
         AccountCommands::Add(add_args) => {
-            let api_url = util::get_api_url(&add_args.domain);
+            let api_url = get_api_url(&add_args.domain);
             let user = requests::fetch_user_by_name_and_domain(
                 ctx.client,
                 &api_url,
@@ -75,7 +75,7 @@ pub async fn handle_account_commands(
             );
         },
         AccountCommands::Create(create_args) => {
-            let api_url = util::get_api_url(&create_args.domain);
+            let api_url = get_api_url(&create_args.domain);
             let new_user = NewUser {
                 name: create_args.name.clone(),
                 domain: create_args.domain.clone(),

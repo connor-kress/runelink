@@ -1,11 +1,12 @@
 use directories::ProjectDirs;
+use runelink_client::util::get_api_url;
 use runelink_types::{Server, User};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 use uuid::Uuid;
 
-use crate::{error::CliError, util::get_api_url};
+use crate::error::CliError;
 
 const CONFIG_FILENAME: &str = "config.json";
 // const CACHE_FILENAME: &str = "cache.json";
