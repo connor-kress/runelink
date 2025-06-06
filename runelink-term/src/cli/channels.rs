@@ -89,7 +89,13 @@ pub async fn handle_channel_commands(
                 let api_url = get_api_url(&server.domain);
                 channels = requests::fetch_channels_by_server(
                     ctx.client, &api_url, server.id
-                ).await?
+                ).await?;
+            }
+            if channels.is_empty() {
+                println!(
+                    "No channels available.\n\
+                    For more information, try `rune channel --help`."
+                )
             }
             for channel in channels {
                 println!("{} ({})", channel.title, channel.id);

@@ -1,4 +1,4 @@
-use crate::{error::ApiError, state::AppState};
+use crate::{config::ServerConfig, error::ApiError, state::AppState};
 use runelink_types::{NewServer, Server, ServerMembership, ServerRole};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -19,10 +19,16 @@ struct ServerMembershipRow {
 impl ServerMembershipRow {
     fn try_into_server_membership(
         self,
-        domain: &str,
+        config: &ServerConfig,
     ) -> Result<ServerMembership, ApiError> {
         let server_domain = self.server_domain_from_db
-            .unwrap_or_else(|| domain.to_string());
+            .unwrap_or_else(|| {
+                if config.port == 7000 {
+                    config.local_domain.clone()
+                } else {
+                    format!("{}:{}", &config.local_domain, config.port)
+                }
+            });
 
         // Needed because of weird sqlx limitations (or misuse)
         let get_error = || {
@@ -83,7 +89,7 @@ pub async fn insert_server(
     )
     .fetch_one(state.db_pool.as_ref())
     .await?;
-    Ok(row.into_server(&state.config.local_domain))
+    Ok(row.into_server(&state.config))
 }
 
 pub async fn get_server_by_id(
@@ -97,7 +103,7 @@ pub async fn get_server_by_id(
     )
     .fetch_one(state.db_pool.as_ref())
     .await?;
-    Ok(row.into_server(&state.config.local_domain))
+    Ok(row.into_server(&state.config))
 }
 
 pub async fn get_all_servers(
@@ -111,7 +117,7 @@ pub async fn get_all_servers(
     .await?;
     let servers = rows
         .into_iter()
-        .map(|row| row.into_server(&state.config.local_domain))
+        .map(|row| row.into_server(&state.config))
         .collect();
     Ok(servers)
 }
@@ -164,6 +170,6 @@ pub async fn get_all_memberships_for_user(
     .await?;
 
     rows.into_iter()
-        .map(|row| row.try_into_server_membership(&state.config.local_domain))
+        .map(|row| row.try_into_server_membership(&state.config))
         .collect()
 }
