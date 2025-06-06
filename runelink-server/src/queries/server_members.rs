@@ -1,4 +1,4 @@
-use crate::{db::DbPool, error::ApiError};
+use crate::{db::DbPool, error::ApiError, state::AppState};
 use runelink_types::{
     NewServerMember, Server, ServerMember, ServerMembership, ServerRole, User,
 };
@@ -136,10 +136,8 @@ pub async fn upsert_cached_remote_server(
 
 pub async fn insert_user_remote_server_membership(
     pool: &DbPool,
-    user_id: Uuid,
-    membership: ServerMembership,
+    membership: &ServerMembership,
 ) -> Result<ServerMembership, ApiError> {
-    let server = &membership.server;
     // create (or no-op if already exists)
     sqlx::query!(
         r#"
@@ -148,10 +146,9 @@ pub async fn insert_user_remote_server_membership(
             remote_updated_at, synced_at
         )
         VALUES ($1, $2, $3, $4, $5, NOW())
-        ON CONFLICT(user_id, remote_server_id) DO NOTHING
         "#,
-        user_id,
-        server.id,
+        membership.user_id,
+        membership.server.id,
         membership.role as ServerRole,
         membership.joined_at,
         membership.updated_at,
@@ -177,8 +174,8 @@ pub async fn insert_user_remote_server_membership(
           ON s.id = m.remote_server_id
         WHERE m.user_id = $1 AND m.remote_server_id = $2
         "#,
-        user_id,
-        server.id,
+        membership.user_id,
+        membership.server.id,
     )
     .fetch_one(pool)
     .await?;
@@ -192,10 +189,55 @@ pub async fn insert_user_remote_server_membership(
             created_at: row.server_created_at,
             updated_at: row.server_updated_at,
         },
-        user_id,
+        user_id: membership.user_id,
         role: row.role,
         joined_at: row.membership_created_at,
         updated_at: row.membership_updated_at,
         synced_at: Some(row.synced_at),
+    })
+}
+
+pub async fn get_local_server_membership(
+    state: &AppState,
+    server_id: Uuid,
+    user_id: Uuid,
+) -> Result<ServerMembership, ApiError> {
+    let row = sqlx::query!(
+        r#"
+        SELECT
+            s.id,
+            s.title,
+            s.description,
+            s.created_at AS server_created_at,
+            s.updated_at AS server_updated_at,
+            su.role AS "role: ServerRole",
+            su.created_at AS membership_created_at,
+            su.updated_at AS membership_updated_at
+        FROM servers s
+        JOIN server_users su
+            ON s.id = su.server_id
+        WHERE s.id = $1
+            AND su.user_id = $2
+        "#,
+        server_id,
+        user_id,
+    )
+    .fetch_one(state.db_pool.as_ref())
+    .await?;
+
+    Ok(ServerMembership {
+        server: Server {
+            id: row.id,
+            domain: state.config.local_domain_with_port(),
+            title: row.title,
+            description: row.description,
+            created_at: row.server_created_at,
+            updated_at: row.server_updated_at,
+        },
+        user_id,
+        role: row.role,
+        joined_at: row.membership_created_at,
+        updated_at: row.membership_updated_at,
+        synced_at: None,
     })
 }

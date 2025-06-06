@@ -14,7 +14,7 @@ pub async fn create_server(
     new_server: &NewServer,
 ) -> Result<Server> {
     let url = format!("{}/servers", api_url);
-    post_json::<NewServer, Server>(client, &url, new_server).await
+    post_json::<_, Server>(client, &url, new_server).await
 }
 
 pub async fn fetch_servers(
@@ -67,6 +67,15 @@ pub async fn join_server(
     new_member: &NewServerMember,
 ) -> Result<ServerMember> {
     let url = format!("{}/servers/{}/users", api_url, server_id);
-    dbg!(&new_member);
-    post_json::<NewServerMember, ServerMember>(client, &url, &new_member).await
+    post_json::<_, ServerMember>(client, &url, new_member).await
+}
+
+pub async fn sync_remote_membership(
+    client: &Client,
+    api_url: &str,
+    new_membership: &ServerMembership,
+) -> Result<ServerMembership> {
+    let server_id = new_membership.server.id;
+    let url = format!("{}/servers/{}/remote-memberships", api_url, server_id);
+    post_json::<_, ServerMembership>(client, &url, new_membership).await
 }

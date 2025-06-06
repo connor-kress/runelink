@@ -1,4 +1,7 @@
-use axum::{routing::get, Router};
+use axum::{
+    routing::{get, post},
+    Router,
+};
 use config::ServerConfig;
 use sqlx::migrate::Migrator;
 use state::AppState;
@@ -87,6 +90,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route(
             "/api/servers/{server_id}/users/{user_id}",
             get(api::get_server_member),
+        )
+        .route(
+            "/api/servers/{server_id}/remote-memberships",
+            post(api::create_remote_membership),
         )
 
         .route("/api/hosts", get(api::list_hosts))
