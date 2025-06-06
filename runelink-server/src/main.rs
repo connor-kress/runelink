@@ -21,9 +21,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let config = Arc::new(ServerConfig::from_env()?);
     let pool = Arc::new(db::get_pool(config.as_ref()).await?);
+    let http_client = reqwest::Client::new();
     let app_state = AppState {
-        db_pool: pool.clone(),
         config: config.clone(),
+        db_pool: pool.clone(),
+        http_client,
     };
 
     MIGRATOR.run(pool.as_ref()).await?;

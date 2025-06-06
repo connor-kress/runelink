@@ -1,4 +1,3 @@
-
 use clap::{Parser};
 use cli::handle_cli;
 use reqwest::Client;

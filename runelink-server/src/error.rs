@@ -3,6 +3,7 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
+use runelink_client::Error as ClientError;
 use serde::Serialize;
 use thiserror::Error;
 use tokio::task::JoinError;
@@ -26,6 +27,9 @@ pub enum ApiError {
 
     #[error("Unknown error: {0}")]
     Unknown(String),
+
+    #[error("Upstream error: {0}")]
+    Client(#[from] ClientError),
 }
 
 impl From<sqlx::Error> for ApiError {
@@ -67,6 +71,10 @@ impl IntoResponse for ApiError {
             ApiError::UniqueViolation => StatusCode::CONFLICT,
             ApiError::NotFound => StatusCode::NOT_FOUND,
             ApiError::AuthError(_) => StatusCode::UNAUTHORIZED,
+            ApiError::Client(ref client_err) => match client_err {
+                ClientError::Status(code, _) => *code,
+                _ => StatusCode::BAD_GATEWAY,
+            },
         };
         let body = Json(ErrorResponse {
             error: self.to_string(),
