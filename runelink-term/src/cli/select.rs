@@ -67,7 +67,14 @@ where
                 }
                 // Enter - confirm
                 (KeyCode::Enter, _) => {
-                    execute!(stdout, MoveToColumn(0))?;
+                    execute!(
+                        stdout,
+                        MoveUp(items.len() as u16),
+                        Clear(ClearType::FromCursorDown),
+                        MoveToColumn(0),
+                        Print(format!("> {}\n", display(&items[selected])))
+                    )?;
+                    stdout.flush()?;
                     disable_raw_mode()?;
                     execute!(stdout, Show)?;
                     return Ok(Some(&items[selected]));
