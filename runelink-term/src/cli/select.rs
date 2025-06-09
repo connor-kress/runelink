@@ -126,8 +126,6 @@ pub async fn get_server_selection(
     ctx: &CliContext<'_>,
     selection_type: ServerSelectionType<'_>,
 ) -> Result<Server, CliError> {
-        let account = ctx.account.ok_or(CliError::MissingAccount)?;
-        let account_api_url = get_api_url(&account.domain);
         let servers = match selection_type {
             ServerSelectionType::All { domain } => {
                 let api_url = get_api_url(domain);
@@ -137,6 +135,8 @@ pub async fn get_server_selection(
                 ).await?
             }
             ServerSelectionType::MemberOnly => {
+                let account = ctx.account.ok_or(CliError::MissingAccount)?;
+                let account_api_url = get_api_url(&account.domain);
                 requests::fetch_servers_by_user(
                     ctx.client,
                     &account_api_url,
@@ -144,6 +144,8 @@ pub async fn get_server_selection(
                 ).await?
             }
             ServerSelectionType::NonMemberOnly{ domain } => {
+                let account = ctx.account.ok_or(CliError::MissingAccount)?;
+                let account_api_url = get_api_url(&account.domain);
                 let api_url = get_api_url(domain);
                 let all_servers = requests::fetch_servers(
                     ctx.client,

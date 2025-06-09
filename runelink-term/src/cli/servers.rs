@@ -2,15 +2,12 @@ use runelink_client::{requests, util::get_api_url};
 use runelink_types::{NewServer, NewServerMember, ServerRole};
 use uuid::Uuid;
 
-use crate::{
-    error::CliError,
-    storage::TryGetDomain,
-    util::group_memberships_by_host,
-};
+use crate::{error::CliError, util::group_memberships_by_host};
 
 use super::{
     config::{handle_default_server_commands, DefaultServerArgs},
     context::CliContext,
+    domain_query::DomainQueryBuilder,
     input::read_input,
     select::{get_server_selection, ServerSelectionType},
 };
@@ -112,13 +109,10 @@ pub async fn handle_server_commands(
         }
 
         ServerCommands::Get(get_args) => {
-            let api_url = if let Some(domain) = &get_args.domain {
-                get_api_url(domain)
-            } else {
-                ctx.config
-                    .try_get_server_api_url(get_args.server_id)
-                    .unwrap_or(ctx.account.try_get_api_url()?)
-            };
+            let api_url = DomainQueryBuilder::new(ctx)
+                .try_domain(get_args.domain.clone())
+                .try_server(Some(get_args.server_id))
+                .get_api_url()?;
             let server = requests::fetch_server_by_id(
                 ctx.client, &api_url, get_args.server_id
             ).await?;
@@ -126,14 +120,10 @@ pub async fn handle_server_commands(
         }
 
         ServerCommands::Create(create_args) => {
-            let Some(account) = ctx.account else {
-                return Err(CliError::MissingAccount);
-            };
-            let api_url = if let Some(domain) = &create_args.domain {
-                get_api_url(domain)
-            } else {
-                ctx.account.try_get_api_url()?
-            };
+            let account = ctx.account.ok_or(CliError::MissingAccount)?;
+            let api_url = DomainQueryBuilder::new(ctx)
+                .try_domain(create_args.domain.clone())
+                .get_api_url()?;
             // TODO: servers can't handle cross host server membership yet.
             // We need to sync the membership with another request to the home
             // server too.
@@ -170,19 +160,11 @@ pub async fn handle_server_commands(
         }
 
         ServerCommands::Join(join_args) => {
-            let Some(account) = ctx.account else {
-                return Err(CliError::MissingAccount);
-            };
-            let domain = if let Some(domain) = &join_args.domain {
-                domain.to_string()
-            } else if let Some(server_id) = join_args.server_id {
-                ctx.config
-                    .try_get_server_api_url(server_id)
-                    .unwrap_or(ctx.account.try_get_api_url()?)
-            } else {
-                ctx.account.try_get_domain()?.to_string()
-            };
-            let api_url = get_api_url(&domain);
+            let account = ctx.account.ok_or(CliError::MissingAccount)?;
+            let (domain, api_url) = DomainQueryBuilder::new(ctx)
+                .try_domain(join_args.domain.clone())
+                .try_server(join_args.server_id)
+                .get_domain_and_api_url()?;
             let server = if let Some(server_id) = join_args.server_id {
                 requests::fetch_server_by_id(
                     ctx.client, &api_url, server_id
@@ -201,10 +183,7 @@ pub async fn handle_server_commands(
             ).await?;
             ctx.config.get_or_create_server_config(&server, &account.domain);
             ctx.config.save()?;
-            println!(
-                "Joined server: {} ({}).",
-                server.title, server.id
-            );
+            println!("Joined server: {} ({}).", server.title, server.id);
         }
 
         ServerCommands::Default(default_args) => {

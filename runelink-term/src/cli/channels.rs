@@ -2,11 +2,12 @@ use runelink_client::{requests, util::get_api_url};
 use runelink_types::NewChannel;
 use uuid::Uuid;
 
-use crate::{error::CliError, storage::TryGetDomain};
+use crate::error::CliError;
 
 use super::{
     config::{handle_default_channel_commands, DefaultChannelArgs},
     context::CliContext,
+    domain_query::DomainQueryBuilder,
     input::read_input,
     select::{get_server_selection, ServerSelectionType},
 };
@@ -77,15 +78,11 @@ pub async fn handle_channel_commands(
 ) -> Result<(), CliError> {
     match &channel_args.command {
         ChannelCommands::List(list_args) => {
-            let api_url = if let Some(domain) = &list_args.domain {
-                get_api_url(domain)
-            } else if let Some(server_id) = list_args.server_id {
-                ctx.config
-                    .try_get_server_api_url(server_id)
-                    .unwrap_or(ctx.account.try_get_api_url()?)
-            } else {
-                ctx.account.try_get_api_url()?
-            };
+            ctx.account.ok_or(CliError::MissingAccount)?;
+            let api_url = DomainQueryBuilder::new(ctx)
+                .try_domain(list_args.domain.clone())
+                .try_server(list_args.server_id)
+                .get_api_url()?;
             let channels;
             if let Some(server_id) = list_args.server_id {
                 channels = requests::fetch_channels_by_server(
@@ -119,15 +116,11 @@ pub async fn handle_channel_commands(
         }
 
         ChannelCommands::Get(get_args) => {
-            let api_url = if let Some(domain) = &get_args.domain {
-                get_api_url(domain)
-            } else if let Some(server_id) = get_args.server_id {
-                ctx.config
-                    .try_get_server_api_url(server_id)
-                    .unwrap_or(ctx.account.try_get_api_url()?)
-            } else {
-                ctx.account.try_get_api_url()?
-            };
+            ctx.account.ok_or(CliError::MissingAccount)?;
+            let api_url = DomainQueryBuilder::new(ctx)
+                .try_domain(get_args.domain.clone())
+                .try_server(get_args.server_id)
+                .get_api_url()?;
             let channel = requests::fetch_channel_by_id(
                 ctx.client, &api_url, get_args.channel_id
             ).await?;
@@ -135,13 +128,11 @@ pub async fn handle_channel_commands(
         }
 
         ChannelCommands::Create(create_args) => {
-            let Some(account) = ctx.account else {
-                return Err(CliError::MissingAccount);
-            };
+            let account = ctx.account.ok_or(CliError::MissingAccount)?;
+            let api_url = DomainQueryBuilder::new(ctx)
+                .try_server(create_args.server_id)
+                .get_api_url()?;
             let server = if let Some(server_id) = create_args.server_id {
-                let api_url = ctx.config
-                    .try_get_server_api_url(server_id)
-                    .unwrap_or(ctx.account.try_get_api_url()?);
                 requests::fetch_server_by_id(
                     ctx.client, &api_url, server_id
                 ).await?

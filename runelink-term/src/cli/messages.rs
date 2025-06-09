@@ -2,10 +2,11 @@ use runelink_client::{requests, util::get_api_url};
 use runelink_types::NewMessage;
 use uuid::Uuid;
 
-use crate::{error::CliError, storage::TryGetDomain};
+use crate::error::CliError;
 
 use super::{
     context::CliContext,
+    domain_query::DomainQueryBuilder,
     input::read_input,
     select::get_channel_selection_with_inputs,
 };
@@ -71,21 +72,7 @@ pub async fn handle_message_commands(
 ) -> Result<(), CliError> {
     match &message_args.command {
         MessageCommands::List(list_args) => {
-            // TODO: add cli arguments for each of these cases
-            // let messages;
-            // if let Some(channel_id) = list_args.channel_id {
-            //     messages = requests::fetch_messages_by_channel(
-            //         ctx.client, &api_url, channel_id
-            //     ).await?;
-            // } else if let Some(server_id) = list_args.server_id {
-            //     messages = requests::fetch_messages_by_server(
-            //         ctx.client, &api_url, server_id
-            //     ).await?;
-            // } else {
-            //     messages = requests::fetch_all_messages(
-            //         ctx.client, &api_url
-            //     ).await?
-            // }
+            ctx.account.ok_or(CliError::MissingAccount)?;
             let (server, channel) = get_channel_selection_with_inputs(
                 ctx,
                 list_args.channel_id,
@@ -105,18 +92,14 @@ pub async fn handle_message_commands(
                     .unwrap_or("Anon");
                 println!("{}: {}", author_name, message.body);
             }
-        },
+        }
 
         MessageCommands::Get(get_args) => {
-            let api_url = if let Some(domain) = &get_args.domain {
-                get_api_url(domain)
-            } else if let Some(server_id) = get_args.server_id {
-                ctx.config
-                    .try_get_server_api_url(server_id)
-                    .unwrap_or(ctx.account.try_get_api_url()?)
-            } else {
-                ctx.account.try_get_api_url()?
-            };
+            ctx.account.ok_or(CliError::MissingAccount)?;
+            let api_url = DomainQueryBuilder::new(ctx)
+                .try_domain(get_args.domain.clone())
+                .try_server(get_args.server_id)
+                .get_api_url()?;
             let message = requests::fetch_message_by_id(
                 ctx.client, &api_url, get_args.message_id
             ).await?;
@@ -125,12 +108,10 @@ pub async fn handle_message_commands(
                 .map(|u| u.name)
                 .unwrap_or("Anon".into());
             println!("{}: {}", author_name, message.body);
-        },
+        }
 
         MessageCommands::Send(send_args) => {
-            let Some(account) = ctx.account else {
-                return Err(CliError::MissingAccount);
-            };
+            let account = ctx.account.ok_or(CliError::MissingAccount)?;
             let (server, channel) = get_channel_selection_with_inputs(
                 ctx,
                 send_args.channel_id,
@@ -153,7 +134,7 @@ pub async fn handle_message_commands(
                 ctx.client, &server_api_url, channel.id, &new_message
             ).await?;
             println!("Sent message: {}", message.body);
-        },
+        }
     };
     Ok(())
 }
