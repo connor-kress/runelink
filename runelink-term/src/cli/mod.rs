@@ -65,7 +65,7 @@ pub async fn handle_cli(
             config.get_account_config_by_name(name, domain)
         },
         _ => config.get_default_account(),
-    }.map(|a| a.clone());
+    }.cloned();
     let mut ctx_owned = CliContext {
         client,
         config,

@@ -30,5 +30,5 @@ pub async fn ping(Query(params): Query<PingParams>) -> impl IntoResponse {
         None => format!("pong: {}", user_msg),
     };
     println!("{}", message);
-    return message;
+    message
 }

@@ -59,9 +59,9 @@ impl CliError {
         match self {
             CliError::ReqwestError(e) => {
                 if let Some(status) = e.status() {
-                    eprintln!("{}: {}", status, e.to_string());
+                    eprintln!("{}: {}", status, e);
                 } else {
-                    eprintln!("{}", e.to_string());
+                    eprintln!("{}", e);
                 }
             }
             CliError::InvalidArgument(msg) => eprintln!("{}", msg),
@@ -84,9 +84,9 @@ const EX_NOPERM: u8 = 77; // permission denied
 const EX_CONFIG: u8 = 78; // configuration error
 const EX_USER_CANCEL: u8 = 130; // Standard for SIGINT / user interrupt
 
-impl Into<ExitCode> for CliError {
-    fn into(self) -> ExitCode {
-        ExitCode::from(match self {
+impl From<CliError> for ExitCode {
+    fn from(value: CliError) -> Self {
+        ExitCode::from(match value {
             CliError::ReqwestError(e) => {
                 if let Some(status) = e.status() {
                     status_to_exit_code(status)

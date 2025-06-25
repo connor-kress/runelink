@@ -183,7 +183,7 @@ impl TryGetDomain for Option<&AccountConfig> {
     }
 
     fn try_get_api_url(&self) -> Result<String, CliError> {
-        self.try_get_domain().map(|domain| get_api_url(domain))
+        self.try_get_domain().map(get_api_url)
     }
 }
 

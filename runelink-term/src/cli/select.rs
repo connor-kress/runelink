@@ -195,10 +195,8 @@ pub async fn get_channel_selection(
         ).await?;
         if channels.is_empty() {
             return Err(CliError::NoActionPossible(
-                format!(
-                    "No channels available.\n\
-                    For more information, try `rune channel --help`."
-                )
+                "No channels available.\n\
+                For more information, try `rune channel --help`.".into()
             ));
         }
         let channel = select_inline(

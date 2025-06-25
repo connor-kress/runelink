@@ -48,15 +48,11 @@ pub async fn fetch_servers_by_user(
     api_url: &str,
     user_id: Uuid,
 ) -> Result<Vec<Server>> {
-    let servers = fetch_server_memberships_by_user(
-        client,
-        &api_url,
-        user_id,
-    )
-    .await?
-    .into_iter()
-    .map(|m| m.server)
-    .collect();
+    let servers = fetch_server_memberships_by_user(client, api_url, user_id)
+        .await?
+        .into_iter()
+        .map(|m| m.server)
+        .collect();
     Ok(servers)
 }
 

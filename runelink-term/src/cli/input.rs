@@ -4,7 +4,7 @@ pub fn read_input(prompt: &str) -> std::io::Result<Option<String>> {
     let mut stdout = std::io::stdout();
     let stdin = std::io::stdin();
 
-    stdout.write(prompt.as_bytes())?;
+    stdout.write_all(prompt.as_bytes())?;
     stdout.flush()?;
 
     let mut buf = String::new();

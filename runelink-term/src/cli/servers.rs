@@ -187,7 +187,7 @@ pub async fn handle_server_commands(
         }
 
         ServerCommands::Default(default_args) => {
-            handle_default_server_commands(ctx, &default_args).await?;
+            handle_default_server_commands(ctx, default_args).await?;
         }
     }
     Ok(())

@@ -158,7 +158,7 @@ pub async fn handle_channel_commands(
             };
             let server_api_url = get_api_url(&server.domain);
             let new_channel = NewChannel {
-                title: title,
+                title,
                 description: desc,
             };
             let channel = requests::create_channel(

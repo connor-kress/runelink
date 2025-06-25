@@ -11,6 +11,7 @@ pub struct ConfigArgs {
     pub command: ConfigCommands,
 }
 
+#[allow(clippy::enum_variant_names)]
 #[derive(clap::Subcommand, Debug)]
 pub enum ConfigCommands {
     /// Manage default account
