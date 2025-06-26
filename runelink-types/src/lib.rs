@@ -17,10 +17,34 @@ pub struct User {
     pub synced_at: Option<OffsetDateTime>,
 }
 
+impl fmt::Display for User {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}@{}", self.name, self.domain)
+    }
+}
+
+impl User {
+    pub fn verbose(&self) -> String {
+        format!("{} ({})", self, self.id)
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NewUser {
     pub name: String,
     pub domain: String,
+    // pub password: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
+pub struct LocalAccount {
+    pub user_id: Uuid,
+    pub password_hash: String,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_at: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
+    pub updated_at: OffsetDateTime,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

@@ -74,10 +74,7 @@ pub async fn handle_default_account_commands(
     match &default_args.command {
         DefaultAccountCommands::Get => {
             if let Some(account) = ctx.config.get_default_account() {
-                println!(
-                    "{}@{} ({})",
-                    account.name, account.domain, account.user_id
-                );
+                println!("{}", account.verbose());
             } else {
                 println!("No default host set.");
             }
@@ -92,10 +89,7 @@ pub async fn handle_default_account_commands(
             })?.clone();
             ctx.config.default_account = Some(account.user_id);
             ctx.config.save()?;
-            println!(
-                "Set default account: {}@{} ({}).",
-                account.name, account.domain, account.user_id
-            );
+            println!("Set default account: {}.", account.verbose());
         }
     }
     Ok(())

@@ -58,7 +58,7 @@ pub async fn handle_user_commands(
                 users = requests::fetch_users(ctx.client, &api_url).await?;
             }
             for user in users {
-                println!("{}@{} ({})", user.name, user.domain, user.id);
+                println!("{}", user.verbose());
             }
         }
         UserCommands::Get(get_args) => {
@@ -69,7 +69,7 @@ pub async fn handle_user_commands(
             let user = requests::fetch_user_by_id(
                 ctx.client, &api_url, get_args.user_id
             ).await?;
-            println!("{}@{} ({})", user.name, user.domain, user.id);
+            println!("{}", user.verbose());
         }
     }
     Ok(())

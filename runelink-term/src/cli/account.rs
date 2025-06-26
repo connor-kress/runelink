@@ -52,10 +52,7 @@ pub async fn handle_account_commands(
                     ctx.config.default_account,
                     ctx.config.accounts.len(),
                 );
-                println!(
-                    "{}{}@{} ({})",
-                    prefix, account.name, account.domain, account.user_id
-                );
+                println!("{}{}", prefix, account.verbose());
             }
 
         },
@@ -69,10 +66,7 @@ pub async fn handle_account_commands(
             ).await?;
             ctx.config.get_or_create_account_config(&user);
             ctx.config.save()?;
-            println!(
-                "Added account: {}@{} ({}).",
-                user.name, user.domain, user.id
-            );
+            println!("Added account: {}.", user.verbose());
         },
         AccountCommands::Create(create_args) => {
             let api_url = get_api_url(&create_args.domain);
@@ -84,10 +78,7 @@ pub async fn handle_account_commands(
                 requests::create_user(ctx.client, &api_url, &new_user).await?;
             ctx.config.get_or_create_account_config(&user);
             ctx.config.save()?;
-            println!(
-                "Created account: {}@{} ({}).",
-                user.name, user.domain, user.id
-            );
+            println!("Created account: {}.", user.verbose());
         },
         AccountCommands::Default(default_args) => {
             handle_default_account_commands(ctx, default_args).await?;

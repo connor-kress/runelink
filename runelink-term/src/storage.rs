@@ -2,8 +2,8 @@ use directories::ProjectDirs;
 use runelink_client::util::get_api_url;
 use runelink_types::{Server, User};
 use serde::{Deserialize, Serialize};
-use std::fs;
 use std::path::PathBuf;
+use std::{fmt, fs};
 use uuid::Uuid;
 
 use crate::error::CliError;
@@ -24,6 +24,18 @@ pub struct AccountConfig {
     pub user_id: Uuid,
     pub name: String,
     pub domain: String,
+}
+
+impl fmt::Display for AccountConfig {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}@{}", self.name, self.domain)
+    }
+}
+
+impl AccountConfig {
+    pub fn verbose(&self) -> String {
+        format!("{} ({})", self, self.user_id)
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
