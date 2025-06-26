@@ -1,9 +1,12 @@
 use runelink_client::{requests, util::get_api_url};
 use uuid::Uuid;
 
-use crate::{error::CliError, storage::TryGetDomain};
+use crate::{
+    error::CliError,
+    storage::{AccountConfig, TryGetDomain},
+};
 
-use super::context::CliContext;
+use super::{context::CliContext, select::select_inline};
 
 #[derive(clap::Args, Debug)]
 pub struct ConfigArgs {
@@ -60,10 +63,10 @@ pub enum DefaultAccountCommands {
 pub struct NameAndDomainArgs {
     /// The account's username
     #[clap(long)]
-    pub name: String,
+    pub name: Option<String>,
     /// The domain name of the account's host
     #[clap(long)]
-    pub domain: String,
+    pub domain: Option<String>,
 }
 
 
@@ -81,12 +84,23 @@ pub async fn handle_default_account_commands(
         }
 
         DefaultAccountCommands::Set(set_args) => {
-            let account = ctx.config.get_account_config_by_name(
-                &set_args.name,
-                &set_args.domain,
-            ).ok_or_else(|| {
-                CliError::InvalidArgument("Account not found.".into())
-            })?.clone();
+            let account = if let (Some(name), Some(domain)) =
+                (&set_args.name, &set_args.domain)
+            {
+                ctx.config.get_account_config_by_name(name, domain)
+                    .ok_or_else(|| CliError::InvalidArgument(
+                        "Account not found.".into()
+                    ))?
+            } else {
+                let tmp = select_inline(
+                    &ctx.config.accounts,
+                    "Select account",
+                    AccountConfig::to_string,
+                )?
+                .ok_or(CliError::Cancellation)?;
+                println!();
+                tmp
+            }.clone();
             ctx.config.default_account = Some(account.user_id);
             ctx.config.save()?;
             println!("Set default account: {}", account.verbose());
