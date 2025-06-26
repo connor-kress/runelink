@@ -17,18 +17,6 @@ pub struct User {
     pub synced_at: Option<OffsetDateTime>,
 }
 
-impl fmt::Display for User {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}@{}", self.name, self.domain)
-    }
-}
-
-impl User {
-    pub fn verbose(&self) -> String {
-        format!("{} ({})", self, self.id)
-    }
-}
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NewUser {
     pub name: String,
@@ -182,6 +170,24 @@ impl NewServerMember {
     }
 }
 
+impl User {
+    pub fn verbose(&self) -> String {
+        format!("{} ({})", self, self.id)
+    }
+}
+
+impl fmt::Display for User {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}@{}", self.name, self.domain)
+    }
+}
+
+impl Server {
+    pub fn verbose(&self) -> String {
+        format!("{} ({})", self.title, self.id)
+    }
+}
+
 impl fmt::Display for Server {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(desc) = &self.description {
@@ -192,6 +198,12 @@ impl fmt::Display for Server {
     }
 }
 
+impl Channel {
+    pub fn verbose(&self) -> String {
+        format!("{} ({})", self.title, self.id)
+    }
+}
+
 impl fmt::Display for Channel {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(desc) = &self.description {
@@ -199,5 +211,19 @@ impl fmt::Display for Channel {
         } else {
             write!(f, "#{}", self.title)
         }
+    }
+}
+
+impl fmt::Display for Message {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}: {}",
+            self.author
+                .as_ref()
+                .map(|u| u.name.as_str())
+                .unwrap_or("anon"),
+            self.body
+        )
     }
 }

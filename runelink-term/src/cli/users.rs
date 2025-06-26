@@ -61,6 +61,7 @@ pub async fn handle_user_commands(
                 println!("{}", user.verbose());
             }
         }
+
         UserCommands::Get(get_args) => {
             ctx.account.ok_or(CliError::MissingAccount)?;
             let api_url = DomainQueryBuilder::new(ctx)

@@ -8,7 +8,7 @@ use super::{
     config::{handle_default_channel_commands, DefaultChannelArgs},
     context::CliContext,
     domain_query::DomainQueryBuilder,
-    input::read_input,
+    input::{read_input, unwrap_or_prompt},
     select::{get_server_selection, ServerSelectionType},
 };
 
@@ -111,7 +111,7 @@ pub async fn handle_channel_commands(
                 )
             }
             for channel in channels {
-                println!("{} ({})", channel.title, channel.id);
+                println!("{}", channel.verbose());
             }
         }
 
@@ -124,7 +124,7 @@ pub async fn handle_channel_commands(
             let channel = requests::fetch_channel_by_id(
                 ctx.client, &api_url, get_args.channel_id
             ).await?;
-            println!("{} ({})", channel.title, channel.id);
+            println!("{}", channel.verbose());
         }
 
         ChannelCommands::Create(create_args) => {
@@ -141,14 +141,10 @@ pub async fn handle_channel_commands(
                     ctx, ServerSelectionType::MemberOnly
                 ).await?
             };
-            let title = if let Some(title) = &create_args.title {
-                title.clone()
-            } else {
-                read_input("Channel Title: ")?
-                    .ok_or_else(|| CliError::InvalidArgument(
-                        "Channel title is required.".into()
-                    ))?
-            };
+            let title = unwrap_or_prompt(
+                create_args.title.clone(),
+                "Channel Title",
+            )?;
             let desc = if create_args.description.is_some() {
                 create_args.description.clone()
             } else if create_args.no_description {
@@ -178,10 +174,7 @@ pub async fn handle_channel_commands(
                 ctx.config.get_or_create_server_config(&server, &account.domain);
                 ctx.config.save()?;
             }
-            println!(
-                "Created channel: {} ({}).",
-                channel.title, channel.id
-            );
+            println!("Created channel: {}", channel.verbose());
         }
 
         ChannelCommands::Default(default_args) => {

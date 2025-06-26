@@ -5,10 +5,8 @@ use uuid::Uuid;
 use crate::error::CliError;
 
 use super::{
-    context::CliContext,
-    domain_query::DomainQueryBuilder,
-    input::read_input,
-    select::get_channel_selection_with_inputs,
+    context::CliContext, domain_query::DomainQueryBuilder,
+    input::unwrap_or_prompt, select::get_channel_selection_with_inputs,
 };
 
 #[derive(clap::Args, Debug)]
@@ -85,12 +83,7 @@ pub async fn handle_message_commands(
                 channel.id,
             ).await?;
             for message in messages.iter().rev() {
-                let author_name = message
-                    .author
-                    .as_ref()
-                    .map(|u| u.name.as_str())
-                    .unwrap_or("Anon");
-                println!("{}: {}", author_name, message.body);
+                println!("{}", message);
             }
         }
 
@@ -103,11 +96,7 @@ pub async fn handle_message_commands(
             let message = requests::fetch_message_by_id(
                 ctx.client, &api_url, get_args.message_id
             ).await?;
-            let author_name = message
-                .author
-                .map(|u| u.name)
-                .unwrap_or("Anon".into());
-            println!("{}: {}", author_name, message.body);
+            println!("{}", message);
         }
 
         MessageCommands::Send(send_args) => {
@@ -117,14 +106,7 @@ pub async fn handle_message_commands(
                 send_args.channel_id,
                 send_args.server_id,
             ).await?;
-            let body = if let Some(body) = &send_args.body {
-                body.clone()
-            } else {
-                read_input("Message: ")?
-                    .ok_or_else(|| CliError::InvalidArgument(
-                        "Message body is required.".into()
-                    ))?
-            };
+            let body = unwrap_or_prompt(send_args.body.clone(), "Message")?;
             let server_api_url = get_api_url(&server.domain);
             let new_message = NewMessage {
                 body,

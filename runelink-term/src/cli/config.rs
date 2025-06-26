@@ -89,7 +89,7 @@ pub async fn handle_default_account_commands(
             })?.clone();
             ctx.config.default_account = Some(account.user_id);
             ctx.config.save()?;
-            println!("Set default account: {}.", account.verbose());
+            println!("Set default account: {}", account.verbose());
         }
     }
     Ok(())
@@ -129,7 +129,7 @@ pub async fn handle_default_server_commands(
                 let server = requests::fetch_server_by_id(
                     ctx.client, &api_url, server_id
                 ).await?;
-                println!("{} ({})", server.title, server.id);
+                println!("{}", server.verbose());
             } else {
                 println!("No default server set.");
             }
@@ -142,7 +142,7 @@ pub async fn handle_default_server_commands(
             ).await?;
             ctx.config.default_server = Some(server.id);
             ctx.config.save()?;
-            println!("Set default server to '{}'.", server.title);
+            println!("Set default server: {}", server.verbose());
         }
     }
     Ok(())
@@ -202,7 +202,7 @@ pub async fn handle_default_channel_commands(
                     let channel = requests::fetch_channel_by_id(
                         ctx.client, &api_url, channel_id
                     ).await?;
-                    println!("{} ({})", channel.title, channel.id);
+                    println!("{}", channel.verbose());
                 } else {
                     println!("No default channel set.");
                     return Ok(());
@@ -224,10 +224,7 @@ pub async fn handle_default_channel_commands(
                     let channel = requests::fetch_channel_by_id(
                         ctx.client, &api_url, channel_id
                     ).await?;
-                    println!(
-                        "\tDefault Channel: {} ({})",
-                        channel.title, channel.id,
-                    );
+                    println!("\tDefault Channel: {}", channel.verbose());
                 } else {
                     println!("\tDefault Channel: None");
                 }

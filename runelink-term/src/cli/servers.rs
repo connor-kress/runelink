@@ -8,7 +8,7 @@ use super::{
     config::{handle_default_server_commands, DefaultServerArgs},
     context::CliContext,
     domain_query::DomainQueryBuilder,
-    input::read_input,
+    input::{read_input, unwrap_or_prompt},
     select::{get_server_selection, ServerSelectionType},
 };
 
@@ -98,7 +98,7 @@ pub async fn handle_server_commands(
                 println!("{}", domain);
                 for membership in memberships {
                     let server = &membership.server;
-                    print!("    {} ({})", server.title, server.id);
+                    print!("    {}", server.verbose());
                     if membership.role == ServerRole::Admin {
                         println!(" - admin");
                     } else {
@@ -127,15 +127,11 @@ pub async fn handle_server_commands(
             // TODO: servers can't handle cross host server membership yet.
             // We need to sync the membership with another request to the home
             // server too.
-            let title = if let Some(title) = &create_args.title {
-                title.clone()
-            } else {
-                read_input("Server Title: ")?
-                    .ok_or_else(|| CliError::InvalidArgument(
-                        "Server title is required.".into()
-                    ))?
-            };
-            let desc = if create_args.description.is_some() {
+            let title = unwrap_or_prompt(
+                create_args.title.clone(),
+                "Server Title",
+            )?;
+            let description = if create_args.description.is_some() {
                 create_args.description.clone()
             } else if create_args.no_description {
                 None
@@ -144,7 +140,7 @@ pub async fn handle_server_commands(
             };
             let new_server = NewServer {
                 title,
-                description: desc,
+                description,
                 user_domain: account.domain.clone(),
                 user_id: account.user_id,
             };
@@ -153,10 +149,7 @@ pub async fn handle_server_commands(
             ).await?;
             ctx.config.get_or_create_server_config(&server, &account.domain);
             ctx.config.save()?;
-            println!(
-                "Created server: {} ({}).",
-                server.title, server.id
-            );
+            println!("Created server: {}", server.verbose());
         }
 
         ServerCommands::Join(join_args) => {
@@ -183,7 +176,7 @@ pub async fn handle_server_commands(
             ).await?;
             ctx.config.get_or_create_server_config(&server, &account.domain);
             ctx.config.save()?;
-            println!("Joined server: {} ({}).", server.title, server.id);
+            println!("Joined server: {}", server.verbose());
         }
 
         ServerCommands::Default(default_args) => {
