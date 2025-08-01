@@ -1,18 +1,19 @@
 use axum::{
-    routing::{get, post},
     Router,
+    routing::{get, post},
 };
 use config::ServerConfig;
 use sqlx::migrate::Migrator;
 use state::AppState;
 use std::sync::Arc;
 use tokio::net::TcpListener;
-mod auth;
+
 mod api;
+mod auth;
 mod config;
 mod db;
-mod queries;
 mod error;
+mod queries;
 mod state;
 
 // Embed all sql migrations in binary
@@ -35,34 +36,38 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Migrations are up to date.");
 
     let app = Router::new()
+        // Mount auth router (includes OIDC discovery and auth endpoints)
+        .merge(auth::router())
+        // API routes
         .route("/api/ping", get(api::ping))
-
         .route("/api/users", get(api::list_users).post(api::create_user))
-        .route("/api/users/find", get(api::find_user_by_name_domain_handler))
         .route(
-            "/api/users/{user_id}",
-            get(api::get_user_by_id_handler),
+            "/api/users/find",
+            get(api::find_user_by_name_domain_handler),
         )
-        .route("/api/users/{user_id}/domains",
+        .route("/api/users/{user_id}", get(api::get_user_by_id_handler))
+        .route(
+            "/api/users/{user_id}/domains",
             get(api::get_user_associated_domains),
         )
-        .route("/api/users/{user_id}/servers",
+        .route(
+            "/api/users/{user_id}/servers",
             get(api::list_server_memberships_by_user),
         )
-
         .route("/api/messages", get(api::list_messages))
         .route(
             "/api/messages/{message_id}",
             get(api::get_message_by_id_handler),
         )
-
         .route("/api/channels", get(api::list_channels))
-        .route("/api/channels/{channel_id}", get(api::get_channel_by_id_handler))
+        .route(
+            "/api/channels/{channel_id}",
+            get(api::get_channel_by_id_handler),
+        )
         .route(
             "/api/channels/{channel_id}/messages",
             get(api::list_messages_by_channel).post(api::create_message),
         )
-
         .route(
             "/api/servers",
             get(api::list_servers).post(api::create_server),
@@ -95,10 +100,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "/api/servers/{server_id}/remote-memberships",
             post(api::create_remote_membership),
         )
-
         .route("/api/hosts", get(api::list_hosts))
         .route("/api/hosts/{domain}", get(api::get_host))
-
         .with_state(app_state);
 
     let ip_addr = format!("0.0.0.0:{}", config.port);

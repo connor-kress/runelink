@@ -3,7 +3,7 @@ use crossterm::{
     event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
     execute,
     style::Print,
-    terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType},
+    terminal::{Clear, ClearType, disable_raw_mode, enable_raw_mode},
 };
 use runelink_client::{requests, util::get_api_url};
 use runelink_types::{Channel, Server};
@@ -28,8 +28,12 @@ where
     }
     let mut stdout = std::io::stdout();
     enable_raw_mode()?;
-    execute!(stdout, Hide)?;
-    execute!(stdout, MoveToColumn(0), Print(format!("{}\n", prompt)))?;
+    execute!(
+        stdout,
+        Hide,
+        MoveToColumn(0),
+        Print(format!("{}\n", prompt))
+    )?;
 
     for (i, item) in items.iter().enumerate() {
         let prefix = if i == 0 { "> " } else { "  " };
@@ -70,9 +74,10 @@ where
                     execute!(
                         stdout,
                         MoveUp(items.len() as u16),
-                        Clear(ClearType::FromCursorDown),
                         MoveToColumn(0),
-                        Print(format!("> {}\n", display(&items[selected])))
+                        Clear(ClearType::FromCursorDown),
+                        Print(format!("> {}\n", display(&items[selected]))),
+                        MoveToColumn(0),
                     )?;
                     stdout.flush()?;
                     disable_raw_mode()?;
@@ -114,75 +119,62 @@ where
 #[derive(Clone, Debug)]
 pub enum ServerSelectionType<'a> {
     MemberOnly,
-    All {
-        domain: &'a str,
-    },
-    NonMemberOnly{
-        domain: &'a str,
-    },
+    All { domain: &'a str },
+    NonMemberOnly { domain: &'a str },
 }
 
 pub async fn get_server_selection(
     ctx: &CliContext<'_>,
     selection_type: ServerSelectionType<'_>,
 ) -> Result<Server, CliError> {
-        let servers = match selection_type {
-            ServerSelectionType::All { domain } => {
-                let api_url = get_api_url(domain);
-                requests::fetch_servers(
-                    ctx.client,
-                    &api_url,
-                ).await?
-            }
-            ServerSelectionType::MemberOnly => {
-                let account = ctx.account.ok_or(CliError::MissingAccount)?;
-                let account_api_url = get_api_url(&account.domain);
-                requests::fetch_servers_by_user(
-                    ctx.client,
-                    &account_api_url,
-                    account.user_id,
-                ).await?
-            }
-            ServerSelectionType::NonMemberOnly{ domain } => {
-                let account = ctx.account.ok_or(CliError::MissingAccount)?;
-                let account_api_url = get_api_url(&account.domain);
-                let api_url = get_api_url(domain);
-                let all_servers = requests::fetch_servers(
-                    ctx.client,
-                    &api_url,
-                ).await?;
-                let member_servers = requests::fetch_servers_by_user(
-                    ctx.client,
-                    &account_api_url,
-                    account.user_id,
-                ).await?;
-                let member_server_ids = member_servers
-                    .iter()
-                    .map(|s| s.id)
-                    .collect::<HashSet<Uuid>>();
-                all_servers
+    let servers = match selection_type {
+        ServerSelectionType::All { domain } => {
+            let api_url = get_api_url(domain);
+            requests::fetch_servers(ctx.client, &api_url).await?
+        }
+        ServerSelectionType::MemberOnly => {
+            let account = ctx.account.ok_or(CliError::MissingAccount)?;
+            let account_api_url = get_api_url(&account.domain);
+            requests::fetch_servers_by_user(
+                ctx.client,
+                &account_api_url,
+                account.user_id,
+            )
+            .await?
+        }
+        ServerSelectionType::NonMemberOnly { domain } => {
+            let account = ctx.account.ok_or(CliError::MissingAccount)?;
+            let account_api_url = get_api_url(&account.domain);
+            let api_url = get_api_url(domain);
+            let all_servers =
+                requests::fetch_servers(ctx.client, &api_url).await?;
+            let member_servers = requests::fetch_servers_by_user(
+                ctx.client,
+                &account_api_url,
+                account.user_id,
+            )
+            .await?;
+            let member_server_ids = member_servers
+                .iter()
+                .map(|s| s.id)
+                .collect::<HashSet<Uuid>>();
+            all_servers
                 .into_iter()
                 .filter(|s| !member_server_ids.contains(&s.id))
                 .collect()
-            }
-        };
-        if servers.is_empty() {
-            return Err(CliError::NoActionPossible(
-                format!(
-                    "No applicable servers (viewing {:?}).\n\
-                    For more information, try `rune server --help`.",
-                    selection_type,
-                )
-            ));
         }
-        let server = select_inline(
-            &servers,
-            "Select server",
-            Server::to_string,
-        )?
+    };
+    if servers.is_empty() {
+        return Err(CliError::NoActionPossible(format!(
+            "No applicable servers (viewing {:?}).\n\
+                    For more information, try `rune server --help`.",
+            selection_type,
+        )));
+    }
+    let server = select_inline(&servers, "Select server", Server::to_string)?
         .ok_or(CliError::Cancellation)?;
-        println!();
-        Ok(server.clone())
+    println!();
+    Ok(server.clone())
 }
 
 pub async fn get_channel_selection(
@@ -190,23 +182,21 @@ pub async fn get_channel_selection(
     api_url: &str,
     server_id: Uuid,
 ) -> Result<Channel, CliError> {
-        let channels = requests::fetch_channels_by_server(
-            ctx.client, api_url, server_id
-        ).await?;
-        if channels.is_empty() {
-            return Err(CliError::NoActionPossible(
-                "No channels available.\n\
-                For more information, try `rune channel --help`.".into()
-            ));
-        }
-        let channel = select_inline(
-            &channels,
-            "Select channel",
-            Channel::to_string,
-        )?
-        .ok_or(CliError::Cancellation)?;
-        println!();
-        Ok(channel.clone())
+    let channels =
+        requests::fetch_channels_by_server(ctx.client, api_url, server_id)
+            .await?;
+    if channels.is_empty() {
+        return Err(CliError::NoActionPossible(
+            "No channels available.\n\
+                For more information, try `rune channel --help`."
+                .into(),
+        ));
+    }
+    let channel =
+        select_inline(&channels, "Select channel", Channel::to_string)?
+            .ok_or(CliError::Cancellation)?;
+    println!();
+    Ok(channel.clone())
 }
 
 pub async fn get_channel_selection_with_inputs(
@@ -217,42 +207,34 @@ pub async fn get_channel_selection_with_inputs(
     match (channel_id, server_id) {
         (Some(channel_id), Some(server_id)) => {
             let api_url = ctx.config.try_get_server_api_url(server_id)?;
-            let server = requests::fetch_server_by_id(
-                ctx.client,
-                &api_url,
-                server_id,
-            ).await?;
-            let channel = requests::fetch_channel_by_id(
-                ctx.client,
-                &api_url,
-                channel_id,
-            ).await?;
+            let server =
+                requests::fetch_server_by_id(ctx.client, &api_url, server_id)
+                    .await?;
+            let channel =
+                requests::fetch_channel_by_id(ctx.client, &api_url, channel_id)
+                    .await?;
             Ok((server, channel))
-        },
-        (Some(_channel_id), None) => {
-            Err(CliError::MissingContext(
-                "Server ID must be passed with channel ID.".into(),
-            ))
         }
+        (Some(_channel_id), None) => Err(CliError::MissingContext(
+            "Server ID must be passed with channel ID.".into(),
+        )),
         (None, Some(server_id)) => {
             let api_url = ctx.config.try_get_server_api_url(server_id)?;
-            let server = requests::fetch_server_by_id(
-                ctx.client,
-                &api_url,
-                server_id,
-            ).await?;
+            let server =
+                requests::fetch_server_by_id(ctx.client, &api_url, server_id)
+                    .await?;
             let channel =
                 get_channel_selection(ctx, &api_url, server.id).await?;
             Ok((server, channel))
-        },
+        }
         (None, None) => {
-            let server = get_server_selection(
-                ctx, ServerSelectionType::MemberOnly
-            ).await?;
+            let server =
+                get_server_selection(ctx, ServerSelectionType::MemberOnly)
+                    .await?;
             let api_url = get_api_url(&server.domain);
             let channel =
                 get_channel_selection(ctx, &api_url, server.id).await?;
             Ok((server, channel))
-        },
+        }
     }
 }

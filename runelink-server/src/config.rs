@@ -34,11 +34,17 @@ impl ServerConfig {
         })
     }
 
+    /// Includes port if it's not the default port (7000)
     pub fn local_domain_with_port(&self) -> String {
         if self.port == 7000 {
             self.local_domain.clone()
         } else {
             format!("{}:{}", &self.local_domain, self.port)
         }
+    }
+
+    /// Always includes port for machine-to-machine communication
+    pub fn local_domain_with_explicit_port(&self) -> String {
+        format!("{}:{}", &self.local_domain, self.port)
     }
 }
