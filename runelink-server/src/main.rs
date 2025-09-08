@@ -39,69 +39,69 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Mount auth router (includes OIDC discovery and auth endpoints)
         .merge(auth::router())
         // API routes
-        .route("/api/ping", get(api::ping))
-        .route("/api/users", get(api::list_users).post(api::create_user))
+        .route("/ping", get(api::ping))
+        .route("/users", get(api::list_users).post(api::create_user))
         .route(
-            "/api/users/find",
+            "/users/find",
             get(api::find_user_by_name_domain_handler),
         )
-        .route("/api/users/{user_id}", get(api::get_user_by_id_handler))
+        .route("/users/{user_id}", get(api::get_user_by_id_handler))
         .route(
-            "/api/users/{user_id}/domains",
+            "/users/{user_id}/domains",
             get(api::get_user_associated_domains),
         )
         .route(
-            "/api/users/{user_id}/servers",
+            "/users/{user_id}/servers",
             get(api::list_server_memberships_by_user),
         )
-        .route("/api/messages", get(api::list_messages))
+        .route("/messages", get(api::list_messages))
         .route(
-            "/api/messages/{message_id}",
+            "/messages/{message_id}",
             get(api::get_message_by_id_handler),
         )
-        .route("/api/channels", get(api::list_channels))
+        .route("/channels", get(api::list_channels))
         .route(
-            "/api/channels/{channel_id}",
+            "/channels/{channel_id}",
             get(api::get_channel_by_id_handler),
         )
         .route(
-            "/api/channels/{channel_id}/messages",
+            "/channels/{channel_id}/messages",
             get(api::list_messages_by_channel).post(api::create_message),
         )
         .route(
-            "/api/servers",
+            "/servers",
             get(api::list_servers).post(api::create_server),
         )
         .route(
-            "/api/servers/{server_id}",
+            "/servers/{server_id}",
             get(api::get_server_by_id_handler),
         )
         .route(
-            "/api/servers/{server_id}/channels",
+            "/servers/{server_id}/channels",
             get(api::list_channels_by_server).post(api::create_channel),
         )
         .route(
-            "/api/servers/{server_id}/messages",
+            "/servers/{server_id}/messages",
             get(api::list_messages_by_server),
         )
         .route(
-            "/api/servers/{server_id}/with_channels",
+            "/servers/{server_id}/with_channels",
             get(api::get_server_with_channels_handler),
         )
         .route(
-            "/api/servers/{server_id}/users",
+            "/servers/{server_id}/users",
             get(api::list_server_members).post(api::add_server_member),
         )
         .route(
-            "/api/servers/{server_id}/users/{user_id}",
+            "/servers/{server_id}/users/{user_id}",
             get(api::get_server_member),
         )
         .route(
-            "/api/servers/{server_id}/remote-memberships",
+            "/servers/{server_id}/remote-memberships",
             post(api::create_remote_membership),
         )
-        .route("/api/hosts", get(api::list_hosts))
-        .route("/api/hosts/{domain}", get(api::get_host))
+        .route("/hosts", get(api::list_hosts))
+        .route("/hosts/{domain}", get(api::get_host))
         .with_state(app_state);
 
     let ip_addr = format!("0.0.0.0:{}", config.port);

@@ -4,14 +4,14 @@ use axum::{
     response::IntoResponse,
 };
 
-/// GET /api/hosts
+/// GET /hosts
 pub async fn list_hosts(
     State(state): State<AppState>,
 ) -> Result<impl IntoResponse, ApiError> {
     queries::get_all_hosts(&state.db_pool).await.map(Json)
 }
 
-/// GET /api/hosts/{domain}
+/// GET /hosts/{domain}
 pub async fn get_host(
     State(state): State<AppState>,
     Path(domain): Path<String>,

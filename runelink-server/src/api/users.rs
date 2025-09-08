@@ -14,7 +14,7 @@ pub struct GetUserByNameDomainQuery {
     domain: String,
 }
 
-/// POST /api/users
+/// POST /users
 pub async fn create_user(
     State(state): State<AppState>,
     Json(new_user): Json<NewUser>,
@@ -23,14 +23,14 @@ pub async fn create_user(
     Ok((StatusCode::CREATED, Json(user)))
 }
 
-/// GET /api/users
+/// GET /users
 pub async fn list_users(
     State(state): State<AppState>,
 ) -> Result<impl IntoResponse, ApiError> {
     queries::get_all_users(&state.db_pool).await.map(Json)
 }
 
-/// GET /api/users/{user_id}
+/// GET /users/{user_id}
 pub async fn get_user_by_id_handler(
     State(state): State<AppState>,
     Path(user_id): Path<Uuid>,
@@ -38,7 +38,7 @@ pub async fn get_user_by_id_handler(
     queries::get_user_by_id(&state.db_pool, user_id).await.map(Json)
 }
 
-/// GET /api/users/find?name=...&domain=...
+/// GET /users/find?name=...&domain=...
 pub async fn find_user_by_name_domain_handler(
     State(state): State<AppState>,
     Query(params): Query<GetUserByNameDomainQuery>,
@@ -52,7 +52,7 @@ pub async fn find_user_by_name_domain_handler(
     .map(Json)
 }
 
-/// GET /api/users/{user_id}/domains
+/// GET /users/{user_id}/domains
 pub async fn get_user_associated_domains(
     State(state): State<AppState>,
     Path(user_id): Path<Uuid>,

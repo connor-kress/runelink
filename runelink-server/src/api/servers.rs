@@ -7,7 +7,7 @@ use axum::{
 use runelink_types::{NewServer, NewServerMember, ServerWithChannels};
 use uuid::Uuid;
 
-/// POST /api/servers
+/// POST /servers
 pub async fn create_server(
     State(state): State<AppState>,
     Json(new_server): Json<NewServer>,
@@ -26,14 +26,14 @@ pub async fn create_server(
     Ok((StatusCode::CREATED, Json(server)))
 }
 
-/// GET /api/servers
+/// GET /servers
 pub async fn list_servers(
     State(state): State<AppState>,
 ) -> Result<impl IntoResponse, ApiError> {
     queries::get_all_servers(&state).await.map(Json)
 }
 
-/// GET /api/servers/{server_id}
+/// GET /servers/{server_id}
 pub async fn get_server_by_id_handler(
     State(state): State<AppState>,
     Path(server_id): Path<Uuid>,
@@ -41,7 +41,7 @@ pub async fn get_server_by_id_handler(
     queries::get_server_by_id(&state, server_id).await.map(Json)
 }
 
-/// GET /api/servers/{server_id}/with_channels
+/// GET /servers/{server_id}/with_channels
 pub async fn get_server_with_channels_handler(
     State(state): State<AppState>,
     Path(server_id): Path<Uuid>,
@@ -56,7 +56,7 @@ pub async fn get_server_with_channels_handler(
     }))
 }
 
-/// GET /api/users/{user_id}/servers
+/// GET /users/{user_id}/servers
 pub async fn list_server_memberships_by_user(
     State(state): State<AppState>,
     Path(user_id): Path<Uuid>,

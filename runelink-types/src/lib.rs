@@ -23,7 +23,7 @@ pub struct NewUser {
     pub domain: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SignupRequest {
     pub name: String,
     pub password: String,

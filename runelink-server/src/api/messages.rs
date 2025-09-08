@@ -7,7 +7,7 @@ use axum::{
 use runelink_types::NewMessage;
 use uuid::Uuid;
 
-/// POST /api/channels/{channel_id}/messages
+/// POST /channels/{channel_id}/messages
 pub async fn create_message(
     State(state): State<AppState>,
     Path(channel_id): Path<Uuid>,
@@ -18,14 +18,14 @@ pub async fn create_message(
         .map(|message| (StatusCode::CREATED, Json(message)))
 }
 
-/// GET /api/messages
+/// GET /messages
 pub async fn list_messages(
     State(state): State<AppState>,
 ) -> Result<impl IntoResponse, ApiError> {
     queries::get_all_messages(&state.db_pool).await.map(Json)
 }
 
-/// GET /api/servers/{server_id}/messages
+/// GET /servers/{server_id}/messages
 pub async fn list_messages_by_server(
     State(state): State<AppState>,
     Path(server_id): Path<Uuid>,
@@ -33,7 +33,7 @@ pub async fn list_messages_by_server(
     queries::get_messages_by_server(&state.db_pool, server_id).await.map(Json)
 }
 
-/// GET /api/channels/{channel_id}/messages
+/// GET /channels/{channel_id}/messages
 pub async fn list_messages_by_channel(
     State(state): State<AppState>,
     Path(channel_id): Path<Uuid>,
@@ -41,7 +41,7 @@ pub async fn list_messages_by_channel(
     queries::get_messages_by_channel(&state.db_pool, channel_id).await.map(Json)
 }
 
-/// GET /api/messages/{message_id}
+/// GET /messages/{message_id}
 pub async fn get_message_by_id_handler(
     State(state): State<AppState>,
     Path(message_id): Path<Uuid>,

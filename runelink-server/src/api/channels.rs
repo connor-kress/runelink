@@ -7,7 +7,7 @@ use axum::{
 use runelink_types::NewChannel;
 use uuid::Uuid;
 
-/// POST /api/servers/{channel_id}/channels
+/// POST /servers/{channel_id}/channels
 pub async fn create_channel(
     State(state): State<AppState>,
     Path(server_id): Path<Uuid>,
@@ -18,14 +18,14 @@ pub async fn create_channel(
         .map(|channel| (StatusCode::CREATED, Json(channel)))
 }
 
-/// GET /api/channels
+/// GET /channels
 pub async fn list_channels(
     State(state): State<AppState>,
 ) -> Result<impl IntoResponse, ApiError> {
     queries::get_all_channels(&state.db_pool).await.map(Json)
 }
 
-/// GET /api/servers/{channel_id}/channels
+/// GET /servers/{channel_id}/channels
 pub async fn list_channels_by_server(
     State(state): State<AppState>,
     Path(server_id): Path<Uuid>,
@@ -33,7 +33,7 @@ pub async fn list_channels_by_server(
     queries::get_channels_by_server(&state.db_pool, server_id).await.map(Json)
 }
 
-/// GET /api/channels/{channel_id}
+/// GET /channels/{channel_id}
 pub async fn get_channel_by_id_handler(
     State(state): State<AppState>,
     Path(channel_id): Path<Uuid>,

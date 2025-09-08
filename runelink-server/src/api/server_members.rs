@@ -8,7 +8,7 @@ use runelink_client::{requests, util::get_api_url};
 use runelink_types::{NewServerMember, ServerMembership};
 use uuid::Uuid;
 
-/// POST /api/servers/{server_id}/users
+/// POST /servers/{server_id}/users
 pub async fn add_server_member(
     State(state): State<AppState>,
     Path(server_id): Path<Uuid>,
@@ -51,7 +51,7 @@ pub async fn add_server_member(
     Ok((StatusCode::CREATED, Json(member)))
 }
 
-/// GET /api/servers/{server_id}/users
+/// GET /servers/{server_id}/users
 pub async fn list_server_members(
     State(state): State<AppState>,
     Path(server_id): Path<Uuid>,
@@ -59,7 +59,7 @@ pub async fn list_server_members(
     queries::get_all_server_members(&state.db_pool, server_id).await.map(Json)
 }
 
-/// GET /api/servers/{server_id}/users/{user_id}
+/// GET /servers/{server_id}/users/{user_id}
 pub async fn get_server_member(
     State(state): State<AppState>,
     Path((server_id, user_id)): Path<(Uuid, Uuid)>,
@@ -69,7 +69,7 @@ pub async fn get_server_member(
         .map(Json)
 }
 
-/// POST /api/servers/{server_id}/remote-memberships
+/// POST /servers/{server_id}/remote-memberships
 pub async fn create_remote_membership(
     State(state): State<AppState>,
     Path(server_id): Path<Uuid>,
