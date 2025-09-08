@@ -12,3 +12,4 @@ thiserror = "2.0.12"
 time = { version = "0.3.41", features = ["serde", "formatting", "parsing"] }
 tokio = { version = "1.44.2", features = ["rt-multi-thread", "macros"] }
 uuid = { version = "1.16.0", features = ["v4", "serde"] }
+log = "0.4.28"

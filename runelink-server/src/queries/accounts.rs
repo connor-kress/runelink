@@ -22,6 +22,7 @@ pub async fn insert_local_account(
     .map_err(ApiError::from)
 }
 
+#[allow(dead_code)]
 pub async fn get_local_account(
     pool: &DbPool,
     user_id: Uuid,

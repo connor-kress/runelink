@@ -22,7 +22,6 @@ pub async fn fetch_servers(
     api_url: &str,
 ) -> Result<Vec<Server>> {
     let url = format!("{}/servers", api_url);
-    println!("fetching servers from {}", url);
     fetch_json::<Vec<Server>>(client, &url).await
 }
 
