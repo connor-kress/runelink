@@ -21,7 +21,12 @@ pub struct User {
 pub struct NewUser {
     pub name: String,
     pub domain: String,
-    // pub password: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SignupRequest {
+    pub name: String,
+    pub password: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]

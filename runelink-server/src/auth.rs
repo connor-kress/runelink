@@ -1,11 +1,16 @@
-use crate::state::AppState;
-use crate::{db::DbPool, error::ApiError, queries};
+use crate::{db::DbPool, error::ApiError, queries, state::AppState};
+use argon2::{
+    password_hash::{rand_core::OsRng, SaltString},
+    Argon2, PasswordHasher,
+};
+use axum::response::IntoResponse;
 use axum::{
-    Json, Router,
     extract::State,
     routing::{get, post},
+    Json, Router,
 };
-use runelink_types::User;
+use reqwest::StatusCode;
+use runelink_types::{NewUser, SignupRequest, User};
 use serde_json::json;
 use uuid::Uuid;
 
@@ -184,11 +189,30 @@ pub async fn register_client() -> Json<serde_json::Value> {
     }))
 }
 
-/// User signup endpoint (stubbed for now)
-pub async fn signup() -> Json<serde_json::Value> {
-    // TODO: Implement user account creation with password hashing
-    Json(json!({
-        "error": "not_implemented",
-        "error_description": "User signup not yet implemented"
-    }))
+/// POST /auth/signup
+pub async fn signup(
+    State(state): State<AppState>,
+    Json(req): Json<SignupRequest>,
+) -> Result<impl IntoResponse, ApiError> {
+    // Insert user
+    let new_user = NewUser {
+        name: req.name,
+        domain: state.config.local_domain.clone(),
+    };
+    let user = queries::insert_user(&state.db_pool, &new_user).await?;
+
+    // Hash password
+    let salt = SaltString::generate(&mut OsRng);
+    let argon2 = Argon2::default();
+    let password_hash = argon2
+        .hash_password(req.password.as_bytes(), &salt)
+        .map_err(|e| ApiError::HashingError(e.to_string()))?
+        .to_string();
+
+    // Insert local account
+    let _account = queries::insert_local_account(
+        &state.db_pool, user.id, &password_hash
+    ).await?;
+
+    Ok((StatusCode::CREATED, Json(user)))
 }

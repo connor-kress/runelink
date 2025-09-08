@@ -1,9 +1,11 @@
+mod accounts;
 mod channels;
 mod hosts;
 mod messages;
 mod server_members;
 mod servers;
 mod users;
+pub use accounts::*;
 pub use channels::*;
 pub use hosts::*;
 pub use messages::*;
