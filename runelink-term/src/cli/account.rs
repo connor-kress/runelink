@@ -1,7 +1,7 @@
 use runelink_client::{requests, util::get_api_url};
-use runelink_types::NewUser;
+use runelink_types::SignupRequest;
 
-use crate::{error::CliError, util};
+use crate::{cli::input::read_input, error::CliError, util};
 
 use super::{
     config::{handle_default_account_commands, DefaultAccountArgs},
@@ -57,6 +57,7 @@ pub async fn handle_account_commands(
             }
 
         },
+
         AccountCommands::Add(add_args) => {
             let domain = unwrap_or_prompt(add_args.domain.clone(), "Domain")?;
             let name = unwrap_or_prompt(add_args.name.clone(), "Name")?;
@@ -71,17 +72,23 @@ pub async fn handle_account_commands(
             ctx.config.save()?;
             println!("Added account: {}", user.verbose());
         },
+
         AccountCommands::Create(create_args) => {
             let domain = unwrap_or_prompt(create_args.domain.clone(), "Domain")?;
             let name = unwrap_or_prompt(create_args.name.clone(), "Name")?;
+            let password = read_input("Password: ")?.ok_or_else(|| {
+                CliError::InvalidArgument("Password is required.".into())
+            })?;
             let api_url = get_api_url(&domain);
-            let new_user = NewUser { name, domain };
-            let user =
-                requests::create_user(ctx.client, &api_url, &new_user).await?;
+            let signup_req = SignupRequest { name, password };
+            let user = requests::auth::signup(
+                ctx.client, &api_url, &signup_req
+            ).await?;
             ctx.config.get_or_create_account_config(&user);
             ctx.config.save()?;
             println!("Created account: {}", user.verbose());
         },
+
         AccountCommands::Default(default_args) => {
             handle_default_account_commands(ctx, default_args).await?;
         },

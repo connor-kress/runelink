@@ -2,6 +2,7 @@ use reqwest::Client;
 
 use crate::error::Result;
 
+pub mod auth;
 pub mod channels;
 pub mod generic;
 pub mod messages;
