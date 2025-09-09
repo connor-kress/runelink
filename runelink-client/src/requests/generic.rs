@@ -8,7 +8,7 @@ pub async fn fetch_text(
     client: &Client,
     url: &str,
 ) -> Result<String> {
-    debug!("Fetching {}", url);
+    debug!("fetching text: {}", url);
     let response = client
         .get(url)
         .send()
@@ -34,7 +34,7 @@ pub async fn fetch_json<T>(
 where
     T: DeserializeOwned
 {
-    debug!("Fetching {}", url);
+    debug!("fetching json: {}", url);
     let response = client
         .get(url)
         .send()
@@ -62,7 +62,11 @@ where
     I: Serialize,
     O: DeserializeOwned,
 {
-    debug!("Posting to {}", url);
+    debug!(
+        "posting json: {}\n{}",
+        url,
+        serde_json::to_string_pretty(request_body).unwrap()
+    );
     let response = client
         .post(url)
         .json(request_body)
