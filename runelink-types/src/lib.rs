@@ -1,6 +1,8 @@
+use base64::{engine::general_purpose, Engine as _};
+use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -29,7 +31,7 @@ pub struct SignupRequest {
     pub password: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
 pub struct LocalAccount {
     pub user_id: Uuid,
@@ -38,6 +40,38 @@ pub struct LocalAccount {
     pub created_at: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339")]
     pub updated_at: OffsetDateTime,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
+pub struct RefreshToken {
+    pub token: String,
+    pub user_id: Uuid,
+    pub client_id: String,
+    #[serde(with = "time::serde::rfc3339")]
+    pub issued_at: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
+    pub expires_at: OffsetDateTime,
+    pub revoked: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TokenRequest {
+    pub grant_type: String,
+    pub username: Option<String>, // password grant
+    pub password: Option<String>, // password grant
+    pub refresh_token: Option<String>, // refresh_token grant
+    pub scope: Option<String>,
+    pub client_id: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct TokenResponse {
+    pub access_token: String,
+    pub token_type: String, // always "Bearer"
+    pub expires_in: i64,
+    pub refresh_token: String,
+    pub scope: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -230,5 +264,22 @@ impl fmt::Display for Message {
                 .unwrap_or("anon"),
             self.body
         )
+    }
+}
+
+impl RefreshToken {
+    pub fn new(user_id: Uuid, client_id: String, lifetime: Duration) -> Self {
+        let mut bytes = [0u8; 32]; // 256 bits
+        rand::rng().fill_bytes(&mut bytes);
+        let token_str = general_purpose::URL_SAFE_NO_PAD.encode(bytes);
+        let now = OffsetDateTime::now_utc();
+        Self {
+            token: token_str,
+            user_id,
+            client_id: client_id,
+            issued_at: now,
+            expires_at: now + lifetime,
+            revoked: false,
+        }
     }
 }

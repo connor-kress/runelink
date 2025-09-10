@@ -1,3 +1,5 @@
+use runelink_client::util::get_api_url;
+
 #[derive(thiserror::Error, Debug)]
 pub enum ConfigError {
     #[error("Missing environment variable: {0}")]
@@ -46,5 +48,9 @@ impl ServerConfig {
     /// Always includes port for machine-to-machine communication
     pub fn local_domain_with_explicit_port(&self) -> String {
         format!("{}:{}", &self.local_domain, self.port)
+    }
+
+    pub fn api_url_with_port(&self) -> String {
+        get_api_url(self.local_domain_with_explicit_port().as_str())
     }
 }

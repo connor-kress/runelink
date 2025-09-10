@@ -1,6 +1,6 @@
 use reqwest::Client;
 use serde::{de::DeserializeOwned, Serialize};
-use log::debug;
+use log::info;
 
 use crate::error::{Error, Result};
 
@@ -8,7 +8,7 @@ pub async fn fetch_text(
     client: &Client,
     url: &str,
 ) -> Result<String> {
-    debug!("fetching text: {}", url);
+    info!("fetching text: {}", url);
     let response = client
         .get(url)
         .send()
@@ -34,7 +34,7 @@ pub async fn fetch_json<T>(
 where
     T: DeserializeOwned
 {
-    debug!("fetching json: {}", url);
+    info!("fetching json: {}", url);
     let response = client
         .get(url)
         .send()
@@ -62,7 +62,7 @@ where
     I: Serialize,
     O: DeserializeOwned,
 {
-    debug!(
+    info!(
         "posting json: {}\n{}",
         url,
         serde_json::to_string_pretty(request_body).unwrap()

@@ -25,11 +25,14 @@ pub enum ApiError {
     #[error("Unauthorized: {0}")]
     AuthError(String),
 
+    #[error("Bad request: {0}")]
+    BadRequest(String),
+
     #[error("Unknown error: {0}")]
     Unknown(String),
 
-    #[error("Hashing error: {0}")]
-    HashingError(String),
+    #[error("Internal error: {0}")]
+    Internal(String),
 
     #[error("Upstream error: {0}")]
     Client(#[from] ClientError),
@@ -70,11 +73,12 @@ impl IntoResponse for ApiError {
         let status = match self {
             ApiError::DbConnectionError(_)
             | ApiError::DatabaseError(_)
-            | ApiError::HashingError(_)
+            | ApiError::Internal(_)
             | ApiError::Unknown(_) => StatusCode::INTERNAL_SERVER_ERROR,
             ApiError::UniqueViolation => StatusCode::CONFLICT,
             ApiError::NotFound => StatusCode::NOT_FOUND,
             ApiError::AuthError(_) => StatusCode::UNAUTHORIZED,
+            ApiError::BadRequest(_) => StatusCode::BAD_REQUEST,
             ApiError::Client(ref client_err) => match client_err {
                 ClientError::Status(code, _) => *code,
                 _ => StatusCode::BAD_GATEWAY,
