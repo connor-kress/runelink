@@ -37,7 +37,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let app = Router::new()
         // Mount auth router (includes OIDC discovery and auth endpoints)
-        .merge(auth::router())
+        .merge(api::auth::router())
         // API routes
         .route("/ping", get(api::ping))
         .route("/users", get(api::list_users).post(api::create_user))

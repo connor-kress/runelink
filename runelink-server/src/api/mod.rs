@@ -1,6 +1,7 @@
 use axum::{extract::Query, response::IntoResponse};
 use serde::Deserialize;
 
+pub mod auth;
 mod channels;
 mod hosts;
 mod messages;
