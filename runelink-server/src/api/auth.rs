@@ -87,6 +87,7 @@ impl JWTClaims {
         user_id: Uuid,
         client_id: String,
         api_url: String,
+        scope: String,
         lifetime: Duration,
     ) -> Self {
         let now = OffsetDateTime::now_utc().unix_timestamp();
@@ -96,7 +97,7 @@ impl JWTClaims {
             aud: vec![api_url],
             exp: now + lifetime.whole_seconds(),
             iat: now,
-            scope: "openid".into(), // TODO: inherit original scopes?
+            scope,
             client_id,
         }
     }
@@ -137,11 +138,13 @@ pub async fn token(
                 ))?;
 
             // Create JWT
+            let lifetime = Duration::hours(1);
             let claims = JWTClaims::new(
                 user.id,
-                req.client_id.clone().unwrap_or_else(|| "default".to_string()),
+                req.client_id.unwrap_or_else(|| "default".into()),
                 state.config.api_url_with_port(),
-                Duration::hours(1),
+                req.scope.unwrap_or_else(|| "openid".into()),
+                lifetime,
             );
             let token = jsonwebtoken::encode(
                 &Header::default(),
@@ -183,12 +186,13 @@ pub async fn token(
                 ));
             }
 
-            let lifetime = Duration::hours(1);
             // Create new JWT
+            let lifetime = Duration::hours(1);
             let claims = JWTClaims::new(
                 rt.user_id,
-                req.client_id.clone().unwrap_or_else(|| "default".to_string()),
+                req.client_id.unwrap_or_else(|| "default".into()),
                 state.config.api_url_with_port(),
+                req.scope.unwrap_or_else(|| "openid".into()),
                 lifetime,
             );
             let token = jsonwebtoken::encode(
