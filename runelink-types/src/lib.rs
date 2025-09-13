@@ -1,5 +1,5 @@
-use base64::{engine::general_purpose, Engine as _};
-use rand::RngCore;
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
+use rand::{rngs::OsRng, RngCore};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use time::{Duration, OffsetDateTime};
@@ -270,8 +270,8 @@ impl fmt::Display for Message {
 impl RefreshToken {
     pub fn new(user_id: Uuid, client_id: String, lifetime: Duration) -> Self {
         let mut bytes = [0u8; 32]; // 256 bits
-        rand::rng().fill_bytes(&mut bytes);
-        let token_str = general_purpose::URL_SAFE_NO_PAD.encode(bytes);
+        OsRng.fill_bytes(&mut bytes);
+        let token_str = URL_SAFE_NO_PAD.encode(bytes);
         let now = OffsetDateTime::now_utc();
         Self {
             token: token_str,
@@ -280,6 +280,38 @@ impl RefreshToken {
             issued_at: now,
             expires_at: now + lifetime,
             revoked: false,
+        }
+    }
+}
+
+/// A single public JSON Web Key (JWK)
+#[derive(Debug, Clone, Serialize)]
+pub struct PublicJwk {
+    /// JWK key type (e.g. "OKP" for Ed25519, "RSA" for RSA).
+    pub kty: String,
+    /// Cryptographic curve for the key (e.g. "Ed25519", "P-256").
+    pub crv: String,
+    /// Algorithm intended for use with the key (e.g. "EdDSA", "RS256").
+    pub alg: String,
+    /// Unique key identifier used to select this key ("kid" field).
+    pub kid: String,
+    /// Key usage: "sig" for signatures (as opposed to "enc").
+    #[serde(rename = "use")]
+    pub use_: String,
+    /// Base64url-encoded raw public key bytes.
+    pub x: String,
+}
+
+impl PublicJwk {
+    /// Construct a PublicJwk from raw Ed25519 public key bytes
+    pub fn from_ed25519_bytes(pub_bytes: &[u8], kid: String) -> Self {
+        Self {
+            kty: "OKP".into(),
+            crv: "Ed25519".into(),
+            alg: "EdDSA".into(),
+            kid,
+            use_: "sig".into(),
+            x: URL_SAFE_NO_PAD.encode(pub_bytes),
         }
     }
 }

@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use runelink_client::util::get_api_url;
 
 #[derive(thiserror::Error, Debug)]
@@ -14,6 +16,7 @@ pub struct ServerConfig {
     pub local_domain: String,
     pub database_url: String,
     pub port: u16,
+    pub key_dir: PathBuf,
 }
 
 impl ServerConfig {
@@ -28,11 +31,15 @@ impl ServerConfig {
         let port = port_str
             .parse::<u16>()
             .map_err(|e| ConfigError::InvalidEnvVar("PORT".into(), e))?;
+        let key_dir = std::env::var("KEY_DIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| PathBuf::from("/var/lib/runelink/keys"));
 
         Ok(ServerConfig {
             local_domain,
             database_url,
             port,
+            key_dir,
         })
     }
 
