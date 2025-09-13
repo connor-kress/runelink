@@ -287,23 +287,22 @@ impl RefreshToken {
 /// A single public JSON Web Key (JWK)
 #[derive(Debug, Clone, Serialize)]
 pub struct PublicJwk {
-    /// JWK key type (e.g. "OKP" for Ed25519, "RSA" for RSA).
+    /// JWK key type (e.g. "OKP" for Ed25519, "RSA" for RSA)
     pub kty: String,
-    /// Cryptographic curve for the key (e.g. "Ed25519", "P-256").
+    /// Cryptographic curve for the key (e.g. "Ed25519", "P-256")
     pub crv: String,
-    /// Algorithm intended for use with the key (e.g. "EdDSA", "RS256").
+    /// Algorithm intended for use with the key (e.g. "EdDSA", "RS256")
     pub alg: String,
-    /// Unique key identifier used to select this key ("kid" field).
+    /// Unique key identifier used to select this key ("kid" field)
     pub kid: String,
-    /// Key usage: "sig" for signatures (as opposed to "enc").
+    /// Key usage: "sig" for signatures (as opposed to "enc")
     #[serde(rename = "use")]
     pub use_: String,
-    /// Base64url-encoded raw public key bytes.
+    /// Base64url-encoded raw public key bytes
     pub x: String,
 }
 
 impl PublicJwk {
-    /// Construct a PublicJwk from raw Ed25519 public key bytes
     pub fn from_ed25519_bytes(pub_bytes: &[u8], kid: String) -> Self {
         Self {
             kty: "OKP".into(),

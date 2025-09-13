@@ -33,7 +33,12 @@ impl ServerConfig {
             .map_err(|e| ConfigError::InvalidEnvVar("PORT".into(), e))?;
         let key_dir = std::env::var("KEY_DIR")
             .map(PathBuf::from)
-            .unwrap_or_else(|_| PathBuf::from("/var/lib/runelink/keys"));
+            .unwrap_or_else(|_| {
+                let mut path = dirs_next::home_dir()
+                    .expect("failed to get home directory");
+                path.extend([".local", "share", "runelink", "keys"]);
+                path
+            });
 
         Ok(ServerConfig {
             local_domain,

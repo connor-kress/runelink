@@ -64,6 +64,7 @@ impl KeyManager {
             fs::write(&pub_path, &pub_bytes).map_err(|e| {
                 ApiError::Internal(format!("failed to write public key: {e}"))
             })?;
+            println!("Generated new ed25519 keypair");
 
             let kid = "primary".to_string(); // TODO: should this change?
             Ok(Self {
