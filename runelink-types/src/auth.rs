@@ -1,0 +1,96 @@
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
+use rand::{rngs::OsRng, RngCore};
+use serde::{Deserialize, Serialize};
+use time::{Duration, OffsetDateTime};
+use uuid::Uuid;
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
+pub struct LocalAccount {
+    pub user_id: Uuid,
+    pub password_hash: String,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_at: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
+    pub updated_at: OffsetDateTime,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
+pub struct RefreshToken {
+    pub token: String,
+    pub user_id: Uuid,
+    pub client_id: String,
+    #[serde(with = "time::serde::rfc3339")]
+    pub issued_at: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
+    pub expires_at: OffsetDateTime,
+    pub revoked: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TokenRequest {
+    pub grant_type: String,
+    pub username: Option<String>, // password grant
+    pub password: Option<String>, // password grant
+    pub refresh_token: Option<String>, // refresh_token grant
+    pub scope: Option<String>,
+    pub client_id: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct TokenResponse {
+    pub access_token: String,
+    pub token_type: String, // always "Bearer"
+    pub expires_in: i64,
+    pub refresh_token: String,
+    pub scope: String,
+}
+
+impl RefreshToken {
+    pub fn new(user_id: Uuid, client_id: String, lifetime: Duration) -> Self {
+        let mut bytes = [0u8; 32]; // 256 bits
+        OsRng.fill_bytes(&mut bytes);
+        let token_str = URL_SAFE_NO_PAD.encode(bytes);
+        let now = OffsetDateTime::now_utc();
+        Self {
+            token: token_str,
+            user_id,
+            client_id: client_id,
+            issued_at: now,
+            expires_at: now + lifetime,
+            revoked: false,
+        }
+    }
+}
+
+/// A single public JSON Web Key (JWK)
+#[derive(Debug, Clone, Serialize)]
+pub struct PublicJwk {
+    /// JWK key type (e.g. "OKP" for Ed25519, "RSA" for RSA)
+    pub kty: String,
+    /// Cryptographic curve for the key (e.g. "Ed25519", "P-256")
+    pub crv: String,
+    /// Algorithm intended for use with the key (e.g. "EdDSA", "RS256")
+    pub alg: String,
+    /// Unique key identifier used to select this key ("kid" field)
+    pub kid: String,
+    /// Key usage: "sig" for signatures (as opposed to "enc")
+    #[serde(rename = "use")]
+    pub use_: String,
+    /// Base64url-encoded raw public key bytes
+    pub x: String,
+}
+
+impl PublicJwk {
+    pub fn from_ed25519_bytes(pub_bytes: &[u8], kid: String) -> Self {
+        Self {
+            kty: "OKP".into(),
+            crv: "Ed25519".into(),
+            alg: "EdDSA".into(),
+            kid,
+            use_: "sig".into(),
+            x: URL_SAFE_NO_PAD.encode(pub_bytes),
+        }
+    }
+}

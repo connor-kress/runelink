@@ -1,7 +1,7 @@
 use ed25519_dalek::SigningKey;
 use jsonwebtoken::EncodingKey;
 use rand::rngs::OsRng;
-use runelink_types::PublicJwk;
+use runelink_types::auth::PublicJwk;
 use std::fs;
 use std::path::PathBuf;
 
