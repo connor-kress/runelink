@@ -12,12 +12,10 @@ use axum::{
 use jsonwebtoken::{Algorithm, Header};
 use reqwest::StatusCode;
 use runelink_types::{
-    NewUser, RefreshToken, SignupRequest, TokenRequest, TokenResponse,
+    JWTClaims, NewUser, RefreshToken, SignupRequest, TokenRequest, TokenResponse
 };
-use serde::{Deserialize, Serialize};
 use serde_json::json;
 use time::{Duration, OffsetDateTime};
-use uuid::Uuid;
 
 /// Creates a router for all auth-related endpoints
 pub fn router() -> Router<AppState> {
@@ -71,38 +69,6 @@ pub async fn jwks(
 ) -> Json<serde_json::Value> {
     let keys = vec![state.key_manager.public_jwk.clone()];
     Json(json!({ "keys": keys }))
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct JWTClaims {
-    iss: String,
-    sub: String,
-    aud: Vec<String>,
-    exp: i64,
-    iat: i64,
-    scope: String,
-    client_id: String,
-}
-
-impl JWTClaims {
-    fn new(
-        user_id: Uuid,
-        client_id: String,
-        api_url: String,
-        scope: String,
-        lifetime: Duration,
-    ) -> Self {
-        let now = OffsetDateTime::now_utc().unix_timestamp();
-        JWTClaims {
-            iss: api_url.clone(),
-            sub: user_id.to_string(),
-            aud: vec![api_url],
-            exp: now + lifetime.whole_seconds(),
-            iat: now,
-            scope,
-            client_id,
-        }
-    }
 }
 
 pub async fn token(

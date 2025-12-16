@@ -1,7 +1,7 @@
 use crate::{auth::AuthBuilder, error::ApiError, queries, state::AppState};
 use axum::{
     extract::{Json, Path, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::IntoResponse,
 };
 use runelink_types::{NewServer, NewServerMember, ServerWithChannels};
@@ -10,17 +10,19 @@ use uuid::Uuid;
 /// POST /servers
 pub async fn create_server(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Json(new_server): Json<NewServer>,
 ) -> Result<impl IntoResponse, ApiError> {
     // TODO: get user id/session tokens
-    AuthBuilder::new(Some(new_server.user_id))
+    // AuthBuilder::new(Some(new_server.user_id))
+    let session = AuthBuilder::new()
         .admin()
-        .build(&state.db_pool)
+        .build(&headers, &state)
         .await?;
     let server = queries::insert_server(&state, &new_server).await?;
     let new_member = NewServerMember::admin(
-        new_server.user_id,
-        new_server.user_domain,
+        session.user.id,
+        session.user.domain,
     );
     queries::add_user_to_server(&state.db_pool, server.id, &new_member).await?;
     Ok((StatusCode::CREATED, Json(server)))

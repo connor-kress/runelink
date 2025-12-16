@@ -1,5 +1,5 @@
 use ed25519_dalek::SigningKey;
-use jsonwebtoken::EncodingKey;
+use jsonwebtoken::{DecodingKey, EncodingKey};
 use rand::rngs::OsRng;
 use runelink_types::auth::PublicJwk;
 use std::fs;
@@ -12,6 +12,7 @@ use crate::error::ApiError;
 #[derive(Clone)]
 pub struct KeyManager {
     pub private_key: EncodingKey,
+    pub decoding_key: DecodingKey,
     pub public_jwk: PublicJwk,
     pub path: PathBuf,
 }
@@ -29,6 +30,8 @@ impl std::fmt::Debug for KeyManager {
 impl KeyManager {
     /// Load keys if they exist under `path` or generate a new Ed25519 keypair
     pub fn load_or_generate(path: PathBuf) -> Result<Self, ApiError> {
+        // TODO: we are storing the raw key bytes, not DER and not PKCS#8
+        // TODO: We will also have to update the serialization code in the /tokens endpoint
         let priv_path = path.join("private_ed25519.der");
         let pub_path = path.join("public_ed25519.der");
 
@@ -44,6 +47,7 @@ impl KeyManager {
             let kid = "primary".to_string(); // TODO: should this change?
             Ok(Self {
                 private_key: EncodingKey::from_ed_der(&priv_bytes),
+                decoding_key: DecodingKey::from_ed_der(&pub_bytes),
                 public_jwk: PublicJwk::from_ed25519_bytes(&pub_bytes, kid),
                 path,
             })
@@ -68,6 +72,7 @@ impl KeyManager {
             let kid = "primary".to_string(); // TODO: should this change?
             Ok(Self {
                 private_key: EncodingKey::from_ed_der(&priv_bytes),
+                decoding_key: DecodingKey::from_ed_der(&pub_bytes),
                 public_jwk: PublicJwk::from_ed25519_bytes(&pub_bytes, kid),
                 path,
             })

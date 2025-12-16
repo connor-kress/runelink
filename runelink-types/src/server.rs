@@ -23,8 +23,6 @@ pub struct Server {
 pub struct NewServer {
     pub title: String,
     pub description: Option<String>,
-    pub user_id: Uuid,
-    pub user_domain: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

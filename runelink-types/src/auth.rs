@@ -94,3 +94,44 @@ impl PublicJwk {
         }
     }
 }
+
+/// Standard JWT claims used for issued access tokens
+#[derive(Debug, Serialize, Deserialize)]
+pub struct JWTClaims {
+    /// Token issuer (e.g. "https://example.com")
+    pub iss: String,
+    /// Subject identifier for the user (e.g. "user UUID")
+    pub sub: Uuid,
+    /// Intended audience for this token (e.g. API URLs the token can access)
+    pub aud: Vec<String>,
+    /// Expiration time as a UNIX timestamp (e.g. seconds since epoch)
+    pub exp: i64,
+    /// Issued-at time as a UNIX timestamp (e.g. token creation time)
+    pub iat: i64,
+    /// Space-separated scopes granted to this token (e.g. "openid")
+    pub scope: String,
+    /// OAuth2 client identifier that obtained this token (e.g. "default" or
+    /// dynamic client ID)
+    pub client_id: String,
+}
+
+impl JWTClaims {
+    pub fn new(
+        user_id: Uuid,
+        client_id: String,
+        api_url: String,
+        scope: String,
+        lifetime: Duration,
+    ) -> Self {
+        let now = OffsetDateTime::now_utc().unix_timestamp();
+        JWTClaims {
+            iss: api_url.clone(),
+            sub: user_id,
+            aud: vec![api_url],
+            exp: now + lifetime.whole_seconds(),
+            iat: now,
+            scope,
+            client_id,
+        }
+    }
+}

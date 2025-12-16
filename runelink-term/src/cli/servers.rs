@@ -138,11 +138,12 @@ pub async fn handle_server_commands(
             } else {
                 read_input("Server Description (leave blank for none):\n> ")?
             };
+            todo!("Include bearer token in request");
             let new_server = NewServer {
                 title,
                 description,
-                user_domain: account.domain.clone(),
-                user_id: account.user_id,
+                // user_domain: account.domain.clone(),
+                // user_id: account.user_id,
             };
             let server = requests::create_server(
                 ctx.client, &api_url, &new_server
