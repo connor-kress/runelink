@@ -11,9 +11,9 @@ use crate::error::ApiError;
 #[allow(dead_code)]
 #[derive(Clone)]
 pub struct KeyManager {
-    private_key: EncodingKey,
-    public_jwk: PublicJwk,
-    path: PathBuf,
+    pub private_key: EncodingKey,
+    pub public_jwk: PublicJwk,
+    pub path: PathBuf,
 }
 
 impl std::fmt::Debug for KeyManager {
@@ -26,7 +26,6 @@ impl std::fmt::Debug for KeyManager {
     }
 }
 
-#[allow(dead_code)]
 impl KeyManager {
     /// Load keys if they exist under `path` or generate a new Ed25519 keypair
     pub fn load_or_generate(path: PathBuf) -> Result<Self, ApiError> {

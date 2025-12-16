@@ -9,7 +9,7 @@ use axum::{
     routing::{get, post},
     Form, Json, Router,
 };
-use jsonwebtoken::{EncodingKey, Header};
+use jsonwebtoken::{Algorithm, Header};
 use reqwest::StatusCode;
 use runelink_types::{
     NewUser, RefreshToken, SignupRequest, TokenRequest, TokenResponse,
@@ -65,10 +65,12 @@ pub async fn discovery(
     }))
 }
 
-/// JWKS endpoint publishing public keys (stubbed for now)
-pub async fn jwks() -> Json<serde_json::Value> {
-    // TODO: Implement JWKS endpoint with actual public keys
-    Json(json!({ "keys": [] }))
+/// JWKS endpoint publishing public keys
+pub async fn jwks(
+    State(state): State<AppState>,
+) -> Json<serde_json::Value> {
+    let keys = vec![state.key_manager.public_jwk.clone()];
+    Json(json!({ "keys": keys }))
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -107,6 +109,11 @@ pub async fn token(
     State(state): State<AppState>,
     Form(req): Form<TokenRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
+    // TODO: check dynamic client IDs for validity
+    let client_id = req.client_id.unwrap_or_else(|| "default".into());
+    // TODO: check requested scopes for validity
+    let scope = req.scope.unwrap_or_else(|| "openid".into());
+
     match req.grant_type.as_str() {
         "password" => {
             let username = req
@@ -141,23 +148,22 @@ pub async fn token(
             let lifetime = Duration::hours(1);
             let claims = JWTClaims::new(
                 user.id,
-                req.client_id.unwrap_or_else(|| "default".into()),
+                client_id.clone(),
                 state.config.api_url_with_port(),
-                req.scope.unwrap_or_else(|| "openid".into()),
+                scope,
                 lifetime,
             );
             let token = jsonwebtoken::encode(
-                &Header::default(),
+                &Header::new(Algorithm::EdDSA),
                 &claims,
-                &EncodingKey::from_secret("TODO".as_bytes())
-                                          // state.config.jwt_secret.as_ref()
+                &state.key_manager.private_key,
             )
             .map_err(|e| ApiError::Internal(format!("jwt error: {e}")))?;
 
             // Create refresh token
             let rt = RefreshToken::new(
                 user.id,
-                "default".into(),
+                client_id,
                 Duration::days(30)
             );
             queries::insert_refresh_token(&state.db_pool, &rt).await?;
@@ -190,16 +196,15 @@ pub async fn token(
             let lifetime = Duration::hours(1);
             let claims = JWTClaims::new(
                 rt.user_id,
-                req.client_id.unwrap_or_else(|| "default".into()),
+                client_id,
                 state.config.api_url_with_port(),
-                req.scope.unwrap_or_else(|| "openid".into()),
+                scope,
                 lifetime,
             );
             let token = jsonwebtoken::encode(
-                &Header::default(),
+                &Header::new(Algorithm::EdDSA),
                 &claims,
-                &EncodingKey::from_secret("TODO".as_bytes())
-                                          // state.config.jwt_secret.as_ref()
+                &state.key_manager.private_key,
             )
             .map_err(|e| ApiError::Internal(format!("jwt error: {e}")))?;
 
