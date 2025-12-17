@@ -1,18 +1,19 @@
 use crate::{error::ApiError, queries, state::AppState};
 use argon2::{
-    password_hash::{rand_core::OsRng, PasswordHash, SaltString},
     Argon2, PasswordHasher, PasswordVerifier,
+    password_hash::{PasswordHash, SaltString, rand_core::OsRng},
 };
 use axum::{
+    Form, Json, Router,
     extract::State,
     response::IntoResponse,
     routing::{get, post},
-    Form, Json, Router,
 };
 use jsonwebtoken::{Algorithm, Header};
 use reqwest::StatusCode;
 use runelink_types::{
-    JWTClaims, NewUser, RefreshToken, SignupRequest, TokenRequest, TokenResponse
+    JWTClaims, NewUser, RefreshToken, SignupRequest, TokenRequest,
+    TokenResponse,
 };
 use serde_json::json;
 use time::{Duration, OffsetDateTime};
@@ -38,19 +39,10 @@ pub fn router() -> Router<AppState> {
 pub async fn discovery(
     State(state): State<AppState>,
 ) -> Json<serde_json::Value> {
-    let scheme = match state.config.local_domain.as_str() {
-        "localhost" | "127.0.0.1" | "0.0.0.0" => "http",
-        _ => "https",
-    };
-    let base_url = format!(
-        "{}://{}",
-        scheme,
-        state.config.local_domain_with_explicit_port()
-    );
-    let issuer = base_url.clone();
-    let jwks_uri = format!("{}/.well-known/jwks.json", base_url);
-    let token_endpoint = format!("{}/auth/token", base_url);
-    let userinfo_endpoint = format!("{}/auth/userinfo", base_url);
+    let issuer = state.config.api_url_with_port();
+    let jwks_uri = format!("{}/.well-known/jwks.json", issuer);
+    let token_endpoint = format!("{}/auth/token", issuer);
+    let userinfo_endpoint = format!("{}/auth/userinfo", issuer);
     Json(json!({
         "issuer": issuer,
         "jwks_uri": jwks_uri,
@@ -64,9 +56,7 @@ pub async fn discovery(
 }
 
 /// JWKS endpoint publishing public keys
-pub async fn jwks(
-    State(state): State<AppState>,
-) -> Json<serde_json::Value> {
+pub async fn jwks(State(state): State<AppState>) -> Json<serde_json::Value> {
     let keys = vec![state.key_manager.public_jwk.clone()];
     Json(json!({ "keys": keys }))
 }
@@ -93,22 +83,24 @@ pub async fn token(
 
             // Get user
             let user = queries::get_user_by_name_and_domain(
-                &state.db_pool, username, state.config.local_domain.clone()
-            ).await?;
+                &state.db_pool,
+                username,
+                state.config.local_domain.clone(),
+            )
+            .await?;
 
             // Verify password hash
-            let account = queries::get_local_account(
-                &state.db_pool, user.id
-            ).await?;
+            let account =
+                queries::get_local_account(&state.db_pool, user.id).await?;
             let parsed_hash = PasswordHash::new(&account.password_hash)
-                .map_err(|_| ApiError::AuthError(
-                    "invalid password hash".into()
-                ))?;
+                .map_err(|_| {
+                    ApiError::AuthError("invalid password hash".into())
+                })?;
             Argon2::default()
                 .verify_password(password.as_bytes(), &parsed_hash)
-                .map_err(|_| ApiError::AuthError(
-                    "invalid credentials".into()
-                ))?;
+                .map_err(|_| {
+                    ApiError::AuthError("invalid credentials".into())
+                })?;
 
             // Create JWT
             let lifetime = Duration::hours(1);
@@ -127,20 +119,19 @@ pub async fn token(
             .map_err(|e| ApiError::Internal(format!("jwt error: {e}")))?;
 
             // Create refresh token
-            let rt = RefreshToken::new(
-                user.id,
-                client_id,
-                Duration::days(30)
-            );
+            let rt = RefreshToken::new(user.id, client_id, Duration::days(30));
             queries::insert_refresh_token(&state.db_pool, &rt).await?;
 
-            Ok((StatusCode::OK, Json(TokenResponse {
-                access_token: token,
-                token_type: "Bearer".into(),
-                expires_in: 3600,
-                refresh_token: rt.token,
-                scope: claims.scope,
-            })))
+            Ok((
+                StatusCode::OK,
+                Json(TokenResponse {
+                    access_token: token,
+                    token_type: "Bearer".into(),
+                    expires_in: 3600,
+                    refresh_token: rt.token,
+                    scope: claims.scope,
+                }),
+            ))
         }
 
         "refresh_token" => {
@@ -148,13 +139,14 @@ pub async fn token(
                 .refresh_token
                 .clone()
                 .ok_or(ApiError::BadRequest("missing refresh_token".into()))?;
-            let rt = queries::get_refresh_token(&state.db_pool, &rtoken).await?;
+            let rt =
+                queries::get_refresh_token(&state.db_pool, &rtoken).await?;
 
             // Validate refresh token
             let now = OffsetDateTime::now_utc();
             if rt.revoked || rt.expires_at <= now {
                 return Err(ApiError::AuthError(
-                    "refresh token expired or revoked".into()
+                    "refresh token expired or revoked".into(),
                 ));
             }
 
@@ -174,13 +166,16 @@ pub async fn token(
             )
             .map_err(|e| ApiError::Internal(format!("jwt error: {e}")))?;
 
-            Ok((StatusCode::OK, Json(TokenResponse {
-                access_token: token,
-                token_type: "Bearer".into(),
-                expires_in: lifetime.whole_seconds(),
-                refresh_token: rt.token, // TODO: token rotation
-                scope: claims.scope,
-            })))
+            Ok((
+                StatusCode::OK,
+                Json(TokenResponse {
+                    access_token: token,
+                    token_type: "Bearer".into(),
+                    expires_in: lifetime.whole_seconds(),
+                    refresh_token: rt.token, // TODO: token rotation
+                    scope: claims.scope,
+                }),
+            ))
         }
 
         _ => Err(ApiError::BadRequest("unsupported grant_type".into())),
@@ -225,9 +220,9 @@ pub async fn signup(
         .to_string();
 
     // Insert local account
-    let _account = queries::insert_local_account(
-        &state.db_pool, user.id, &password_hash
-    ).await?;
+    let _account =
+        queries::insert_local_account(&state.db_pool, user.id, &password_hash)
+            .await?;
 
     Ok((StatusCode::CREATED, Json(user)))
 }
