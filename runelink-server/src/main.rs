@@ -15,6 +15,7 @@ mod auth;
 mod config;
 mod db;
 mod error;
+mod jwks_resolver;
 mod key_manager;
 mod queries;
 mod state;
@@ -36,6 +37,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         db_pool: pool.clone(),
         http_client,
         key_manager,
+        jwks_cache: Arc::new(tokio::sync::RwLock::new(
+            std::collections::HashMap::new(),
+        )),
     };
 
     MIGRATOR.run(pool.as_ref()).await?;
@@ -47,10 +51,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // API routes
         .route("/ping", get(api::ping))
         .route("/users", get(api::list_users).post(api::create_user))
-        .route(
-            "/users/find",
-            get(api::find_user_by_name_domain_handler),
-        )
+        .route("/users/find", get(api::find_user_by_name_domain_handler))
         .route("/users/{user_id}", get(api::get_user_by_id_handler))
         .route(
             "/users/{user_id}/domains",
@@ -74,14 +75,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "/channels/{channel_id}/messages",
             get(api::list_messages_by_channel).post(api::create_message),
         )
-        .route(
-            "/servers",
-            get(api::list_servers).post(api::create_server),
-        )
-        .route(
-            "/servers/{server_id}",
-            get(api::get_server_by_id_handler),
-        )
+        .route("/servers", get(api::list_servers).post(api::create_server))
+        .route("/servers/{server_id}", get(api::get_server_by_id_handler))
         .route(
             "/servers/{server_id}/channels",
             get(api::list_channels_by_server).post(api::create_channel),

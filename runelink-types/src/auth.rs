@@ -65,7 +65,7 @@ impl RefreshToken {
 }
 
 /// A single public JSON Web Key (JWK)
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PublicJwk {
     /// JWK key type (e.g. "OKP" for Ed25519, "RSA" for RSA)
     pub kty: String,
