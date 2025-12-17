@@ -1,5 +1,5 @@
-use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
-use rand::{rngs::OsRng, RngCore};
+use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
+use rand::{RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -95,39 +95,39 @@ impl PublicJwk {
     }
 }
 
-/// Standard JWT claims used for issued access tokens
+/// JWT claims used for client access tokens (valid only on the issuing Home
+/// Server).
 #[derive(Debug, Serialize, Deserialize)]
-pub struct JWTClaims {
-    /// Token issuer (e.g. "https://example.com")
+pub struct ClientAccessClaims {
+    /// Token issuer (canonical ServerId; currently `ServerConfig::api_url_with_port()`)
     pub iss: String,
-    /// Subject identifier for the user (e.g. "user UUID")
+    /// Subject identifier for the user (user UUID)
     pub sub: Uuid,
-    /// Intended audience for this token (e.g. API URLs the token can access)
+    /// Intended audience for this token (APIs this token can access)
     pub aud: Vec<String>,
-    /// Expiration time as a UNIX timestamp (e.g. seconds since epoch)
+    /// Expiration time as a UNIX timestamp
     pub exp: i64,
-    /// Issued-at time as a UNIX timestamp (e.g. token creation time)
+    /// Issued-at time as a UNIX timestamp
     pub iat: i64,
     /// Space-separated scopes granted to this token (e.g. "openid")
     pub scope: String,
-    /// OAuth2 client identifier that obtained this token (e.g. "default" or
-    /// dynamic client ID)
+    /// OAuth2 client identifier that obtained this token (e.g. "default")
     pub client_id: String,
 }
 
-impl JWTClaims {
+impl ClientAccessClaims {
     pub fn new(
         user_id: Uuid,
         client_id: String,
-        api_url: String,
+        issuer_server_id: String,
         scope: String,
         lifetime: Duration,
     ) -> Self {
         let now = OffsetDateTime::now_utc().unix_timestamp();
-        JWTClaims {
-            iss: api_url.clone(),
+        Self {
+            iss: issuer_server_id.clone(),
             sub: user_id,
-            aud: vec![api_url],
+            aud: vec![issuer_server_id],
             exp: now + lifetime.whole_seconds(),
             iat: now,
             scope,
@@ -135,3 +135,45 @@ impl JWTClaims {
         }
     }
 }
+
+/// JWT claims used for server-to-server federation requests. This represents
+/// delegated authority for `sub` (the user) from `iss` (the calling server) to
+/// `aud` (the target server).
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FederationClaims {
+    /// Calling server (canonical ServerId)
+    pub iss: String,
+    /// Delegated user UUID
+    pub sub: Uuid,
+    /// Target server(s) (canonical ServerId)
+    pub aud: Vec<String>,
+    /// Expiration time as a UNIX timestamp
+    pub exp: i64,
+    /// Issued-at time as a UNIX timestamp
+    pub iat: i64,
+    /// Space-separated scopes granted to this token
+    pub scope: String,
+}
+
+impl FederationClaims {
+    pub fn new(
+        user_id: Uuid,
+        issuer_server_id: String,
+        audience_server_id: String,
+        scope: String,
+        lifetime: Duration,
+    ) -> Self {
+        let now = OffsetDateTime::now_utc().unix_timestamp();
+        Self {
+            iss: issuer_server_id,
+            sub: user_id,
+            aud: vec![audience_server_id],
+            exp: now + lifetime.whole_seconds(),
+            iat: now,
+            scope,
+        }
+    }
+}
+
+/// Backwards-compatible alias while we migrate call sites.
+pub type JWTClaims = ClientAccessClaims;

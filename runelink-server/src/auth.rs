@@ -2,7 +2,7 @@ use crate::{error::ApiError, queries, state::AppState};
 use axum::http::HeaderMap;
 use axum::http::header;
 use jsonwebtoken::{Algorithm, Validation};
-use runelink_types::{JWTClaims, User};
+use runelink_types::{ClientAccessClaims, User};
 use uuid::Uuid;
 
 fn extract_bearer_token(headers: &HeaderMap) -> Result<String, ApiError> {
@@ -86,7 +86,7 @@ impl AuthBuilder {
         let token = extract_bearer_token(headers)?;
         let mut validation = Validation::new(Algorithm::EdDSA);
         validation.set_audience(&[state.config.api_url_with_port()]);
-        let data = match jsonwebtoken::decode::<JWTClaims>(
+        let data = match jsonwebtoken::decode::<ClientAccessClaims>(
             &token,
             &state.key_manager.decoding_key,
             &validation,

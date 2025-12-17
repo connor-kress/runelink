@@ -12,7 +12,7 @@ use axum::{
 use jsonwebtoken::{Algorithm, Header};
 use reqwest::StatusCode;
 use runelink_types::{
-    JWTClaims, NewUser, RefreshToken, SignupRequest, TokenRequest,
+    ClientAccessClaims, NewUser, RefreshToken, SignupRequest, TokenRequest,
     TokenResponse,
 };
 use serde_json::json;
@@ -102,9 +102,9 @@ pub async fn token(
                     ApiError::AuthError("invalid credentials".into())
                 })?;
 
-            // Create JWT
+            // Create client access JWT (valid only on this server)
             let lifetime = Duration::hours(1);
-            let claims = JWTClaims::new(
+            let claims = ClientAccessClaims::new(
                 user.id,
                 client_id.clone(),
                 state.config.api_url_with_port(),
@@ -150,9 +150,9 @@ pub async fn token(
                 ));
             }
 
-            // Create new JWT
+            // Create new client access JWT
             let lifetime = Duration::hours(1);
-            let claims = JWTClaims::new(
+            let claims = ClientAccessClaims::new(
                 rt.user_id,
                 client_id,
                 state.config.api_url_with_port(),
