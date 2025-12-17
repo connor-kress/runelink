@@ -5,6 +5,14 @@ use runelink_types::{
 use uuid::Uuid;
 
 use super::Session;
+use crate::auth::{AuthSpec, Requirement};
+
+/// Auth requirements for `create_server`.
+pub fn auth_create_server() -> AuthSpec {
+    AuthSpec {
+        requirements: vec![Requirement::HostAdmin],
+    }
+}
 
 /// Create a new server (local resource) and add the creator as admin.
 pub async fn create_server(

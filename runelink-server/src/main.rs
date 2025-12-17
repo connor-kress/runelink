@@ -12,6 +12,7 @@ use crate::key_manager::KeyManager;
 
 mod api;
 mod auth;
+mod bearer_auth;
 mod config;
 mod crypto;
 mod db;

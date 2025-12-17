@@ -1,3 +1,7 @@
+#![allow(dead_code)]
+#![allow(unused_variables)]
+#![allow(unreachable_code)]
+
 use runelink_client::{requests, util::get_api_url};
 use runelink_types::{NewServer, NewServerMember, ServerRole};
 use uuid::Uuid;
@@ -5,11 +9,11 @@ use uuid::Uuid;
 use crate::{error::CliError, util::group_memberships_by_host};
 
 use super::{
-    config::{handle_default_server_commands, DefaultServerArgs},
+    config::{DefaultServerArgs, handle_default_server_commands},
     context::CliContext,
     domain_query::DomainQueryBuilder,
     input::{read_input, unwrap_or_prompt},
-    select::{get_server_selection, ServerSelectionType},
+    select::{ServerSelectionType, get_server_selection},
 };
 
 #[derive(clap::Args, Debug)]
@@ -80,7 +84,8 @@ pub async fn handle_server_commands(
                 ctx.client,
                 &api_url,
                 account.user_id,
-            ).await?;
+            )
+            .await?;
             if memberships.is_empty() {
                 println!(
                     "No servers joined.\n\
@@ -114,8 +119,11 @@ pub async fn handle_server_commands(
                 .try_server(Some(get_args.server_id))
                 .get_api_url()?;
             let server = requests::fetch_server_by_id(
-                ctx.client, &api_url, get_args.server_id
-            ).await?;
+                ctx.client,
+                &api_url,
+                get_args.server_id,
+            )
+            .await?;
             println!("{} / {} ({})", server.domain, server.title, server.id);
         }
 
@@ -127,10 +135,8 @@ pub async fn handle_server_commands(
             // TODO: servers can't handle cross host server membership yet.
             // We need to sync the membership with another request to the home
             // server too.
-            let title = unwrap_or_prompt(
-                create_args.title.clone(),
-                "Server Title",
-            )?;
+            let title =
+                unwrap_or_prompt(create_args.title.clone(), "Server Title")?;
             let description = if create_args.description.is_some() {
                 create_args.description.clone()
             } else if create_args.no_description {
@@ -145,10 +151,11 @@ pub async fn handle_server_commands(
                 // user_domain: account.domain.clone(),
                 // user_id: account.user_id,
             };
-            let server = requests::create_server(
-                ctx.client, &api_url, &new_server
-            ).await?;
-            ctx.config.get_or_create_server_config(&server, &account.domain);
+            let server =
+                requests::create_server(ctx.client, &api_url, &new_server)
+                    .await?;
+            ctx.config
+                .get_or_create_server_config(&server, &account.domain);
             ctx.config.save()?;
             println!("Created server: {}", server.verbose());
         }
@@ -160,22 +167,28 @@ pub async fn handle_server_commands(
                 .try_server(join_args.server_id)
                 .get_domain_and_api_url()?;
             let server = if let Some(server_id) = join_args.server_id {
-                requests::fetch_server_by_id(
-                    ctx.client, &api_url, server_id
-                ).await?
+                requests::fetch_server_by_id(ctx.client, &api_url, server_id)
+                    .await?
             } else {
                 get_server_selection(
-                    ctx, ServerSelectionType::NonMemberOnly { domain: &domain }
-                ).await?
+                    ctx,
+                    ServerSelectionType::NonMemberOnly { domain: &domain },
+                )
+                .await?
             };
             let new_member = NewServerMember::member(
                 account.user_id,
                 account.domain.clone(),
             );
             let _member = requests::join_server(
-                ctx.client, &api_url, server.id, &new_member
-            ).await?;
-            ctx.config.get_or_create_server_config(&server, &account.domain);
+                ctx.client,
+                &api_url,
+                server.id,
+                &new_member,
+            )
+            .await?;
+            ctx.config
+                .get_or_create_server_config(&server, &account.domain);
             ctx.config.save()?;
             println!("Joined server: {}", server.verbose());
         }

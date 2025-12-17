@@ -1,4 +1,10 @@
-use crate::{auth::AuthBuilder, error::ApiError, ops, state::AppState};
+use crate::{
+    auth::{Principal, authorize},
+    bearer_auth::ClientAuth,
+    error::ApiError,
+    ops,
+    state::AppState,
+};
 use axum::{
     extract::{Json, Path, State},
     http::{HeaderMap, StatusCode},
@@ -13,9 +19,12 @@ pub async fn create_server(
     headers: HeaderMap,
     Json(new_server): Json<NewServer>,
 ) -> Result<impl IntoResponse, ApiError> {
-    // TODO: get user id/session tokens
-    // AuthBuilder::new(Some(new_server.user_id))
-    let session = AuthBuilder::new().admin().build(&headers, &state).await?;
+    let session = authorize(
+        &state,
+        Principal::Client(ClientAuth::from_headers(&headers, &state)?),
+        ops::auth_create_server(),
+    )
+    .await?;
     let server = ops::create_server(&state, &session, &new_server).await?;
     Ok((StatusCode::CREATED, Json(server)))
 }
