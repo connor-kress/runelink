@@ -1,4 +1,4 @@
-use crate::{error::ApiError, queries, state::AppState};
+use crate::{error::ApiError, ops, state::AppState};
 use axum::{
     extract::{Json, Path, State},
     http::StatusCode,
@@ -7,30 +7,31 @@ use axum::{
 use runelink_types::NewChannel;
 use uuid::Uuid;
 
-/// POST /servers/{channel_id}/channels
+/// POST /servers/{server_id}/channels
 pub async fn create_channel(
     State(state): State<AppState>,
     Path(server_id): Path<Uuid>,
     Json(new_channel): Json<NewChannel>,
 ) -> Result<impl IntoResponse, ApiError> {
-    queries::insert_channel(&state.db_pool, server_id, &new_channel)
-        .await
-        .map(|channel| (StatusCode::CREATED, Json(channel)))
+    let channel = ops::create_channel(&state, server_id, &new_channel).await?;
+    Ok((StatusCode::CREATED, Json(channel)))
 }
 
 /// GET /channels
 pub async fn list_channels(
     State(state): State<AppState>,
 ) -> Result<impl IntoResponse, ApiError> {
-    queries::get_all_channels(&state.db_pool).await.map(Json)
+    let channels = ops::list_channels(&state).await?;
+    Ok((StatusCode::OK, Json(channels)))
 }
 
-/// GET /servers/{channel_id}/channels
+/// GET /servers/{server_id}/channels
 pub async fn list_channels_by_server(
     State(state): State<AppState>,
     Path(server_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
-    queries::get_channels_by_server(&state.db_pool, server_id).await.map(Json)
+    let channels = ops::list_channels_by_server(&state, server_id).await?;
+    Ok((StatusCode::OK, Json(channels)))
 }
 
 /// GET /channels/{channel_id}
@@ -38,5 +39,6 @@ pub async fn get_channel_by_id_handler(
     State(state): State<AppState>,
     Path(channel_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
-    queries::get_channel_by_id(&state.db_pool, channel_id).await.map(Json)
+    let channel = ops::get_channel_by_id(&state, channel_id).await?;
+    Ok((StatusCode::OK, Json(channel)))
 }

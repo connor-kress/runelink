@@ -1,4 +1,4 @@
-use crate::{error::ApiError, queries, state::AppState};
+use crate::{error::ApiError, ops, state::AppState};
 use axum::{
     extract::{Json, Path, Query, State},
     http::StatusCode,
@@ -19,7 +19,7 @@ pub async fn create_user(
     State(state): State<AppState>,
     Json(new_user): Json<NewUser>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let user = queries::insert_user(&state.db_pool, &new_user).await?;
+    let user = ops::create_user(&state, &new_user).await?;
     Ok((StatusCode::CREATED, Json(user)))
 }
 
@@ -27,7 +27,8 @@ pub async fn create_user(
 pub async fn list_users(
     State(state): State<AppState>,
 ) -> Result<impl IntoResponse, ApiError> {
-    queries::get_all_users(&state.db_pool).await.map(Json)
+    let users = ops::list_users(&state).await?;
+    Ok((StatusCode::OK, Json(users)))
 }
 
 /// GET /users/{user_id}
@@ -35,7 +36,8 @@ pub async fn get_user_by_id_handler(
     State(state): State<AppState>,
     Path(user_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
-    queries::get_user_by_id(&state.db_pool, user_id).await.map(Json)
+    let user = ops::get_user_by_id(&state, user_id).await?;
+    Ok((StatusCode::OK, Json(user)))
 }
 
 /// GET /users/find?name=...&domain=...
@@ -43,13 +45,10 @@ pub async fn find_user_by_name_domain_handler(
     State(state): State<AppState>,
     Query(params): Query<GetUserByNameDomainQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
-    queries::get_user_by_name_and_domain(
-        &state.db_pool,
-        params.name,
-        params.domain,
-    )
-    .await
-    .map(Json)
+    let user =
+        ops::find_user_by_name_domain(&state, params.name, params.domain)
+            .await?;
+    Ok((StatusCode::OK, Json(user)))
 }
 
 /// GET /users/{user_id}/domains
@@ -57,7 +56,6 @@ pub async fn get_user_associated_domains(
     State(state): State<AppState>,
     Path(user_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
-    queries::get_associated_domains_for_user(&state.db_pool, user_id)
-        .await
-        .map(Json)
+    let domains = ops::get_user_associated_domains(&state, user_id).await?;
+    Ok((StatusCode::OK, Json(domains)))
 }

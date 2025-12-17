@@ -18,6 +18,7 @@ mod db;
 mod error;
 mod jwks_resolver;
 mod key_manager;
+mod ops;
 mod queries;
 mod state;
 
