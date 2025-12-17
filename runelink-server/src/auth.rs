@@ -1,24 +1,89 @@
-use crate::{error::ApiError, queries, state::AppState};
+use crate::{error::ApiError, jwks_resolver, queries, state::AppState};
 use axum::http::HeaderMap;
 use axum::http::header;
 use jsonwebtoken::{Algorithm, Validation};
-use runelink_types::{ClientAccessClaims, User};
+use runelink_types::{ClientAccessClaims, FederationClaims, User};
 use uuid::Uuid;
 
 fn extract_bearer_token(headers: &HeaderMap) -> Result<String, ApiError> {
     let auth_header = headers
         .get(header::AUTHORIZATION)
         .and_then(|h| h.to_str().ok())
-        .ok_or_else(|| ApiError::AuthError(
-            "Missing Authorization header".into()
-        ))?;
+        .ok_or_else(|| {
+            ApiError::AuthError("Missing Authorization header".into())
+        })?;
     let token = auth_header
         .strip_prefix("Bearer ")
-        .ok_or_else(|| ApiError::AuthError(
-            "Invalid Authorization header format".into()
-        ))?
+        .ok_or_else(|| {
+            ApiError::AuthError("Invalid Authorization header format".into())
+        })?
         .trim();
     Ok(token.into())
+}
+
+#[allow(unused)]
+fn has_scope(scope_str: &str, required: &str) -> bool {
+    scope_str.split_whitespace().any(|s| s == required)
+}
+
+#[derive(Clone, Debug)]
+pub struct ClientAuth {
+    pub claims: ClientAccessClaims,
+}
+
+impl ClientAuth {
+    pub fn from_headers(
+        headers: &HeaderMap,
+        state: &AppState,
+    ) -> Result<Self, ApiError> {
+        let token = extract_bearer_token(headers)?;
+        let server_id = state.config.api_url_with_port();
+        let mut validation = Validation::new(Algorithm::EdDSA);
+        validation.set_audience(&[server_id.clone()]);
+        validation.set_issuer(&[server_id]);
+
+        let data = jsonwebtoken::decode::<ClientAccessClaims>(
+            &token,
+            &state.key_manager.decoding_key,
+            &validation,
+        )
+        .map_err(|_| ApiError::AuthError("Invalid or expired token".into()))?;
+
+        Ok(Self {
+            claims: data.claims,
+        })
+    }
+}
+
+#[allow(unused)]
+#[derive(Clone, Debug)]
+pub struct FederationAuth {
+    pub claims: FederationClaims,
+}
+
+#[allow(unused)]
+impl FederationAuth {
+    pub async fn from_headers(
+        headers: &HeaderMap,
+        state: &AppState,
+        required_scopes: &[&str],
+    ) -> Result<Self, ApiError> {
+        let token = extract_bearer_token(headers)?;
+        let server_id = state.config.api_url_with_port();
+        let claims =
+            jwks_resolver::decode_federation_jwt(state, &token, &server_id)
+                .await?;
+
+        for required in required_scopes {
+            if !has_scope(&claims.scope, required) {
+                return Err(ApiError::AuthError(format!(
+                    "Missing required scope: {required}"
+                )));
+            }
+        }
+
+        Ok(Self { claims })
+    }
 }
 
 #[allow(dead_code)]
@@ -83,21 +148,8 @@ impl AuthBuilder {
         headers: &HeaderMap,
         state: &AppState,
     ) -> Result<Session, ApiError> {
-        let token = extract_bearer_token(headers)?;
-        let mut validation = Validation::new(Algorithm::EdDSA);
-        validation.set_audience(&[state.config.api_url_with_port()]);
-        let data = match jsonwebtoken::decode::<ClientAccessClaims>(
-            &token,
-            &state.key_manager.decoding_key,
-            &validation,
-        ) {
-            Ok(data) => data,
-            Err(_) => return Err(ApiError::AuthError(
-                "Invalid or expired token".into()
-            )),
-        };
-
-        let user_id = data.claims.sub;
+        let auth = ClientAuth::from_headers(headers, state)?;
+        let user_id = auth.claims.sub;
         let user = queries::get_user_by_id(&state.db_pool, user_id)
             .await
             .map_err(|_| ApiError::AuthError("Invalid credentials".into()))?;
@@ -179,7 +231,8 @@ mod tests {
     #[test]
     fn test_empty_bearer_token() {
         let headers = make_headers(Some("Bearer "));
-        let token = extract_bearer_token(&headers).expect("should parse but be empty");
+        let token =
+            extract_bearer_token(&headers).expect("should parse but be empty");
         assert_eq!(token, "");
     }
 

@@ -97,7 +97,7 @@ impl PublicJwk {
 
 /// JWT claims used for client access tokens (valid only on the issuing Home
 /// Server).
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ClientAccessClaims {
     /// Token issuer (canonical ServerId; currently `ServerConfig::api_url_with_port()`)
     pub iss: String,
@@ -139,7 +139,7 @@ impl ClientAccessClaims {
 /// JWT claims used for server-to-server federation requests. This represents
 /// delegated authority for `sub` (the user) from `iss` (the calling server) to
 /// `aud` (the target server).
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FederationClaims {
     /// Calling server (canonical ServerId)
     pub iss: String,
