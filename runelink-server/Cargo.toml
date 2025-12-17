@@ -27,5 +27,5 @@ argon2 = "0.5.3"
 rand = "0.8"
 jsonwebtoken = "9.3.1"
 base64 = "0.22.1"
-ed25519-dalek = { version = "2.2.0", features = ["rand_core"] }
+ed25519-dalek = { version = "2.2.0", features = ["rand_core", "pkcs8"] }
 dirs-next = "2.0.0"

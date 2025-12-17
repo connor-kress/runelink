@@ -8,7 +8,9 @@ use runelink_types::{FederationClaims, PublicJwk};
 use serde::Deserialize;
 use time::{Duration, OffsetDateTime};
 
-use crate::{error::ApiError, state::AppState};
+use crate::{
+    crypto::ed25519_public_raw_to_spki_der, error::ApiError, state::AppState,
+};
 
 #[derive(Debug, Clone)]
 pub struct CachedJwks {
@@ -93,22 +95,23 @@ async fn get_cached_jwks(
     state: &AppState,
     iss: &str,
 ) -> Result<CachedJwks, ApiError> {
+    let iss_key = iss.trim_end_matches('/');
     // Simple time-based cache. This will be expanded later with better
     // negative caching and rotation support.
     let ttl = Duration::minutes(10);
     {
         let cache = state.jwks_cache.read().await;
-        if let Some(entry) = cache.get(iss) {
+        if let Some(entry) = cache.get(iss_key) {
             if entry.fetched_at + ttl > OffsetDateTime::now_utc() {
                 return Ok(entry.clone());
             }
         }
     }
 
-    let fetched = fetch_jwks(state, iss).await?;
+    let fetched = fetch_jwks(state, iss_key).await?;
     {
         let mut cache = state.jwks_cache.write().await;
-        cache.insert(iss.to_string(), fetched.clone());
+        cache.insert(iss_key.to_string(), fetched.clone());
     }
     Ok(fetched)
 }
@@ -154,8 +157,12 @@ pub async fn decode_federation_jwt(
     let cached = get_cached_jwks(state, &iss).await?;
     let pub_bytes = select_public_key_bytes(&cached, header.kid.as_deref())?;
 
-    // NOTE: this matches the current KeyManager decoding strategy.
-    let decoding_key = DecodingKey::from_ed_der(pub_bytes);
+    // JWKS `x` is raw Ed25519 public key bytes, but jsonwebtoken expects SPKI/DER
+    // for EdDSA when using `from_ed_der()`. Wrap raw bytes into SPKI DER.
+    let spki = ed25519_public_raw_to_spki_der(pub_bytes).map_err(|e| {
+        ApiError::AuthError(format!("invalid jwks ed25519 key: {e}"))
+    })?;
+    let decoding_key = DecodingKey::from_ed_der(&spki);
 
     let mut validation = Validation::new(Algorithm::EdDSA);
     validation.set_audience(&[expected_audience]);
