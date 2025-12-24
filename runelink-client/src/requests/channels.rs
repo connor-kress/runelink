@@ -12,7 +12,7 @@ pub async fn create_channel(
     server_id: Uuid,
     new_channel: &NewChannel,
 ) -> Result<Channel> {
-    let url = format!("{}/servers/{}/channels", api_url, server_id);
+    let url = format!("{api_url}/servers/{server_id}/channels");
     post_json::<NewChannel, Channel>(client, &url, new_channel).await
 }
 
@@ -20,7 +20,7 @@ pub async fn fetch_all_channels(
     client: &Client,
     api_url: &str,
 ) -> Result<Vec<Channel>> {
-    let url = format!("{}/channels", api_url);
+    let url = format!("{api_url}/channels");
     fetch_json::<Vec<Channel>>(client, &url).await
 }
 
@@ -29,15 +29,16 @@ pub async fn fetch_channels_by_server(
     api_url: &str,
     server_id: Uuid,
 ) -> Result<Vec<Channel>> {
-    let url = format!("{}/servers/{}/channels", api_url, server_id);
+    let url = format!("{api_url}/servers/{server_id}/channels");
     fetch_json::<Vec<Channel>>(client, &url).await
 }
 
 pub async fn fetch_channel_by_id(
     client: &Client,
     api_url: &str,
+    server_id: Uuid,
     channel_id: Uuid,
 ) -> Result<Channel> {
-    let url = format!("{}/channels/{}", api_url, channel_id);
+    let url = format!("{api_url}/servers/{server_id}/channels/{channel_id}");
     fetch_json::<Channel>(client, &url).await
 }

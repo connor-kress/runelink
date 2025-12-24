@@ -16,6 +16,6 @@ pub use servers::*;
 pub use users::*;
 
 pub async fn do_ping(client: &Client, api_url: &str) -> Result<String> {
-    let url = format!("{}/ping", api_url);
+    let url = format!("{api_url}/ping");
     generic::fetch_text(client, &url).await
 }

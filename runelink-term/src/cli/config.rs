@@ -69,7 +69,6 @@ pub struct NameAndDomainArgs {
     pub domain: Option<String>,
 }
 
-
 pub async fn handle_default_account_commands(
     ctx: &mut CliContext<'_>,
     default_args: &DefaultAccountArgs,
@@ -87,10 +86,11 @@ pub async fn handle_default_account_commands(
             let account = if let (Some(name), Some(domain)) =
                 (&set_args.name, &set_args.domain)
             {
-                ctx.config.get_account_config_by_name(name, domain)
-                    .ok_or_else(|| CliError::InvalidArgument(
-                        "Account not found.".into()
-                    ))?
+                ctx.config
+                    .get_account_config_by_name(name, domain)
+                    .ok_or_else(|| {
+                        CliError::InvalidArgument("Account not found.".into())
+                    })?
             } else {
                 let tmp = select_inline(
                     &ctx.config.accounts,
@@ -100,7 +100,8 @@ pub async fn handle_default_account_commands(
                 .ok_or(CliError::Cancellation)?;
                 println!();
                 tmp
-            }.clone();
+            }
+            .clone();
             ctx.config.default_account = Some(account.user_id);
             ctx.config.save()?;
             println!("Set default account: {}", account.verbose());
@@ -141,8 +142,9 @@ pub async fn handle_default_server_commands(
             if let Some(server_id) = ctx.config.default_server {
                 let api_url = ctx.account.try_get_api_url()?;
                 let server = requests::fetch_server_by_id(
-                    ctx.client, &api_url, server_id
-                ).await?;
+                    ctx.client, &api_url, server_id,
+                )
+                .await?;
                 println!("{}", server.verbose());
             } else {
                 println!("No default server set.");
@@ -152,8 +154,11 @@ pub async fn handle_default_server_commands(
         DefaultServerCommands::Set(set_args) => {
             let api_url = ctx.account.try_get_api_url()?;
             let server = requests::fetch_server_by_id(
-                ctx.client, &api_url, set_args.server_id
-            ).await?;
+                ctx.client,
+                &api_url,
+                set_args.server_id,
+            )
+            .await?;
             ctx.config.default_server = Some(server.id);
             ctx.config.save()?;
             println!("Set default server: {}", server.verbose());
@@ -206,16 +211,17 @@ pub async fn handle_default_channel_commands(
         DefaultChannelCommands::Get(get_default_args) => {
             if let Some(server_id) = get_default_args.server_id {
                 let Some(server_config) =
-                    ctx.config.get_server_config(server_id) else
-                {
+                    ctx.config.get_server_config(server_id)
+                else {
                     println!("No default channel set.");
                     return Ok(());
                 };
                 if let Some(channel_id) = server_config.default_channel {
                     let api_url = ctx.account.try_get_api_url()?;
                     let channel = requests::fetch_channel_by_id(
-                        ctx.client, &api_url, channel_id
-                    ).await?;
+                        ctx.client, &api_url, server_id, channel_id,
+                    )
+                    .await?;
                     println!("{}", channel.verbose());
                 } else {
                     println!("No default channel set.");
@@ -231,13 +237,17 @@ pub async fn handle_default_channel_commands(
                 // TODO: endpoint for batch fetching servers/channels
                 let api_url = get_api_url(&server_config.domain);
                 let server = requests::fetch_server_by_id(
-                    ctx.client, &api_url, server_config.server_id
-                ).await?;
+                    ctx.client,
+                    &api_url,
+                    server_config.server_id,
+                )
+                .await?;
                 println!("{} ({})", server.title, server.id);
                 if let Some(channel_id) = server_config.default_channel {
                     let channel = requests::fetch_channel_by_id(
-                        ctx.client, &api_url, channel_id
-                    ).await?;
+                        ctx.client, &api_url, server.id, channel_id,
+                    )
+                    .await?;
                     println!("\tDefault Channel: {}", channel.verbose());
                 } else {
                     println!("\tDefault Channel: None");
@@ -248,23 +258,32 @@ pub async fn handle_default_channel_commands(
         DefaultChannelCommands::Set(set_args) => {
             let api_url = get_api_url(&set_args.server_domain);
             let server = requests::fetch_server_by_id(
-                ctx.client, &api_url, set_args.server_id
-            ).await?;
+                ctx.client,
+                &api_url,
+                set_args.server_id,
+            )
+            .await?;
             let server_channels = requests::fetch_channels_by_server(
-                ctx.client, &api_url, set_args.server_id
-            ).await?;
+                ctx.client,
+                &api_url,
+                set_args.server_id,
+            )
+            .await?;
             let channel = requests::fetch_channel_by_id(
-                ctx.client, &api_url, set_args.channel_id
-            ).await?;
+                ctx.client,
+                &api_url,
+                server.id,
+                set_args.channel_id,
+            )
+            .await?;
             if !server_channels.iter().any(|sc| sc.id == channel.id) {
                 return Err(CliError::InvalidArgument(
-                    "Channel not found in server.".into()
+                    "Channel not found in server.".into(),
                 ));
             }
-            let server_config = ctx.config.get_or_create_server_config(
-                &server,
-                &set_args.server_domain,
-            );
+            let server_config = ctx
+                .config
+                .get_or_create_server_config(&server, &set_args.server_domain);
             server_config.default_channel = Some(channel.id);
             ctx.config.save()?;
             println!(

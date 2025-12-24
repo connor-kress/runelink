@@ -1,52 +1,34 @@
-use reqwest::Client;
-use serde::{de::DeserializeOwned, Serialize};
 use log::info;
+use reqwest::Client;
+use serde::{Serialize, de::DeserializeOwned};
 
 use crate::error::{Error, Result};
 
-pub async fn fetch_text(
-    client: &Client,
-    url: &str,
-) -> Result<String> {
-    info!("fetching text: {}", url);
-    let response = client
-        .get(url)
-        .send()
-        .await?;
+pub async fn fetch_text(client: &Client, url: &str) -> Result<String> {
+    info!("fetching text: {url}");
+    let response = client.get(url).send().await?;
     let status = response.status();
     if !status.is_success() {
-        let message = response
-            .text()
-            .await
-            .unwrap_or_else(
-                |e| format!("Failed to get error message body: {}", e)
-            );
+        let message = response.text().await.unwrap_or_else(|e| {
+            format!("Failed to get error message body: {e}")
+        });
         return Err(Error::Status(status, message));
     }
     let text_data = response.text().await?;
     Ok(text_data)
 }
 
-pub async fn fetch_json<T>(
-    client: &Client,
-    url: &str,
-) -> Result<T>
+pub async fn fetch_json<T>(client: &Client, url: &str) -> Result<T>
 where
-    T: DeserializeOwned
+    T: DeserializeOwned,
 {
-    info!("fetching json: {}", url);
-    let response = client
-        .get(url)
-        .send()
-        .await?;
+    info!("fetching json: {url}");
+    let response = client.get(url).send().await?;
     let status = response.status();
     if !status.is_success() {
-        let message = response
-            .text()
-            .await
-            .unwrap_or_else(
-                |e| format!("Failed to get error message body: {}", e)
-            );
+        let message = response.text().await.unwrap_or_else(|e| {
+            format!("Failed to get error message body: {e}")
+        });
         return Err(Error::Status(status, message));
     }
     let data = response.json::<T>().await?;
@@ -63,23 +45,15 @@ where
     O: DeserializeOwned,
 {
     info!(
-        "posting json: {}\n{}",
-        url,
+        "posting json: {url}\n{}",
         serde_json::to_string_pretty(request_body).unwrap()
     );
-    let response = client
-        .post(url)
-        .json(request_body)
-        .send()
-        .await?;
+    let response = client.post(url).json(request_body).send().await?;
     let status = response.status();
     if !status.is_success() {
-        let message = response
-            .text()
-            .await
-            .unwrap_or_else(
-                |e| format!("Failed to get error message body: {}", e)
-            );
+        let message = response.text().await.unwrap_or_else(|e| {
+            format!("Failed to get error message body: {e}")
+        });
         return Err(Error::Status(status, message));
     }
     let data = response.json::<O>().await?;

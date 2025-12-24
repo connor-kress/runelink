@@ -11,15 +11,12 @@ pub async fn create_user(
     api_url: &str,
     new_user: &NewUser,
 ) -> Result<User> {
-    let url = format!("{}/users", api_url);
+    let url = format!("{api_url}/users");
     post_json::<NewUser, User>(client, &url, new_user).await
 }
 
-pub async fn fetch_users(
-    client: &Client,
-    api_url: &str,
-) -> Result<Vec<User>> {
-    let url = format!("{}/users", api_url);
+pub async fn fetch_users(client: &Client, api_url: &str) -> Result<Vec<User>> {
+    let url = format!("{api_url}/users");
     fetch_json::<Vec<User>>(client, &url).await
 }
 
@@ -28,7 +25,7 @@ pub async fn fetch_user_by_id(
     api_url: &str,
     user_id: Uuid,
 ) -> Result<User> {
-    let url = format!("{}/users/{}", api_url, user_id);
+    let url = format!("{api_url}/users/{user_id}");
     fetch_json::<User>(client, &url).await
 }
 
@@ -38,9 +35,6 @@ pub async fn fetch_user_by_name_and_domain(
     name: String,
     domain: String,
 ) -> Result<User> {
-    let url = format!(
-        "{}/users/find?name={}&domain={}",
-        api_url, name, domain
-    );
+    let url = format!("{api_url}/users/find?name={name}&domain={domain}");
     fetch_json::<User>(client, &url).await
 }

@@ -7,21 +7,21 @@ pub fn get_api_url(domain: &str) -> String {
                 if after.starts_with(':') {
                     domain.to_string()
                 } else {
-                    format!("{}:7000", domain)
+                    format!("{domain}:7000")
                 }
             }
             None => {
                 // malformed IPv6, just append
-                format!("{}:7000", domain)
+                format!("{domain}:7000")
             }
         }
     } else if domain.contains(':') {
         domain.to_string()
     } else {
-        format!("{}:7000", domain)
+        format!("{domain}:7000")
     };
 
-    format!("http://{}", host_with_port)
+    format!("http://{host_with_port}")
 }
 
 #[cfg(test)]

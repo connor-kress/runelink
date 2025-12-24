@@ -40,9 +40,12 @@ pub struct MessageGetArgs {
     /// The ID of the message to fetch
     #[clap(long)]
     pub message_id: Uuid,
+    /// The ID of the channel the message is in
+    #[clap(long)]
+    pub channel_id: Uuid,
     /// The ID of the server the message is in
     #[clap(long)]
-    pub server_id: Option<Uuid>,
+    pub server_id: Uuid,
     /// The domain of the server the message is in
     #[clap(long)]
     pub domain: Option<String>,
@@ -75,15 +78,15 @@ pub async fn handle_message_commands(
                 ctx,
                 list_args.channel_id,
                 list_args.server_id,
-            ).await?;
+            )
+            .await?;
             let api_url = get_api_url(&server.domain);
             let messages = requests::fetch_messages_by_channel(
-                ctx.client,
-                &api_url,
-                channel.id,
-            ).await?;
+                ctx.client, &api_url, server.id, channel.id,
+            )
+            .await?;
             for message in messages.iter().rev() {
-                println!("{}", message);
+                println!("{message}");
             }
         }
 
@@ -91,12 +94,17 @@ pub async fn handle_message_commands(
             ctx.account.ok_or(CliError::MissingAccount)?;
             let api_url = DomainQueryBuilder::new(ctx)
                 .try_domain(get_args.domain.clone())
-                .try_server(get_args.server_id)
+                .try_server(Some(get_args.server_id))
                 .get_api_url()?;
             let message = requests::fetch_message_by_id(
-                ctx.client, &api_url, get_args.message_id
-            ).await?;
-            println!("{}", message);
+                ctx.client,
+                &api_url,
+                get_args.server_id,
+                get_args.channel_id,
+                get_args.message_id,
+            )
+            .await?;
+            println!("{message}");
         }
 
         MessageCommands::Send(send_args) => {
@@ -105,7 +113,8 @@ pub async fn handle_message_commands(
                 ctx,
                 send_args.channel_id,
                 send_args.server_id,
-            ).await?;
+            )
+            .await?;
             let body = unwrap_or_prompt(send_args.body.clone(), "Message")?;
             let server_api_url = get_api_url(&server.domain);
             let new_message = NewMessage {
@@ -113,8 +122,13 @@ pub async fn handle_message_commands(
                 author_id: account.user_id,
             };
             let message = requests::send_message(
-                ctx.client, &server_api_url, channel.id, &new_message
-            ).await?;
+                ctx.client,
+                &server_api_url,
+                server.id,
+                channel.id,
+                &new_message,
+            )
+            .await?;
             println!("Sent message: {}", message.body);
         }
     };

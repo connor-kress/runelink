@@ -5,11 +5,11 @@ use uuid::Uuid;
 use crate::error::CliError;
 
 use super::{
-    config::{handle_default_channel_commands, DefaultChannelArgs},
+    config::{DefaultChannelArgs, handle_default_channel_commands},
     context::CliContext,
     domain_query::DomainQueryBuilder,
     input::{read_input, unwrap_or_prompt},
-    select::{get_server_selection, ServerSelectionType},
+    select::{ServerSelectionType, get_server_selection},
 };
 
 #[derive(clap::Args, Debug)]
@@ -47,7 +47,7 @@ pub struct ChannelListArgs {
 pub struct ChannelGetArgs {
     /// The ID of the server
     #[clap(long)]
-    pub server_id: Option<Uuid>,
+    pub server_id: Uuid,
     /// The domain of the server
     #[clap(long)]
     pub domain: Option<String>,
@@ -86,23 +86,24 @@ pub async fn handle_channel_commands(
             let channels;
             if let Some(server_id) = list_args.server_id {
                 channels = requests::fetch_channels_by_server(
-                    ctx.client, &api_url, server_id
-                ).await?;
+                    ctx.client, &api_url, server_id,
+                )
+                .await?;
             } else if list_args.all {
                 // TODO: only include servers the user is a member of
                 // Also, fetch from multiple hosts (unless one is specified)
-                channels = requests::fetch_all_channels(
-                    ctx.client, &api_url
-                ).await?
+                channels =
+                    requests::fetch_all_channels(ctx.client, &api_url).await?
                 // Also, group by server for printing
             } else {
-                let server = get_server_selection(
-                    ctx, ServerSelectionType::MemberOnly
-                ).await?;
+                let server =
+                    get_server_selection(ctx, ServerSelectionType::MemberOnly)
+                        .await?;
                 let api_url = get_api_url(&server.domain);
                 channels = requests::fetch_channels_by_server(
-                    ctx.client, &api_url, server.id
-                ).await?;
+                    ctx.client, &api_url, server.id,
+                )
+                .await?;
             }
             if channels.is_empty() {
                 println!(
@@ -119,11 +120,15 @@ pub async fn handle_channel_commands(
             ctx.account.ok_or(CliError::MissingAccount)?;
             let api_url = DomainQueryBuilder::new(ctx)
                 .try_domain(get_args.domain.clone())
-                .try_server(get_args.server_id)
+                .try_server(Some(get_args.server_id))
                 .get_api_url()?;
             let channel = requests::fetch_channel_by_id(
-                ctx.client, &api_url, get_args.channel_id
-            ).await?;
+                ctx.client,
+                &api_url,
+                get_args.server_id,
+                get_args.channel_id,
+            )
+            .await?;
             println!("{}", channel.verbose());
         }
 
@@ -133,18 +138,14 @@ pub async fn handle_channel_commands(
                 .try_server(create_args.server_id)
                 .get_api_url()?;
             let server = if let Some(server_id) = create_args.server_id {
-                requests::fetch_server_by_id(
-                    ctx.client, &api_url, server_id
-                ).await?
+                requests::fetch_server_by_id(ctx.client, &api_url, server_id)
+                    .await?
             } else {
-                get_server_selection(
-                    ctx, ServerSelectionType::MemberOnly
-                ).await?
+                get_server_selection(ctx, ServerSelectionType::MemberOnly)
+                    .await?
             };
-            let title = unwrap_or_prompt(
-                create_args.title.clone(),
-                "Channel Title",
-            )?;
+            let title =
+                unwrap_or_prompt(create_args.title.clone(), "Channel Title")?;
             let desc = if create_args.description.is_some() {
                 create_args.description.clone()
             } else if create_args.no_description {
@@ -158,8 +159,12 @@ pub async fn handle_channel_commands(
                 description: desc,
             };
             let channel = requests::create_channel(
-                ctx.client, &server_api_url, server.id, &new_channel
-            ).await?;
+                ctx.client,
+                &server_api_url,
+                server.id,
+                &new_channel,
+            )
+            .await?;
             if let Some(server_config) =
                 ctx.config.get_server_config_mut(channel.server_id)
             {
@@ -169,9 +174,13 @@ pub async fn handle_channel_commands(
                 }
             } else {
                 let server = requests::fetch_server_by_id(
-                    ctx.client, &server_api_url, channel.server_id
-                ).await?;
-                ctx.config.get_or_create_server_config(&server, &account.domain);
+                    ctx.client,
+                    &server_api_url,
+                    channel.server_id,
+                )
+                .await?;
+                ctx.config
+                    .get_or_create_server_config(&server, &account.domain);
                 ctx.config.save()?;
             }
             println!("Created channel: {}", channel.verbose());

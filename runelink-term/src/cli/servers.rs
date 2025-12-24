@@ -100,7 +100,7 @@ pub async fn handle_server_commands(
                 } else {
                     println!(); // separation between host groups
                 }
-                println!("{}", domain);
+                println!("{domain}");
                 for membership in memberships {
                     let server = &membership.server;
                     print!("    {}", server.verbose());
@@ -124,7 +124,12 @@ pub async fn handle_server_commands(
                 get_args.server_id,
             )
             .await?;
-            println!("{} / {} ({})", server.domain, server.title, server.id);
+            println!(
+                "{domain} / {title} ({id})",
+                domain = server.domain,
+                title = server.title,
+                id = server.id
+            );
         }
 
         ServerCommands::Create(create_args) => {

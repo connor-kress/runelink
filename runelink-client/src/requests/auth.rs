@@ -10,6 +10,6 @@ pub async fn signup(
     api_url: &str,
     signup_req: &SignupRequest,
 ) -> Result<User> {
-    let url = format!("{}/auth/signup", api_url);
+    let url = format!("{api_url}/auth/signup");
     post_json::<SignupRequest, User>(client, &url, signup_req).await
 }

@@ -210,9 +210,10 @@ pub async fn get_channel_selection_with_inputs(
             let server =
                 requests::fetch_server_by_id(ctx.client, &api_url, server_id)
                     .await?;
-            let channel =
-                requests::fetch_channel_by_id(ctx.client, &api_url, channel_id)
-                    .await?;
+            let channel = requests::fetch_channel_by_id(
+                ctx.client, &api_url, server_id, channel_id,
+            )
+            .await?;
             Ok((server, channel))
         }
         (Some(_channel_id), None) => Err(CliError::MissingContext(
