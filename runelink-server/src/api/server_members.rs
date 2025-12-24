@@ -1,7 +1,12 @@
-use crate::{error::ApiError, ops, state::AppState};
+use crate::{
+    auth::{Principal, authorize},
+    error::ApiError,
+    ops,
+    state::AppState,
+};
 use axum::{
     extract::{Json, Path, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::IntoResponse,
 };
 use runelink_types::{NewServerMember, ServerMembership};
@@ -10,10 +15,19 @@ use uuid::Uuid;
 /// POST /servers/{server_id}/users
 pub async fn add_server_member(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Path(server_id): Path<Uuid>,
     Json(new_member): Json<NewServerMember>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let member = ops::add_server_member(&state, server_id, &new_member).await?;
+    let session = authorize(
+        &state,
+        Principal::from_client_headers(&headers, &state)?,
+        ops::auth_add_server_member(server_id),
+    )
+    .await?;
+    let member =
+        ops::add_server_member(&state, &session, server_id, &new_member)
+            .await?;
     Ok((StatusCode::CREATED, Json(member)))
 }
 

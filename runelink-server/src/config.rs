@@ -13,7 +13,7 @@ pub enum ConfigError {
 
 #[derive(Clone, Debug)]
 pub struct ServerConfig {
-    pub local_domain: String,
+    pub local_domain_raw: String,
     pub database_url: String,
     pub port: u16,
     pub key_dir: PathBuf,
@@ -41,7 +41,7 @@ impl ServerConfig {
             });
 
         Ok(ServerConfig {
-            local_domain,
+            local_domain_raw: local_domain,
             database_url,
             port,
             key_dir,
@@ -49,20 +49,20 @@ impl ServerConfig {
     }
 
     /// Includes port if it's not the default port (7000)
-    pub fn local_domain_with_port(&self) -> String {
+    pub fn local_domain(&self) -> String {
         if self.port == 7000 {
-            self.local_domain.clone()
+            self.local_domain_raw.clone()
         } else {
-            format!("{}:{}", &self.local_domain, self.port)
+            format!("{}:{}", &self.local_domain_raw, self.port)
         }
     }
 
     /// Always includes port for machine-to-machine communication
     pub fn local_domain_with_explicit_port(&self) -> String {
-        format!("{}:{}", &self.local_domain, self.port)
+        format!("{}:{}", &self.local_domain_raw, self.port)
     }
 
-    pub fn api_url_with_port(&self) -> String {
+    pub fn api_url(&self) -> String {
         get_api_url(self.local_domain_with_explicit_port().as_str())
     }
 }

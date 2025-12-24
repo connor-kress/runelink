@@ -31,7 +31,7 @@ impl ClientAuth {
         state: &AppState,
     ) -> Result<Self, ApiError> {
         let token = extract_bearer_token(headers)?;
-        let server_id = state.config.api_url_with_port();
+        let server_id = state.config.api_url();
         let mut validation = Validation::new(Algorithm::EdDSA);
         validation.set_audience(&[server_id.clone()]);
         validation.set_issuer(&[server_id]);
@@ -62,7 +62,7 @@ impl FederationAuth {
         state: &AppState,
     ) -> Result<Self, ApiError> {
         let token = extract_bearer_token(headers)?;
-        let server_id = state.config.api_url_with_port();
+        let server_id = state.config.api_url();
         let claims =
             jwks_resolver::decode_federation_jwt(state, &token, &server_id)
                 .await?;

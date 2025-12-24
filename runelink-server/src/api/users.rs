@@ -1,7 +1,12 @@
-use crate::{error::ApiError, ops, state::AppState};
+use crate::{
+    auth::{Principal, authorize},
+    error::ApiError,
+    ops,
+    state::AppState,
+};
 use axum::{
     extract::{Json, Path, Query, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::IntoResponse,
 };
 use runelink_types::NewUser;
@@ -17,9 +22,16 @@ pub struct GetUserByNameDomainQuery {
 /// POST /users
 pub async fn create_user(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Json(new_user): Json<NewUser>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let user = ops::create_user(&state, &new_user).await?;
+    let session = authorize(
+        &state,
+        Principal::from_client_headers(&headers, &state)?,
+        ops::auth_create_user(),
+    )
+    .await?;
+    let user = ops::create_user(&state, &session, &new_user).await?;
     Ok((StatusCode::CREATED, Json(user)))
 }
 

@@ -39,7 +39,7 @@ pub fn router() -> Router<AppState> {
 pub async fn discovery(
     State(state): State<AppState>,
 ) -> Json<serde_json::Value> {
-    let issuer = state.config.api_url_with_port();
+    let issuer = state.config.api_url();
     let jwks_uri = format!("{}/.well-known/jwks.json", issuer);
     let token_endpoint = format!("{}/auth/token", issuer);
     let userinfo_endpoint = format!("{}/auth/userinfo", issuer);
@@ -85,7 +85,7 @@ pub async fn token(
             let user = queries::get_user_by_name_and_domain(
                 &state.db_pool,
                 username,
-                state.config.local_domain.clone(),
+                state.config.local_domain(),
             )
             .await?;
 
@@ -107,7 +107,7 @@ pub async fn token(
             let claims = ClientAccessClaims::new(
                 user.id,
                 client_id.clone(),
-                state.config.api_url_with_port(),
+                state.config.api_url(),
                 scope,
                 lifetime,
             );
@@ -155,7 +155,7 @@ pub async fn token(
             let claims = ClientAccessClaims::new(
                 rt.user_id,
                 client_id,
-                state.config.api_url_with_port(),
+                state.config.api_url(),
                 scope,
                 lifetime,
             );
@@ -208,7 +208,7 @@ pub async fn signup(
     // Insert user
     let new_user = NewUser {
         name: req.name,
-        domain: state.config.local_domain.clone(),
+        domain: state.config.local_domain(),
     };
     let user = queries::insert_user(&state.db_pool, &new_user).await?;
 

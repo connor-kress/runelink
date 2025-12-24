@@ -1,6 +1,5 @@
 use crate::{
     auth::{Principal, authorize},
-    bearer_auth::ClientAuth,
     error::ApiError,
     ops,
     state::AppState,
@@ -21,7 +20,7 @@ pub async fn create_server(
 ) -> Result<impl IntoResponse, ApiError> {
     let session = authorize(
         &state,
-        Principal::Client(ClientAuth::from_headers(&headers, &state)?),
+        Principal::from_client_headers(&headers, &state)?,
         ops::auth_create_server(),
     )
     .await?;
@@ -49,10 +48,18 @@ pub async fn get_server_by_id_handler(
 /// GET /servers/{server_id}/with_channels
 pub async fn get_server_with_channels_handler(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Path(server_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let server = ops::get_server_with_channels(&state, server_id).await?;
-    Ok((StatusCode::OK, Json(server)))
+    let session = authorize(
+        &state,
+        Principal::from_client_headers(&headers, &state)?,
+        ops::auth_get_server_with_channels(server_id),
+    )
+    .await?;
+    let server_with_channels =
+        ops::get_server_with_channels(&state, &session, server_id).await?;
+    Ok((StatusCode::OK, Json(server_with_channels)))
 }
 
 /// GET /users/{user_id}/servers

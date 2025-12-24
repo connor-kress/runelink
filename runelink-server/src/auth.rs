@@ -6,6 +6,7 @@ use crate::{
     queries,
     state::AppState,
 };
+use axum::http::HeaderMap;
 use runelink_types::{FederationClaims, ServerRole, User};
 use uuid::Uuid;
 
@@ -13,6 +14,16 @@ use uuid::Uuid;
 pub enum Principal {
     Client(ClientAuth),
     Federation(FederationAuth),
+}
+
+impl Principal {
+    pub fn from_client_headers(
+        headers: &HeaderMap,
+        state: &AppState,
+    ) -> Result<Self, ApiError> {
+        let auth = ClientAuth::from_headers(headers, state)?;
+        Ok(Self::Client(auth))
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -54,6 +65,7 @@ pub async fn authorize(
     principal: Principal,
     spec: AuthSpec,
 ) -> Result<Session, ApiError> {
+    // TODO: handle optional authentication (type state pattern?)
     let (user_id, federation_claims): (Uuid, Option<FederationClaims>) =
         match &principal {
             Principal::Client(auth) => (auth.claims.sub, None),

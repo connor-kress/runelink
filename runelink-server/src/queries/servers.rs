@@ -23,13 +23,12 @@ impl ServerMembershipRow {
         user_id: Uuid,
         config: &ServerConfig,
     ) -> Result<ServerMembership, ApiError> {
-        let server_domain = self.server_domain_from_db
-            .unwrap_or_else(|| config.local_domain_with_port());
+        let server_domain = self
+            .server_domain_from_db
+            .unwrap_or_else(|| config.local_domain());
 
         // Needed because of weird sqlx limitations (or misuse)
-        let get_error = || {
-            ApiError::Unknown("Sqlx conversion error".into())
-        };
+        let get_error = || ApiError::Unknown("Sqlx conversion error".into());
         Ok(ServerMembership {
             server: Server {
                 id: self.server_id.ok_or_else(get_error)?,
@@ -62,7 +61,7 @@ impl LocalServerRow {
     fn into_server(self, config: &ServerConfig) -> Server {
         Server {
             id: self.id,
-            domain: config.local_domain_with_port(),
+            domain: config.local_domain(),
             title: self.title,
             description: self.description,
             created_at: self.created_at,
@@ -107,12 +106,9 @@ pub async fn get_server_by_id(
 pub async fn get_all_servers(
     state: &AppState,
 ) -> Result<Vec<Server>, ApiError> {
-    let rows = sqlx::query_as!(
-        LocalServerRow,
-        "SELECT * FROM servers",
-    )
-    .fetch_all(state.db_pool.as_ref())
-    .await?;
+    let rows = sqlx::query_as!(LocalServerRow, "SELECT * FROM servers",)
+        .fetch_all(state.db_pool.as_ref())
+        .await?;
     let servers = rows
         .into_iter()
         .map(|row| row.into_server(&state.config))

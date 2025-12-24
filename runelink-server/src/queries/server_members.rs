@@ -3,7 +3,7 @@ use runelink_types::{
     NewServerMember, Server, ServerMember, ServerMembership, ServerRole, User,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::{types::Json, FromRow};
+use sqlx::{FromRow, types::Json};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -36,7 +36,7 @@ pub async fn add_user_to_server(
     pool: &DbPool,
     server_id: Uuid,
     new_member: &NewServerMember,
-) -> Result <ServerMember, ApiError> {
+) -> Result<ServerMember, ApiError> {
     sqlx::query!(
         r#"
         INSERT INTO server_users (server_id, user_id, role)
@@ -105,7 +105,7 @@ pub async fn get_all_server_members(
 
 pub async fn upsert_cached_remote_server(
     pool: &DbPool,
-    server:  &Server,
+    server: &Server,
 ) -> Result<(), ApiError> {
     sqlx::query!(
         r#"
@@ -228,7 +228,7 @@ pub async fn get_local_server_membership(
     Ok(ServerMembership {
         server: Server {
             id: row.id,
-            domain: state.config.local_domain_with_port(),
+            domain: state.config.local_domain(),
             title: row.title,
             description: row.description,
             created_at: row.server_created_at,

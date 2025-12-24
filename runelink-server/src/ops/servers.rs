@@ -27,22 +27,36 @@ pub async fn create_server(
     Ok(server)
 }
 
-/// List all servers (local only for now).
+/// List all local servers (public).
 pub async fn list_servers(state: &AppState) -> Result<Vec<Server>, ApiError> {
-    queries::get_all_servers(state).await
+    // TODO: add visibility specification for servers
+    // We could then have an admin endpoint for all servers
+    // and a public endpoint for only public servers
+    let servers = queries::get_all_servers(state).await?;
+    Ok(servers)
 }
 
-/// Get a server by ID.
+/// Get a server by ID (public).
 pub async fn get_server_by_id(
     state: &AppState,
     server_id: Uuid,
 ) -> Result<Server, ApiError> {
-    queries::get_server_by_id(state, server_id).await
+    // TODO: separate public and private server objects?
+    let server = queries::get_server_by_id(state, server_id).await?;
+    Ok(server)
+}
+
+/// Auth requirements for `get_server_with_channels`.
+pub fn auth_get_server_with_channels(server_id: Uuid) -> AuthSpec {
+    AuthSpec {
+        requirements: vec![Requirement::ServerMember { server_id }],
+    }
 }
 
 /// Get a server with its channels.
 pub async fn get_server_with_channels(
     state: &AppState,
+    _session: &Session,
     server_id: Uuid,
 ) -> Result<ServerWithChannels, ApiError> {
     let (server, channels) = tokio::join!(
@@ -55,10 +69,12 @@ pub async fn get_server_with_channels(
     })
 }
 
-/// List all server memberships for a user.
+/// List all server memberships for a user (public).
 pub async fn list_server_memberships_by_user(
     state: &AppState,
     user_id: Uuid,
 ) -> Result<Vec<ServerMembership>, ApiError> {
-    queries::get_all_memberships_for_user(state, user_id).await
+    let memberships =
+        queries::get_all_memberships_for_user(state, user_id).await?;
+    Ok(memberships)
 }
