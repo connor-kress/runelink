@@ -5,7 +5,7 @@ use crate::{
     queries,
     state::AppState,
 };
-use runelink_types::NewMessage;
+use runelink_types::{Message, NewMessage};
 use uuid::Uuid;
 
 /// Auth requirements for `create_message`.
@@ -22,7 +22,7 @@ pub async fn create_message(
     server_id: Uuid,
     channel_id: Uuid,
     new_message: &NewMessage,
-) -> Result<runelink_types::Message, ApiError> {
+) -> Result<Message, ApiError> {
     let channel =
         queries::get_channel_by_id(&state.db_pool, channel_id).await?;
     if channel.server_id != server_id {
@@ -47,7 +47,7 @@ pub fn auth_list_messages() -> AuthSpec {
 pub async fn list_messages(
     state: &AppState,
     _session: &Session,
-) -> Result<Vec<runelink_types::Message>, ApiError> {
+) -> Result<Vec<Message>, ApiError> {
     let messages = queries::get_all_messages(&state.db_pool).await?;
     Ok(messages)
 }
@@ -64,7 +64,7 @@ pub async fn list_messages_by_server(
     state: &AppState,
     _session: &Session,
     server_id: Uuid,
-) -> Result<Vec<runelink_types::Message>, ApiError> {
+) -> Result<Vec<Message>, ApiError> {
     let messages =
         queries::get_messages_by_server(&state.db_pool, server_id).await?;
     Ok(messages)
@@ -82,7 +82,7 @@ pub async fn list_messages_by_channel(
     state: &AppState,
     _session: &Session,
     channel_id: Uuid,
-) -> Result<Vec<runelink_types::Message>, ApiError> {
+) -> Result<Vec<Message>, ApiError> {
     let messages =
         queries::get_messages_by_channel(&state.db_pool, channel_id).await?;
     Ok(messages)
@@ -102,7 +102,7 @@ pub async fn get_message_by_id(
     server_id: Uuid,
     channel_id: Uuid,
     message_id: Uuid,
-) -> Result<runelink_types::Message, ApiError> {
+) -> Result<Message, ApiError> {
     let message =
         queries::get_message_by_id(&state.db_pool, message_id).await?;
     if message.channel_id != channel_id {

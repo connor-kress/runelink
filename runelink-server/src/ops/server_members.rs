@@ -1,7 +1,7 @@
 use super::Session;
 use crate::{auth::AuthSpec, error::ApiError, queries, state::AppState};
 use runelink_client::{requests, util::get_api_url};
-use runelink_types::{NewServerMember, ServerMembership};
+use runelink_types::{NewServerMember, ServerMember, ServerMembership};
 use uuid::Uuid;
 
 /// Auth requirements for `add_server_member`.
@@ -18,7 +18,7 @@ pub async fn add_server_member(
     _session: &Session,
     server_id: Uuid,
     new_member: &NewServerMember,
-) -> Result<runelink_types::ServerMember, ApiError> {
+) -> Result<ServerMember, ApiError> {
     if new_member.user_domain == state.config.local_domain() {
         // Local user (just add directly)
         queries::add_user_to_server(&state.db_pool, server_id, new_member).await
@@ -64,7 +64,7 @@ pub async fn add_server_member(
 pub async fn list_server_members(
     state: &AppState,
     server_id: Uuid,
-) -> Result<Vec<runelink_types::ServerMember>, ApiError> {
+) -> Result<Vec<ServerMember>, ApiError> {
     let members =
         queries::get_all_server_members(&state.db_pool, server_id).await?;
     Ok(members)
@@ -75,7 +75,7 @@ pub async fn get_server_member(
     state: &AppState,
     server_id: Uuid,
     user_id: Uuid,
-) -> Result<runelink_types::ServerMember, ApiError> {
+) -> Result<ServerMember, ApiError> {
     let member =
         queries::get_server_member(&state.db_pool, server_id, user_id).await?;
     Ok(member)

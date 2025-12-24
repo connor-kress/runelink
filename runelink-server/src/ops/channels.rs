@@ -5,7 +5,7 @@ use crate::{
     queries,
     state::AppState,
 };
-use runelink_types::NewChannel;
+use runelink_types::{Channel, NewChannel};
 use uuid::Uuid;
 
 /// Auth requirements for `create_channel`.
@@ -21,7 +21,7 @@ pub async fn create_channel(
     _session: &Session,
     server_id: Uuid,
     new_channel: &NewChannel,
-) -> Result<runelink_types::Channel, ApiError> {
+) -> Result<Channel, ApiError> {
     let channel =
         queries::insert_channel(&state.db_pool, server_id, new_channel).await?;
     Ok(channel)
@@ -38,7 +38,7 @@ pub fn auth_list_channels() -> AuthSpec {
 pub async fn list_channels(
     state: &AppState,
     _session: &Session,
-) -> Result<Vec<runelink_types::Channel>, ApiError> {
+) -> Result<Vec<Channel>, ApiError> {
     let channels = queries::get_all_channels(&state.db_pool).await?;
     Ok(channels)
 }
@@ -55,7 +55,7 @@ pub async fn list_channels_by_server(
     state: &AppState,
     _session: &Session,
     server_id: Uuid,
-) -> Result<Vec<runelink_types::Channel>, ApiError> {
+) -> Result<Vec<Channel>, ApiError> {
     queries::get_channels_by_server(&state.db_pool, server_id).await
 }
 
@@ -71,7 +71,7 @@ pub async fn get_channel_by_id(
     state: &AppState,
     _session: &Session,
     channel_id: Uuid,
-) -> Result<runelink_types::Channel, ApiError> {
+) -> Result<Channel, ApiError> {
     let channel =
         queries::get_channel_by_id(&state.db_pool, channel_id).await?;
     Ok(channel)
