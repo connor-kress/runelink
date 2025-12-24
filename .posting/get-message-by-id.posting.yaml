@@ -1,2 +1,2 @@
 name: get message by id
-url: $BASE_API_URL/messages/$MESSAGE_ID
+url: $BASE_API_URL/servers/$SERVER_ID/channels/$CHANNEL_ID/messages/$MESSAGE_ID

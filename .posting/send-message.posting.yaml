@@ -1,6 +1,6 @@
 name: send message
 method: POST
-url: $BASE_API_URL/channels/$CHANNEL_ID/messages
+url: $BASE_API_URL/servers/$SERVER_ID/channels/$CHANNEL_ID/messages
 body:
   content: |-
     {
