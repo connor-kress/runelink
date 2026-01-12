@@ -49,7 +49,6 @@ impl ClientAuth {
     }
 }
 
-#[allow(unused)]
 #[derive(Clone, Debug)]
 pub struct FederationAuth {
     pub claims: FederationClaims,
@@ -62,10 +61,13 @@ impl FederationAuth {
         state: &AppState,
     ) -> Result<Self, ApiError> {
         let token = extract_bearer_token(headers)?;
-        let server_id = state.config.api_url();
-        let claims =
-            jwks_resolver::decode_federation_jwt(state, &token, &server_id)
-                .await?;
+        let expected_audience = state.config.api_url();
+        let claims = jwks_resolver::decode_federation_jwt(
+            state,
+            &token,
+            &expected_audience,
+        )
+        .await?;
         Ok(Self { claims })
     }
 }

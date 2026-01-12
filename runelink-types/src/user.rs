@@ -17,6 +17,12 @@ pub struct User {
     pub synced_at: Option<OffsetDateTime>,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct UserRef {
+    pub id: Uuid,
+    pub domain: String,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NewUser {
     pub name: String,
@@ -38,5 +44,26 @@ impl User {
 impl fmt::Display for User {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}@{}", self.name, self.domain)
+    }
+}
+
+impl From<User> for UserRef {
+    fn from(user: User) -> Self {
+        UserRef {
+            id: user.id,
+            domain: user.domain,
+        }
+    }
+}
+
+impl fmt::Display for UserRef {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "user:{}@{}", self.id, self.domain)
+    }
+}
+
+impl UserRef {
+    pub fn new(id: Uuid, domain: String) -> Self {
+        Self { id, domain }
     }
 }

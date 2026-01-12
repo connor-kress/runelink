@@ -10,9 +10,7 @@ use uuid::Uuid;
 /// Auth requirements for `create_remote_membership` (federation).
 pub fn auth_federation_create_membership(_server_id: Uuid) -> AuthSpec {
     AuthSpec {
-        requirements: vec![Requirement::Federation {
-            scopes: vec!["write:memberships"],
-        }],
+        requirements: vec![Requirement::Federation],
     }
 }
 
@@ -25,47 +23,33 @@ pub fn auth_add_server_member(_server_id: Uuid) -> AuthSpec {
 }
 
 /// Add a user to a server (handles both local and remote users).
+///
+/// For remote users, this function will fetch and cache the user profile from their
+/// home server if they don't already exist locally.
 pub async fn add_server_member(
     state: &AppState,
-    _session: &Session,
+    session: &mut Session,
     server_id: Uuid,
     new_membership: &NewServerMembership,
 ) -> Result<FullServerMembership, ApiError> {
-    let member;
-    if new_membership.user_domain == state.config.local_domain() {
-        // Local user (just add directly)
-        member = queries::add_user_to_server(
-            &state.db_pool,
-            server_id,
-            new_membership,
-        )
-        .await?;
-    } else {
-        // Remote user (handle syncing with user's home server)
-        let api_url = get_api_url(&new_membership.user_domain);
-        let remote_user =
-            queries::get_user_by_id(&state.db_pool, new_membership.user_id)
-                .await;
-        let _user = match remote_user {
-            Err(ApiError::NotFound) => {
-                // Remote user is not in the local database
-                let user = requests::fetch_user_by_id(
-                    &state.http_client,
-                    &api_url,
-                    new_membership.user_id,
-                )
-                .await?;
-                queries::insert_remote_user(&state.db_pool, &user).await?
-            }
-            other => other?,
-        };
-        member = queries::add_user_to_server(
-            &state.db_pool,
-            server_id,
-            new_membership,
-        )
-        .await?;
+    // Ensure remote user exists locally before creating membership
+    if new_membership.user_domain != state.config.local_domain() {
+        let user = session.lookup_user(state).await?;
+        if user.is_none() {
+            let api_url = get_api_url(&new_membership.user_domain);
+            let user = requests::users::fetch_user_by_id(
+                &state.http_client,
+                &api_url,
+                new_membership.user_id,
+            )
+            .await?;
+            queries::insert_remote_user(&state.db_pool, &user).await?;
+        }
     }
+
+    // Create the membership
+    let member =
+        queries::add_user_to_server(&state.db_pool, new_membership).await?;
     let membership = queries::get_local_server_membership(
         state,
         server_id,

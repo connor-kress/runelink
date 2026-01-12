@@ -11,6 +11,7 @@ use time::{Duration, OffsetDateTime};
 use crate::{
     crypto::ed25519_public_raw_to_spki_der, error::ApiError, state::AppState,
 };
+use runelink_client::util::get_api_url;
 
 #[derive(Debug, Clone)]
 pub struct CachedJwks {
@@ -174,6 +175,18 @@ pub async fn decode_federation_jwt(
         &validation,
     )
     .map_err(|_| ApiError::AuthError("invalid or expired token".into()))?;
+    let claims = data.claims;
 
-    Ok(data.claims)
+    // Verify delegation policy: issuer can only delegate users from their own domain
+    if let Some(user_ref) = &claims.user_ref {
+        let expected_iss = get_api_url(&user_ref.domain);
+        if claims.iss != expected_iss {
+            return Err(ApiError::AuthError(format!(
+                "Federation delegation mismatch: token from {} cannot delegate user from {}",
+                claims.iss, user_ref.domain
+            )));
+        }
+    }
+
+    Ok(claims)
 }

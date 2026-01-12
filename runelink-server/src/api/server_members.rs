@@ -10,7 +10,7 @@ use axum::{
     response::IntoResponse,
 };
 use runelink_client::{requests, util::get_api_url};
-use runelink_types::{NewServerMembership, ServerMembership};
+use runelink_types::NewServerMembership;
 use uuid::Uuid;
 
 /// GET /servers/{server_id}/users
@@ -48,7 +48,7 @@ pub async fn add_server_member(
             "User domain in membership does not match local domain".into(),
         ));
     }
-    let session = authorize(
+    let mut session = authorize(
         &state,
         Principal::from_client_headers(&headers, &state)?,
         ops::auth_add_server_member(server_id),
@@ -57,7 +57,7 @@ pub async fn add_server_member(
     if new_membership.server_domain == state.config.local_domain() {
         let full_membership = ops::add_server_member(
             &state,
-            &session,
+            &mut session,
             server_id,
             &new_membership,
         )
@@ -65,16 +65,16 @@ pub async fn add_server_member(
         Ok((StatusCode::CREATED, Json(full_membership)))
     } else {
         let server_api_url = get_api_url(&new_membership.server_domain);
-        let access_token = state.key_manager.issue_federation_jwt(
-            new_membership.user_id,
+        let token = state.key_manager.issue_federation_jwt_delegated(
             state.config.api_url(),
             server_api_url.clone(),
-            "write:memberships".into(),
+            new_membership.user_id,
+            new_membership.user_domain.clone(),
         )?;
         let full_membership = requests::servers::federated::create_membership(
             &state.http_client,
             &server_api_url,
-            &access_token,
+            &token,
             server_id,
             &new_membership,
         )
@@ -112,7 +112,13 @@ pub mod federated {
                     .into(),
             ));
         }
-        let session = authorize(
+        if new_membership.user_domain == state.config.local_domain() {
+            return Err(ApiError::BadRequest(
+                "User domain in membership should not match local domain"
+                    .into(),
+            ));
+        }
+        let mut session = authorize(
             &state,
             Principal::from_federation_headers(&headers, &state).await?,
             ops::auth_federation_create_membership(server_id),
@@ -120,7 +126,7 @@ pub mod federated {
         .await?;
         let full_membership = ops::add_server_member(
             &state,
-            &session,
+            &mut session,
             server_id,
             &new_membership,
         )

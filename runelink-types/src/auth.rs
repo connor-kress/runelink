@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
+use crate::UserRef;
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
 pub struct LocalAccount {
@@ -136,44 +138,62 @@ impl ClientAccessClaims {
     }
 }
 
-/// JWT claims used for server-to-server federation requests. This represents
-/// delegated authority for `sub` (the user) from `iss` (the calling server) to
-/// `aud` (the target server).
+/// JWT claims used for server-to-server federation requests.
+///
+/// This token authenticates the **calling server** (`iss` and `sub`).
+/// It may optionally include a delegated user identity (`user_id`, `user_domain`)
+/// for operations performed "on behalf of" a user.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FederationClaims {
-    /// Calling server (canonical ServerId)
+    /// Calling server (canonical ServerId / base URL)
     pub iss: String,
-    /// Delegated user UUID
-    pub sub: Uuid,
-    /// Target server(s) (canonical ServerId)
+    /// Subject: calling server principal (set equal to `iss` for server authentication)
+    pub sub: String,
+    /// Target server(s) (canonical ServerId / base URL)
     pub aud: Vec<String>,
     /// Expiration time as a UNIX timestamp
     pub exp: i64,
     /// Issued-at time as a UNIX timestamp
     pub iat: i64,
-    /// Space-separated scopes granted to this token
-    pub scope: String,
+    /// Optional: Delegated user reference (present when token represents user delegation)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_ref: Option<UserRef>,
 }
 
 impl FederationClaims {
-    pub fn new(
-        user_id: Uuid,
+    /// Create a server-only federation token (no user delegation).
+    pub fn new_server_only(
         issuer_server_id: String,
         audience_server_id: String,
-        scope: String,
         lifetime: Duration,
     ) -> Self {
         let now = OffsetDateTime::now_utc().unix_timestamp();
         Self {
-            iss: issuer_server_id,
-            sub: user_id,
+            iss: issuer_server_id.clone(),
+            sub: issuer_server_id,
             aud: vec![audience_server_id],
             exp: now + lifetime.whole_seconds(),
             iat: now,
-            scope,
+            user_ref: None,
+        }
+    }
+
+    /// Create a federation token with explicit user delegation.
+    pub fn new_delegated(
+        issuer_server_id: String,
+        audience_server_id: String,
+        user_id: Uuid,
+        user_domain: String,
+        lifetime: Duration,
+    ) -> Self {
+        let now = OffsetDateTime::now_utc().unix_timestamp();
+        Self {
+            iss: issuer_server_id.clone(),
+            sub: issuer_server_id,
+            aud: vec![audience_server_id],
+            exp: now + lifetime.whole_seconds(),
+            iat: now,
+            user_ref: Some(UserRef::new(user_id, user_domain)),
         }
     }
 }
-
-/// Backwards-compatible alias while we migrate call sites.
-pub type JWTClaims = ClientAccessClaims;

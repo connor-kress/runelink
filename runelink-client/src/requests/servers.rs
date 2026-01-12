@@ -1,6 +1,6 @@
 use reqwest::Client;
 use runelink_types::{
-    FullServerMembership, NewServer, NewServerMembership, Server, ServerMember,
+    FullServerMembership, NewServer, NewServerMembership, Server,
     ServerMembership,
 };
 use uuid::Uuid;

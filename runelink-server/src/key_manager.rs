@@ -6,7 +6,7 @@ use ed25519_dalek::{
 };
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header};
 use rand::rngs::OsRng;
-use runelink_types::{auth::PublicJwk, FederationClaims};
+use runelink_types::{FederationClaims, auth::PublicJwk};
 use std::fs;
 use std::path::PathBuf;
 use time::Duration;
@@ -122,20 +122,44 @@ impl KeyManager {
         }
     }
 
-    /// Issue a short-lived federation JWT for server-to-server delegation.
-    pub fn issue_federation_jwt(
+    /// Issue a short-lived server-only federation JWT (no user delegation).
+    #[allow(dead_code)]
+    pub fn issue_federation_jwt_server_only(
         &self,
-        user_id: Uuid,
         issuer_server_id: String,
         audience_server_id: String,
-        scope: String,
     ) -> Result<String, ApiError> {
         let lifetime = Duration::minutes(5); // Short-lived for s2s
-        let claims = FederationClaims::new(
-            user_id,
+        let claims = FederationClaims::new_server_only(
             issuer_server_id,
             audience_server_id,
-            scope,
+            lifetime,
+        );
+
+        let token = jsonwebtoken::encode(
+            &Header::new(Algorithm::EdDSA),
+            &claims,
+            &self.private_key,
+        )
+        .map_err(|e| ApiError::Internal(format!("jwt error: {e}")))?;
+
+        Ok(token)
+    }
+
+    /// Issue a short-lived federation JWT with explicit user delegation.
+    pub fn issue_federation_jwt_delegated(
+        &self,
+        issuer_server_id: String,
+        audience_server_id: String,
+        user_id: Uuid,
+        user_domain: String,
+    ) -> Result<String, ApiError> {
+        let lifetime = Duration::minutes(5); // Short-lived for s2s
+        let claims = FederationClaims::new_delegated(
+            issuer_server_id,
+            audience_server_id,
+            user_id,
+            user_domain,
             lifetime,
         );
 

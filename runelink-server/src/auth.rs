@@ -7,7 +7,7 @@ use crate::{
     state::AppState,
 };
 use axum::http::HeaderMap;
-use runelink_types::{FederationClaims, ServerRole, User};
+use runelink_types::{FederationClaims, ServerRole, User, UserRef};
 use uuid::Uuid;
 
 #[derive(Clone, Debug)]
@@ -38,8 +38,8 @@ impl Principal {
 pub enum Requirement {
     /// Must be authenticated with a client token.
     Client,
-    /// Must be authenticated with a federation token, and contain all required scopes.
-    Federation { scopes: Vec<&'static str> },
+    /// Must be authenticated with a federation token (server-level auth, no user delegation required).
+    Federation,
     /// Must be a host admin.
     HostAdmin,
     /// Must be a member of the referenced server.
@@ -53,17 +53,72 @@ pub struct AuthSpec {
     pub requirements: Vec<Requirement>,
 }
 
+/// Session represents the authenticated context for a request.
+///
+/// For client auth, the user is always local and exists in the DB.
+/// For federation auth, the user reference may or may not exist locally.
 #[derive(Clone, Debug)]
 pub struct Session {
-    pub user: User,
-    // TODO: replace with real host-admin logic when roles are modeled
-    pub is_admin: bool,
-    /// Present only when the request was authenticated via federation.
+    /// The authenticated principal (Client or Federation)
+    pub principal: Principal,
+    /// Optional delegated user reference (always present for client auth, optional for federation)
+    pub user_ref: Option<UserRef>,
+    /// Present only when the request was authenticated via federation
     pub federation: Option<FederationClaims>,
+    /// Cached user lookup result (None = not looked up, Some(None) = looked up but not found, Some(Some(user)) = found)
+    cached_user: Option<Option<User>>,
 }
 
-fn has_scope(scope_str: &str, required: &str) -> bool {
-    scope_str.split_whitespace().any(|s| s == required)
+impl Session {
+    /// Perform a lazy DB lookup of the delegated user (cached).
+    /// Returns Ok(None) if the user does not exist locally.
+    pub async fn lookup_user(
+        &mut self,
+        state: &AppState,
+    ) -> Result<Option<User>, ApiError> {
+        // If already cached, return the cached result
+        if let Some(cached) = &self.cached_user {
+            return Ok(cached.clone());
+        }
+        // No user delegated
+        let Some(user_ref) = &self.user_ref else {
+            self.cached_user = Some(None);
+            return Ok(None);
+        };
+        // Perform DB lookup
+        let user_result =
+            queries::get_user_by_id(&state.db_pool, user_ref.id).await;
+        let user = match user_result {
+            Ok(user) => Some(user),
+            Err(ApiError::NotFound) => None,
+            Err(e) => return Err(e),
+        };
+        self.cached_user = Some(user.clone());
+        Ok(user)
+    }
+
+    /// Require that a delegated user exists locally.
+    /// Returns an error if the user reference is missing or the user is not in the DB.
+    pub async fn require_user(
+        &mut self,
+        state: &AppState,
+    ) -> Result<User, ApiError> {
+        // Clone the user reference before calling lookup_user (which needs &mut self)
+        let user_ref = self.user_ref.clone().ok_or_else(|| {
+            ApiError::AuthError("No delegated user in session".into())
+        })?;
+        let user = self.lookup_user(state).await?.ok_or_else(|| {
+            ApiError::AuthError(format!("User {user_ref} not found locally"))
+        })?;
+        Ok(user)
+    }
+
+    /// Check if this session represents a host admin.
+    /// TODO: Replace with real role-based logic when implemented.
+    pub fn is_host_admin(&self) -> bool {
+        // For now, only client-authenticated sessions can be admins
+        matches!(self.principal, Principal::Client(_))
+    }
 }
 
 /// Authorization engine (shared). Operation code defines an `AuthSpec` once,
@@ -73,22 +128,31 @@ pub async fn authorize(
     principal: Principal,
     spec: AuthSpec,
 ) -> Result<Session, ApiError> {
-    // TODO: handle optional authentication (type state pattern?)
-    let (user_id, federation_claims): (Uuid, Option<FederationClaims>) =
-        match &principal {
-            Principal::Client(auth) => (auth.claims.sub, None),
-            Principal::Federation(auth) => {
-                (auth.claims.sub, Some(auth.claims.clone()))
-            }
-        };
+    // Extract user identity from the principal (no DB lookups yet)
+    let (user_ref, federation_claims) = match &principal {
+        Principal::Client(auth) => {
+            // Client auth always has a local user
+            (
+                Some(UserRef::new(
+                    auth.claims.sub,
+                    state.config.local_domain(),
+                )),
+                None,
+            )
+        }
+        Principal::Federation(auth) => {
+            // Federation auth may have delegated user fields
+            (auth.claims.user_ref.clone(), Some(auth.claims.clone()))
+        }
+    };
+    let mut session = Session {
+        principal: principal.clone(),
+        user_ref,
+        federation: federation_claims,
+        cached_user: None,
+    };
 
-    let user = queries::get_user_by_id(&state.db_pool, user_id)
-        .await
-        .map_err(|_| ApiError::AuthError("Invalid credentials".into()))?;
-
-    // TODO: replace with real host-admin logic when roles are modeled
-    let is_host_admin = true;
-
+    // Validate requirements
     for req in &spec.requirements {
         match req {
             Requirement::Client => {
@@ -98,41 +162,51 @@ pub async fn authorize(
                     ));
                 }
             }
-            Requirement::Federation { scopes } => {
-                let Principal::Federation(auth) = &principal else {
+
+            Requirement::Federation => {
+                if !matches!(principal, Principal::Federation(_)) {
                     return Err(ApiError::AuthError(
                         "Federation auth required".into(),
                     ));
-                };
-                for required in scopes {
-                    if !has_scope(&auth.claims.scope, required) {
-                        return Err(ApiError::AuthError(format!(
-                            "Missing required scope: {required}"
-                        )));
-                    }
                 }
             }
+
             Requirement::HostAdmin => {
-                if !is_host_admin {
+                if !session.is_host_admin() {
                     return Err(ApiError::AuthError("Admin only".into()));
                 }
             }
+
             Requirement::ServerMember { server_id } => {
-                let _ = queries::get_server_member(
+                // This requires a user_id to check membership
+                let user_ref = session.user_ref.clone().ok_or_else(|| {
+                    ApiError::AuthError(
+                        "User reference required for membership check".into(),
+                    )
+                })?;
+                let member = queries::get_server_member(
                     &state.db_pool,
                     *server_id,
-                    user_id,
+                    user_ref.id,
                 )
                 .await
                 .map_err(|_| {
                     ApiError::AuthError("Not a server member".into())
                 })?;
+                session.cached_user = Some(Some(member.user));
             }
+
             Requirement::ServerAdmin { server_id } => {
+                // This requires a user_id to check admin role
+                let user_ref = session.user_ref.clone().ok_or_else(|| {
+                    ApiError::AuthError(
+                        "User reference required for admin check".into(),
+                    )
+                })?;
                 let member = queries::get_server_member(
                     &state.db_pool,
                     *server_id,
-                    user_id,
+                    user_ref.id,
                 )
                 .await
                 .map_err(|_| {
@@ -141,13 +215,10 @@ pub async fn authorize(
                 if member.role != ServerRole::Admin {
                     return Err(ApiError::AuthError("Admin only".into()));
                 }
+                session.cached_user = Some(Some(member.user));
             }
         }
     }
 
-    Ok(Session {
-        user,
-        is_admin: is_host_admin,
-        federation: federation_claims,
-    })
+    Ok(session)
 }

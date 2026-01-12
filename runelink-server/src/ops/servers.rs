@@ -22,14 +22,23 @@ pub async fn create_server(
     new_server: &NewServer,
 ) -> Result<Server, ApiError> {
     let server = queries::insert_server(state, new_server).await?;
-    let new_member = NewServerMembership {
-        user_id: session.user.id,
-        user_domain: session.user.domain.clone(),
+
+    // Get the creator's user identity
+    // Since this requires HostAdmin (which requires client auth), these fields are always present
+    let user_ref = session.user_ref.clone().ok_or_else(|| {
+        ApiError::Internal(
+            "Session missing user identity for server creation".into(),
+        )
+    })?;
+
+    let new_membership = NewServerMembership {
+        user_id: user_ref.id,
+        user_domain: user_ref.domain,
         server_id: server.id,
         server_domain: server.domain.clone(),
         role: ServerRole::Admin,
     };
-    queries::add_user_to_server(&state.db_pool, server.id, &new_member).await?;
+    queries::add_user_to_server(&state.db_pool, &new_membership).await?;
     Ok(server)
 }
 

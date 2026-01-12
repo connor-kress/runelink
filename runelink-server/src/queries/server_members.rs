@@ -35,7 +35,6 @@ impl TryFrom<ServerMemberRow> for ServerMember {
 
 pub async fn add_user_to_server(
     pool: &DbPool,
-    server_id: Uuid,
     new_membership: &NewServerMembership,
 ) -> Result<ServerMember, ApiError> {
     sqlx::query!(
@@ -43,13 +42,14 @@ pub async fn add_user_to_server(
         INSERT INTO server_users (server_id, user_id, role)
         VALUES ($1, $2, $3);
         "#,
-        server_id,
+        new_membership.server_id,
         new_membership.user_id,
         new_membership.role as ServerRole,
     )
     .execute(pool)
     .await?;
-    get_server_member(pool, server_id, new_membership.user_id).await
+    get_server_member(pool, new_membership.server_id, new_membership.user_id)
+        .await
 }
 
 pub async fn get_server_member(
