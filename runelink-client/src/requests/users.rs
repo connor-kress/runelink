@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 use crate::error::Result;
 
-use super::{fetch_json, post_json};
+use super::{fetch_json, fetch_json_federated, post_json};
 
 pub async fn create_user(
     client: &Client,
@@ -37,4 +37,22 @@ pub async fn fetch_user_by_name_and_domain(
 ) -> Result<User> {
     let url = format!("{api_url}/users/find?name={name}&domain={domain}");
     fetch_json::<User>(client, &url).await
+}
+
+/// Federation endpoints (server-to-server authentication required).
+pub mod federated {
+    use super::*;
+
+    /// Fetch user info via federation (requires federation JWT).
+    ///
+    /// GET /federation/users/{user_id}
+    pub async fn fetch_user_by_id(
+        client: &Client,
+        api_url: &str,
+        token: &str,
+        user_id: Uuid,
+    ) -> Result<User> {
+        let url = format!("{api_url}/federation/users/{user_id}");
+        fetch_json_federated::<User>(client, &url, token).await
+    }
 }

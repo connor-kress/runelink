@@ -185,7 +185,7 @@ pub async fn handle_server_commands(
                 account.user_id,
                 account.domain.clone(),
             );
-            let _member = requests::join_server(
+            let _member = requests::create_membership(
                 ctx.client,
                 &api_url,
                 server.id,

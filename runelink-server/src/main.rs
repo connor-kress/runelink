@@ -1,7 +1,4 @@
-use axum::{
-    Router,
-    routing::{get, post},
-};
+use axum::{Router, routing::get};
 use config::ServerConfig;
 use sqlx::migrate::Migrator;
 use state::AppState;
@@ -51,6 +48,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app = Router::new()
         // Mount auth router (includes OIDC discovery and auth endpoints)
         .merge(api::auth::router())
+        // Mount federation router (server-to-server endpoints)
+        .nest("/federation", api::federation_router())
         // API routes
         .route("/ping", get(api::ping))
         .route("/users", get(api::list_users).post(api::create_user))
@@ -99,10 +98,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route(
             "/servers/{server_id}/users/{user_id}",
             get(api::get_server_member),
-        )
-        .route(
-            "/servers/{server_id}/remote-memberships",
-            post(api::create_remote_membership),
         )
         .route("/hosts", get(api::list_hosts))
         .route("/hosts/{domain}", get(api::get_host))

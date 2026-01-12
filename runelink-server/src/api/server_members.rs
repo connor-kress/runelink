@@ -49,13 +49,28 @@ pub async fn get_server_member(
     Ok((StatusCode::OK, Json(member)))
 }
 
-/// POST /servers/{server_id}/remote-memberships
-pub async fn create_remote_membership(
-    State(state): State<AppState>,
-    Path(server_id): Path<Uuid>,
-    Json(membership): Json<ServerMembership>,
-) -> Result<impl IntoResponse, ApiError> {
-    let new_membership =
-        ops::create_remote_membership(&state, server_id, &membership).await?;
-    Ok((StatusCode::CREATED, Json(new_membership)))
+/// Federation endpoints (server-to-server authentication required).
+pub mod federated {
+    use super::*;
+
+    /// POST /federation/servers/{server_id}/memberships
+    ///
+    /// Create a remote membership (requires federation auth).
+    pub async fn create_membership(
+        State(state): State<AppState>,
+        headers: HeaderMap,
+        Path(server_id): Path<Uuid>,
+        Json(membership): Json<ServerMembership>,
+    ) -> Result<impl IntoResponse, ApiError> {
+        let _session = authorize(
+            &state,
+            Principal::from_federation_headers(&headers, &state).await?,
+            ops::auth_federation_create_membership(server_id),
+        )
+        .await?;
+        let result =
+            ops::create_remote_membership(&state, server_id, &membership)
+                .await?;
+        Ok((StatusCode::CREATED, Json(result)))
+    }
 }

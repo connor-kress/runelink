@@ -4,11 +4,13 @@ use ed25519_dalek::{
         DecodePrivateKey, DecodePublicKey, EncodePrivateKey, EncodePublicKey,
     },
 };
-use jsonwebtoken::{DecodingKey, EncodingKey};
+use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header};
 use rand::rngs::OsRng;
-use runelink_types::auth::PublicJwk;
+use runelink_types::{auth::PublicJwk, FederationClaims};
 use std::fs;
 use std::path::PathBuf;
+use time::Duration;
+use uuid::Uuid;
 
 use crate::{crypto::ed25519_public_raw_to_spki_der, error::ApiError};
 
@@ -118,5 +120,32 @@ impl KeyManager {
                 path,
             })
         }
+    }
+
+    /// Issue a short-lived federation JWT for server-to-server delegation.
+    pub fn issue_federation_jwt(
+        &self,
+        user_id: Uuid,
+        issuer_server_id: String,
+        audience_server_id: String,
+        scope: String,
+    ) -> Result<String, ApiError> {
+        let lifetime = Duration::minutes(5); // Short-lived for s2s
+        let claims = FederationClaims::new(
+            user_id,
+            issuer_server_id,
+            audience_server_id,
+            scope,
+            lifetime,
+        );
+
+        let token = jsonwebtoken::encode(
+            &Header::new(Algorithm::EdDSA),
+            &claims,
+            &self.private_key,
+        )
+        .map_err(|e| ApiError::Internal(format!("jwt error: {e}")))?;
+
+        Ok(token)
     }
 }

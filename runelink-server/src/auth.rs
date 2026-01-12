@@ -24,6 +24,14 @@ impl Principal {
         let auth = ClientAuth::from_headers(headers, state)?;
         Ok(Self::Client(auth))
     }
+
+    pub async fn from_federation_headers(
+        headers: &HeaderMap,
+        state: &AppState,
+    ) -> Result<Self, ApiError> {
+        let auth = FederationAuth::from_headers(headers, state).await?;
+        Ok(Self::Federation(auth))
+    }
 }
 
 #[derive(Clone, Debug)]

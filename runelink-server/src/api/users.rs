@@ -71,3 +71,26 @@ pub async fn get_user_associated_domains(
     let domains = ops::get_user_associated_domains(&state, user_id).await?;
     Ok((StatusCode::OK, Json(domains)))
 }
+
+/// Federation endpoints (server-to-server authentication required).
+pub mod federated {
+    use super::*;
+
+    /// GET /federation/users/{user_id}
+    ///
+    /// Fetch user info for federation purposes (requires federation auth).
+    pub async fn get_user(
+        State(state): State<AppState>,
+        headers: HeaderMap,
+        Path(user_id): Path<Uuid>,
+    ) -> Result<impl IntoResponse, ApiError> {
+        let _session = authorize(
+            &state,
+            Principal::from_federation_headers(&headers, &state).await?,
+            ops::auth_federation_get_user(),
+        )
+        .await?;
+        let user = ops::get_user_by_id(&state, user_id).await?;
+        Ok((StatusCode::OK, Json(user)))
+    }
+}

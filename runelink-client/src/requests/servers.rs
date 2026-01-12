@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use crate::error::Result;
 
-use super::{fetch_json, post_json};
+use super::{fetch_json, post_json, post_json_federated};
 
 pub async fn create_server(
     client: &Client,
@@ -56,7 +56,7 @@ pub async fn fetch_servers_by_user(
     Ok(servers)
 }
 
-pub async fn join_server(
+pub async fn create_membership(
     client: &Client,
     api_url: &str,
     server_id: Uuid,
@@ -66,12 +66,25 @@ pub async fn join_server(
     post_json::<_, ServerMember>(client, &url, new_member).await
 }
 
-pub async fn sync_remote_membership(
-    client: &Client,
-    api_url: &str,
-    new_membership: &ServerMembership,
-) -> Result<ServerMembership> {
-    let server_id = new_membership.server.id;
-    let url = format!("{api_url}/servers/{server_id}/remote-memberships");
-    post_json::<_, ServerMembership>(client, &url, new_membership).await
+/// Federation endpoints (server-to-server authentication required).
+pub mod federated {
+    use super::*;
+
+    /// Create a remote membership via federation (requires federation JWT).
+    ///
+    /// POST /federation/servers/{server_id}/memberships
+    pub async fn create_membership(
+        client: &Client,
+        api_url: &str,
+        token: &str,
+        server_id: Uuid,
+        membership: &ServerMembership,
+    ) -> Result<ServerMembership> {
+        let url =
+            format!("{api_url}/federation/servers/{server_id}/memberships");
+        post_json_federated::<_, ServerMembership>(
+            client, &url, token, membership,
+        )
+        .await
+    }
 }

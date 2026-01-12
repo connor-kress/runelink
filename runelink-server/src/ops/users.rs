@@ -31,6 +31,15 @@ pub async fn list_users(state: &AppState) -> Result<Vec<User>, ApiError> {
     Ok(users)
 }
 
+/// Auth requirements for `get_user_by_id` (federation).
+pub fn auth_federation_get_user() -> AuthSpec {
+    AuthSpec {
+        requirements: vec![Requirement::Federation {
+            scopes: vec!["read:users"],
+        }],
+    }
+}
+
 /// Get a user by ID (public).
 pub async fn get_user_by_id(
     state: &AppState,

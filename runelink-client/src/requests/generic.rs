@@ -59,3 +59,61 @@ where
     let data = response.json::<O>().await?;
     Ok(data)
 }
+
+/// Helper to fetch JSON with federation auth token.
+pub async fn fetch_json_federated<T>(
+    client: &Client,
+    url: &str,
+    token: &str,
+) -> Result<T>
+where
+    T: DeserializeOwned,
+{
+    info!("fetching json (federation): {url}");
+    let response = client
+        .get(url)
+        .header("Authorization", format!("Bearer {token}"))
+        .send()
+        .await?;
+    let status = response.status();
+    if !status.is_success() {
+        let message = response.text().await.unwrap_or_else(|e| {
+            format!("Failed to get error message body: {e}")
+        });
+        return Err(Error::Status(status, message));
+    }
+    let data = response.json::<T>().await?;
+    Ok(data)
+}
+
+/// Helper to post JSON with federation auth token.
+pub async fn post_json_federated<I, O>(
+    client: &Client,
+    url: &str,
+    token: &str,
+    request_body: &I,
+) -> Result<O>
+where
+    I: Serialize,
+    O: DeserializeOwned,
+{
+    info!(
+        "posting json (federation): {url}\n{}",
+        serde_json::to_string_pretty(request_body).unwrap()
+    );
+    let response = client
+        .post(url)
+        .header("Authorization", format!("Bearer {token}"))
+        .json(request_body)
+        .send()
+        .await?;
+    let status = response.status();
+    if !status.is_success() {
+        let message = response.text().await.unwrap_or_else(|e| {
+            format!("Failed to get error message body: {e}")
+        });
+        return Err(Error::Status(status, message));
+    }
+    let data = response.json::<O>().await?;
+    Ok(data)
+}

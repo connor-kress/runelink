@@ -1,4 +1,10 @@
-use axum::{extract::Query, response::IntoResponse};
+use crate::state::AppState;
+use axum::{
+    Router,
+    extract::Query,
+    response::IntoResponse,
+    routing::{get, post},
+};
 use serde::Deserialize;
 
 pub mod auth;
@@ -32,4 +38,14 @@ pub async fn ping(Query(params): Query<PingParams>) -> impl IntoResponse {
     };
     println!("{}", message);
     message
+}
+
+/// Creates a router for all federation endpoints (server-to-server).
+pub fn federation_router() -> Router<AppState> {
+    Router::new()
+        .route("/users/{user_id}", get(users::federated::get_user))
+        .route(
+            "/servers/{server_id}/memberships",
+            post(server_members::federated::create_membership),
+        )
 }

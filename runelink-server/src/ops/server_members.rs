@@ -1,8 +1,18 @@
 use super::Session;
+use crate::auth::Requirement;
 use crate::{auth::AuthSpec, error::ApiError, queries, state::AppState};
 use runelink_client::{requests, util::get_api_url};
 use runelink_types::{NewServerMember, ServerMember, ServerMembership};
 use uuid::Uuid;
+
+/// Auth requirements for `create_remote_membership` (federation).
+pub fn auth_federation_create_membership(_server_id: Uuid) -> AuthSpec {
+    AuthSpec {
+        requirements: vec![Requirement::Federation {
+            scopes: vec!["write:memberships"],
+        }],
+    }
+}
 
 /// Auth requirements for `add_server_member`.
 pub fn auth_add_server_member(_server_id: Uuid) -> AuthSpec {
@@ -49,9 +59,21 @@ pub async fn add_server_member(
             new_member.user_id,
         )
         .await?;
-        requests::sync_remote_membership(
+
+        // Issue federation JWT to delegate authority to remote server
+        let federation_token = state.key_manager.issue_federation_jwt(
+            new_member.user_id,
+            state.config.api_url(),
+            api_url.clone(),
+            "write:memberships".into(),
+        )?;
+
+        // Call federation endpoint on user's home server
+        requests::servers::federated::create_membership(
             &state.http_client,
             &api_url,
+            &federation_token,
+            server_id,
             &membership,
         )
         .await?;
