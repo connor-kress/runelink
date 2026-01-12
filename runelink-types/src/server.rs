@@ -57,6 +57,19 @@ pub struct ServerMembership {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct FullServerMembership {
+    pub server: Server,
+    pub user: User,
+    pub role: ServerRole,
+    #[serde(with = "time::serde::rfc3339")]
+    pub joined_at: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
+    pub updated_at: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339::option")]
+    pub synced_at: Option<OffsetDateTime>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ServerMember {
     pub user: User,
     pub role: ServerRole,
@@ -67,9 +80,11 @@ pub struct ServerMember {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct NewServerMember {
+pub struct NewServerMembership {
     pub user_id: Uuid,
     pub user_domain: String,
+    pub server_id: Uuid,
+    pub server_domain: String,
     pub role: ServerRole,
 }
 
@@ -89,20 +104,39 @@ impl fmt::Display for Server {
     }
 }
 
-impl NewServerMember {
-    pub fn member(user_id: Uuid, user_domain: String) -> Self {
-        NewServerMember {
-            user_id,
-            user_domain,
-            role: ServerRole::Member,
+impl From<FullServerMembership> for ServerMembership {
+    fn from(full_membership: FullServerMembership) -> Self {
+        ServerMembership {
+            server: full_membership.server,
+            user_id: full_membership.user.id,
+            role: full_membership.role,
+            joined_at: full_membership.joined_at,
+            updated_at: full_membership.updated_at,
+            synced_at: full_membership.synced_at,
         }
     }
+}
 
-    pub fn admin(user_id: Uuid, user_domain: String) -> Self {
-        NewServerMember {
-            user_id,
-            user_domain,
-            role: ServerRole::Admin,
+impl From<FullServerMembership> for ServerMember {
+    fn from(full_membership: FullServerMembership) -> Self {
+        ServerMember {
+            user: full_membership.user,
+            role: full_membership.role,
+            joined_at: full_membership.joined_at,
+            updated_at: full_membership.updated_at,
+        }
+    }
+}
+
+impl ServerMembership {
+    pub fn as_full(self, user: User) -> FullServerMembership {
+        FullServerMembership {
+            server: self.server,
+            user: user,
+            role: self.role,
+            joined_at: self.joined_at,
+            updated_at: self.updated_at,
+            synced_at: self.synced_at,
         }
     }
 }

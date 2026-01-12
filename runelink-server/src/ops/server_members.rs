@@ -2,7 +2,9 @@ use super::Session;
 use crate::auth::Requirement;
 use crate::{auth::AuthSpec, error::ApiError, queries, state::AppState};
 use runelink_client::{requests, util::get_api_url};
-use runelink_types::{NewServerMember, ServerMember, ServerMembership};
+use runelink_types::{
+    FullServerMembership, NewServerMembership, ServerMember, ServerMembership,
+};
 use uuid::Uuid;
 
 /// Auth requirements for `create_remote_membership` (federation).
@@ -27,59 +29,58 @@ pub async fn add_server_member(
     state: &AppState,
     _session: &Session,
     server_id: Uuid,
-    new_member: &NewServerMember,
-) -> Result<ServerMember, ApiError> {
-    if new_member.user_domain == state.config.local_domain() {
+    new_membership: &NewServerMembership,
+) -> Result<FullServerMembership, ApiError> {
+    let member;
+    if new_membership.user_domain == state.config.local_domain() {
         // Local user (just add directly)
-        queries::add_user_to_server(&state.db_pool, server_id, new_member).await
+        member = queries::add_user_to_server(
+            &state.db_pool,
+            server_id,
+            new_membership,
+        )
+        .await?;
     } else {
         // Remote user (handle syncing with user's home server)
-        let api_url = get_api_url(&new_member.user_domain);
+        let api_url = get_api_url(&new_membership.user_domain);
         let remote_user =
-            queries::get_user_by_id(&state.db_pool, new_member.user_id).await;
+            queries::get_user_by_id(&state.db_pool, new_membership.user_id)
+                .await;
         let _user = match remote_user {
             Err(ApiError::NotFound) => {
                 // Remote user is not in the local database
                 let user = requests::fetch_user_by_id(
                     &state.http_client,
                     &api_url,
-                    new_member.user_id,
+                    new_membership.user_id,
                 )
                 .await?;
                 queries::insert_remote_user(&state.db_pool, &user).await?
             }
             other => other?,
         };
-        let member =
-            queries::add_user_to_server(&state.db_pool, server_id, new_member)
-                .await?;
-        let membership = queries::get_local_server_membership(
-            state,
+        member = queries::add_user_to_server(
+            &state.db_pool,
             server_id,
-            new_member.user_id,
+            new_membership,
         )
         .await?;
-
-        // Issue federation JWT to delegate authority to remote server
-        let federation_token = state.key_manager.issue_federation_jwt(
-            new_member.user_id,
-            state.config.api_url(),
-            api_url.clone(),
-            "write:memberships".into(),
-        )?;
-
-        // Call federation endpoint on user's home server
-        requests::servers::federated::create_membership(
-            &state.http_client,
-            &api_url,
-            &federation_token,
-            server_id,
-            &membership,
-        )
-        .await?;
-        // TODO: remove membership if sync failed
-        Ok(member)
     }
+    let membership = queries::get_local_server_membership(
+        state,
+        server_id,
+        new_membership.user_id,
+    )
+    .await?;
+    let full_membership = FullServerMembership {
+        server: membership.server,
+        user: member.user,
+        role: membership.role,
+        joined_at: membership.joined_at,
+        updated_at: membership.updated_at,
+        synced_at: membership.synced_at,
+    };
+    Ok(full_membership)
 }
 
 /// List all members of a server (public).
@@ -103,10 +104,8 @@ pub async fn get_server_member(
     Ok(member)
 }
 
-// TODO: This should all be handled by the same endpoint after forwarding to
-// the remote server
-/// Create a remote membership (federation endpoint).
-pub async fn create_remote_membership(
+/// Add a user to a remote server (federation endpoint).
+pub async fn add_remote_server_member(
     state: &AppState,
     server_id: Uuid,
     membership: &ServerMembership,

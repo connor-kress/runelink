@@ -1,6 +1,7 @@
 use crate::{error::ApiError, queries, state::AppState};
 use runelink_types::{
-    NewServer, NewServerMember, Server, ServerMembership, ServerWithChannels,
+    NewServer, NewServerMembership, Server, ServerMembership, ServerRole,
+    ServerWithChannels,
 };
 use uuid::Uuid;
 
@@ -21,8 +22,13 @@ pub async fn create_server(
     new_server: &NewServer,
 ) -> Result<Server, ApiError> {
     let server = queries::insert_server(state, new_server).await?;
-    let new_member =
-        NewServerMember::admin(session.user.id, session.user.domain.clone());
+    let new_member = NewServerMembership {
+        user_id: session.user.id,
+        user_domain: session.user.domain.clone(),
+        server_id: server.id,
+        server_domain: server.domain.clone(),
+        role: ServerRole::Admin,
+    };
     queries::add_user_to_server(&state.db_pool, server.id, &new_member).await?;
     Ok(server)
 }

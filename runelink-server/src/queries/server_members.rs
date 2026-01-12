@@ -1,6 +1,7 @@
 use crate::{db::DbPool, error::ApiError, state::AppState};
 use runelink_types::{
-    NewServerMember, Server, ServerMember, ServerMembership, ServerRole, User,
+    NewServerMembership, Server, ServerMember, ServerMembership, ServerRole,
+    User,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, types::Json};
@@ -35,7 +36,7 @@ impl TryFrom<ServerMemberRow> for ServerMember {
 pub async fn add_user_to_server(
     pool: &DbPool,
     server_id: Uuid,
-    new_member: &NewServerMember,
+    new_membership: &NewServerMembership,
 ) -> Result<ServerMember, ApiError> {
     sqlx::query!(
         r#"
@@ -43,12 +44,12 @@ pub async fn add_user_to_server(
         VALUES ($1, $2, $3);
         "#,
         server_id,
-        new_member.user_id,
-        new_member.role as ServerRole,
+        new_membership.user_id,
+        new_membership.role as ServerRole,
     )
     .execute(pool)
     .await?;
-    get_server_member(pool, server_id, new_member.user_id).await
+    get_server_member(pool, server_id, new_membership.user_id).await
 }
 
 pub async fn get_server_member(

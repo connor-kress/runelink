@@ -3,7 +3,7 @@
 #![allow(unreachable_code)]
 
 use runelink_client::{requests, util::get_api_url};
-use runelink_types::{NewServer, NewServerMember, ServerRole};
+use runelink_types::{NewServer, NewServerMembership, ServerRole};
 use uuid::Uuid;
 
 use crate::{error::CliError, util::group_memberships_by_host};
@@ -181,10 +181,13 @@ pub async fn handle_server_commands(
                 )
                 .await?
             };
-            let new_member = NewServerMember::member(
-                account.user_id,
-                account.domain.clone(),
-            );
+            let new_member = NewServerMembership {
+                user_id: account.user_id,
+                user_domain: account.domain.clone(),
+                server_id: server.id,
+                server_domain: server.domain.clone(),
+                role: ServerRole::Member,
+            };
             let _member = requests::create_membership(
                 ctx.client,
                 &api_url,

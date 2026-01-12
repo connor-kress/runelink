@@ -45,7 +45,7 @@ pub fn federation_router() -> Router<AppState> {
     Router::new()
         .route("/users/{user_id}", get(users::federated::get_user))
         .route(
-            "/servers/{server_id}/memberships",
-            post(server_members::federated::create_membership),
+            "/servers/{server_id}/users",
+            post(server_members::federated::add_server_member),
         )
 }

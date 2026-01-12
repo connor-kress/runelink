@@ -1,6 +1,7 @@
 use reqwest::Client;
 use runelink_types::{
-    NewServer, NewServerMember, Server, ServerMember, ServerMembership,
+    FullServerMembership, NewServer, NewServerMembership, Server, ServerMember,
+    ServerMembership,
 };
 use uuid::Uuid;
 
@@ -60,10 +61,15 @@ pub async fn create_membership(
     client: &Client,
     api_url: &str,
     server_id: Uuid,
-    new_member: &NewServerMember,
-) -> Result<ServerMember> {
+    new_membership: &NewServerMembership,
+) -> Result<FullServerMembership> {
     let url = format!("{api_url}/servers/{server_id}/users");
-    post_json::<_, ServerMember>(client, &url, new_member).await
+    post_json::<NewServerMembership, FullServerMembership>(
+        client,
+        &url,
+        new_membership,
+    )
+    .await
 }
 
 /// Federation endpoints (server-to-server authentication required).
@@ -72,18 +78,20 @@ pub mod federated {
 
     /// Create a remote membership via federation (requires federation JWT).
     ///
-    /// POST /federation/servers/{server_id}/memberships
+    /// POST /federation/servers/{server_id}/users
     pub async fn create_membership(
         client: &Client,
         api_url: &str,
         token: &str,
         server_id: Uuid,
-        membership: &ServerMembership,
-    ) -> Result<ServerMembership> {
-        let url =
-            format!("{api_url}/federation/servers/{server_id}/memberships");
-        post_json_federated::<_, ServerMembership>(
-            client, &url, token, membership,
+        new_membership: &NewServerMembership,
+    ) -> Result<FullServerMembership> {
+        let url = format!("{api_url}/federation/servers/{server_id}/users");
+        post_json_federated::<NewServerMembership, FullServerMembership>(
+            client,
+            &url,
+            token,
+            new_membership,
         )
         .await
     }
