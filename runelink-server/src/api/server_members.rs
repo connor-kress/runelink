@@ -71,7 +71,7 @@ pub async fn add_server_member(
             new_membership.user_id,
             new_membership.user_domain.clone(),
         )?;
-        let full_membership = requests::servers::federated::create_membership(
+        let full_membership = requests::memberships::federated::create(
             &state.http_client,
             &server_api_url,
             &token,

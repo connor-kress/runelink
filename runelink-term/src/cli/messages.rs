@@ -81,7 +81,7 @@ pub async fn handle_message_commands(
             )
             .await?;
             let api_url = get_api_url(&server.domain);
-            let messages = requests::fetch_messages_by_channel(
+            let messages = requests::messages::fetch_by_channel(
                 ctx.client, &api_url, server.id, channel.id,
             )
             .await?;
@@ -96,7 +96,7 @@ pub async fn handle_message_commands(
                 .try_domain(get_args.domain.clone())
                 .try_server(Some(get_args.server_id))
                 .get_api_url()?;
-            let message = requests::fetch_message_by_id(
+            let message = requests::messages::fetch_by_id(
                 ctx.client,
                 &api_url,
                 get_args.server_id,
@@ -121,7 +121,7 @@ pub async fn handle_message_commands(
                 body,
                 author_id: account.user_id,
             };
-            let message = requests::send_message(
+            let message = requests::messages::create(
                 ctx.client,
                 &server_api_url,
                 server.id,

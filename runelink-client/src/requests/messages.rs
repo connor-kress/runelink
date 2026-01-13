@@ -6,7 +6,7 @@ use crate::error::Result;
 
 use super::{fetch_json, post_json};
 
-pub async fn send_message(
+pub async fn create(
     client: &Client,
     api_url: &str,
     server_id: Uuid,
@@ -19,16 +19,13 @@ pub async fn send_message(
 }
 
 #[allow(dead_code)]
-pub async fn fetch_all_messages(
-    client: &Client,
-    api_url: &str,
-) -> Result<Vec<Message>> {
+pub async fn fetch_all(client: &Client, api_url: &str) -> Result<Vec<Message>> {
     let url = format!("{api_url}/messages");
     fetch_json::<Vec<Message>>(client, &url).await
 }
 
 #[allow(dead_code)]
-pub async fn fetch_messages_by_server(
+pub async fn fetch_by_server(
     client: &Client,
     api_url: &str,
     server_id: Uuid,
@@ -37,7 +34,7 @@ pub async fn fetch_messages_by_server(
     fetch_json::<Vec<Message>>(client, &url).await
 }
 
-pub async fn fetch_messages_by_channel(
+pub async fn fetch_by_channel(
     client: &Client,
     api_url: &str,
     server_id: Uuid,
@@ -48,7 +45,7 @@ pub async fn fetch_messages_by_channel(
     fetch_json::<Vec<Message>>(client, &url).await
 }
 
-pub async fn fetch_message_by_id(
+pub async fn fetch_by_id(
     client: &Client,
     api_url: &str,
     server_id: Uuid,

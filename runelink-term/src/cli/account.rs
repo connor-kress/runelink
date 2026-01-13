@@ -4,7 +4,7 @@ use runelink_types::SignupRequest;
 use crate::{cli::input::read_input, error::CliError, util};
 
 use super::{
-    config::{handle_default_account_commands, DefaultAccountArgs},
+    config::{DefaultAccountArgs, handle_default_account_commands},
     context::CliContext,
     input::unwrap_or_prompt,
 };
@@ -55,43 +55,41 @@ pub async fn handle_account_commands(
                 );
                 println!("{}{}", prefix, account.verbose());
             }
-
-        },
+        }
 
         AccountCommands::Add(add_args) => {
             let domain = unwrap_or_prompt(add_args.domain.clone(), "Domain")?;
             let name = unwrap_or_prompt(add_args.name.clone(), "Name")?;
             let api_url = get_api_url(&domain);
-            let user = requests::fetch_user_by_name_and_domain(
-                ctx.client,
-                &api_url,
-                name,
-                domain,
-            ).await?;
+            let user = requests::users::fetch_by_name_and_domain(
+                ctx.client, &api_url, name, domain,
+            )
+            .await?;
             ctx.config.get_or_create_account_config(&user);
             ctx.config.save()?;
             println!("Added account: {}", user.verbose());
-        },
+        }
 
         AccountCommands::Create(create_args) => {
-            let domain = unwrap_or_prompt(create_args.domain.clone(), "Domain")?;
+            let domain =
+                unwrap_or_prompt(create_args.domain.clone(), "Domain")?;
             let name = unwrap_or_prompt(create_args.name.clone(), "Name")?;
             let password = read_input("Password: ")?.ok_or_else(|| {
                 CliError::InvalidArgument("Password is required.".into())
             })?;
             let api_url = get_api_url(&domain);
             let signup_req = SignupRequest { name, password };
-            let user = requests::auth::signup(
-                ctx.client, &api_url, &signup_req
-            ).await?;
+            let user =
+                requests::auth::signup(ctx.client, &api_url, &signup_req)
+                    .await?;
             ctx.config.get_or_create_account_config(&user);
             ctx.config.save()?;
             println!("Created account: {}", user.verbose());
-        },
+        }
 
         AccountCommands::Default(default_args) => {
             handle_default_account_commands(ctx, default_args).await?;
-        },
+        }
     }
     Ok(())
 }

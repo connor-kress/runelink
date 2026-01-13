@@ -37,7 +37,7 @@ pub async fn add_server_member(
         let user = session.lookup_user(state).await?;
         if user.is_none() {
             let api_url = get_api_url(&new_membership.user_domain);
-            let user = requests::users::fetch_user_by_id(
+            let user = requests::users::fetch_by_id(
                 &state.http_client,
                 &api_url,
                 new_membership.user_id,

@@ -80,7 +80,7 @@ pub async fn handle_server_commands(
         ServerCommands::List => {
             let account = ctx.account.ok_or(CliError::MissingAccount)?;
             let api_url = get_api_url(&account.domain);
-            let memberships = requests::fetch_server_memberships_by_user(
+            let memberships = requests::memberships::fetch_by_user(
                 ctx.client,
                 &api_url,
                 account.user_id,
@@ -118,7 +118,7 @@ pub async fn handle_server_commands(
                 .try_domain(get_args.domain.clone())
                 .try_server(Some(get_args.server_id))
                 .get_api_url()?;
-            let server = requests::fetch_server_by_id(
+            let server = requests::servers::fetch_by_id(
                 ctx.client,
                 &api_url,
                 get_args.server_id,
@@ -157,7 +157,7 @@ pub async fn handle_server_commands(
                 // user_id: account.user_id,
             };
             let server =
-                requests::create_server(ctx.client, &api_url, &new_server)
+                requests::servers::create(ctx.client, &api_url, &new_server)
                     .await?;
             ctx.config
                 .get_or_create_server_config(&server, &account.domain);
@@ -172,7 +172,7 @@ pub async fn handle_server_commands(
                 .try_server(join_args.server_id)
                 .get_domain_and_api_url()?;
             let server = if let Some(server_id) = join_args.server_id {
-                requests::fetch_server_by_id(ctx.client, &api_url, server_id)
+                requests::servers::fetch_by_id(ctx.client, &api_url, server_id)
                     .await?
             } else {
                 get_server_selection(
@@ -188,7 +188,7 @@ pub async fn handle_server_commands(
                 server_domain: server.domain.clone(),
                 role: ServerRole::Member,
             };
-            let _member = requests::create_membership(
+            let _member = requests::memberships::create(
                 ctx.client,
                 &api_url,
                 server.id,

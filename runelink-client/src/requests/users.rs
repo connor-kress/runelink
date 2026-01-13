@@ -6,7 +6,7 @@ use crate::error::Result;
 
 use super::{fetch_json, fetch_json_federated, post_json};
 
-pub async fn create_user(
+pub async fn create(
     client: &Client,
     api_url: &str,
     new_user: &NewUser,
@@ -15,12 +15,12 @@ pub async fn create_user(
     post_json::<NewUser, User>(client, &url, new_user).await
 }
 
-pub async fn fetch_users(client: &Client, api_url: &str) -> Result<Vec<User>> {
+pub async fn fetch_all(client: &Client, api_url: &str) -> Result<Vec<User>> {
     let url = format!("{api_url}/users");
     fetch_json::<Vec<User>>(client, &url).await
 }
 
-pub async fn fetch_user_by_id(
+pub async fn fetch_by_id(
     client: &Client,
     api_url: &str,
     user_id: Uuid,
@@ -29,7 +29,7 @@ pub async fn fetch_user_by_id(
     fetch_json::<User>(client, &url).await
 }
 
-pub async fn fetch_user_by_name_and_domain(
+pub async fn fetch_by_name_and_domain(
     client: &Client,
     api_url: &str,
     name: String,
@@ -46,7 +46,7 @@ pub mod federated {
     /// Fetch user info via federation (requires federation JWT).
     ///
     /// GET /federation/users/{user_id}
-    pub async fn fetch_user_by_id(
+    pub async fn fetch_by_id(
         client: &Client,
         api_url: &str,
         token: &str,

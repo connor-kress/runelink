@@ -39,7 +39,6 @@ pub struct UserListArgs {
     pub server_id: Option<Uuid>,
 }
 
-
 pub async fn handle_user_commands(
     ctx: &mut CliContext<'_>,
     user_args: &UserArgs,
@@ -55,7 +54,8 @@ pub async fn handle_user_commands(
             if let Some(_server_id) = list_args.server_id {
                 todo!("fetch users by server");
             } else {
-                users = requests::fetch_users(ctx.client, &api_url).await?;
+                users =
+                    requests::users::fetch_all(ctx.client, &api_url).await?;
             }
             for user in users {
                 println!("{}", user.verbose());
@@ -67,9 +67,12 @@ pub async fn handle_user_commands(
             let api_url = DomainQueryBuilder::new(ctx)
                 .try_domain(get_args.domain.clone())
                 .get_api_url()?;
-            let user = requests::fetch_user_by_id(
-                ctx.client, &api_url, get_args.user_id
-            ).await?;
+            let user = requests::users::fetch_by_id(
+                ctx.client,
+                &api_url,
+                get_args.user_id,
+            )
+            .await?;
             println!("{}", user.verbose());
         }
     }

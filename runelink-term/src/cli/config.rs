@@ -141,7 +141,7 @@ pub async fn handle_default_server_commands(
         DefaultServerCommands::Get => {
             if let Some(server_id) = ctx.config.default_server {
                 let api_url = ctx.account.try_get_api_url()?;
-                let server = requests::fetch_server_by_id(
+                let server = requests::servers::fetch_by_id(
                     ctx.client, &api_url, server_id,
                 )
                 .await?;
@@ -153,7 +153,7 @@ pub async fn handle_default_server_commands(
 
         DefaultServerCommands::Set(set_args) => {
             let api_url = ctx.account.try_get_api_url()?;
-            let server = requests::fetch_server_by_id(
+            let server = requests::servers::fetch_by_id(
                 ctx.client,
                 &api_url,
                 set_args.server_id,
@@ -218,7 +218,7 @@ pub async fn handle_default_channel_commands(
                 };
                 if let Some(channel_id) = server_config.default_channel {
                     let api_url = ctx.account.try_get_api_url()?;
-                    let channel = requests::fetch_channel_by_id(
+                    let channel = requests::channels::fetch_by_id(
                         ctx.client, &api_url, server_id, channel_id,
                     )
                     .await?;
@@ -236,7 +236,7 @@ pub async fn handle_default_channel_commands(
             for server_config in ctx.config.servers.iter() {
                 // TODO: endpoint for batch fetching servers/channels
                 let api_url = get_api_url(&server_config.domain);
-                let server = requests::fetch_server_by_id(
+                let server = requests::servers::fetch_by_id(
                     ctx.client,
                     &api_url,
                     server_config.server_id,
@@ -244,7 +244,7 @@ pub async fn handle_default_channel_commands(
                 .await?;
                 println!("{} ({})", server.title, server.id);
                 if let Some(channel_id) = server_config.default_channel {
-                    let channel = requests::fetch_channel_by_id(
+                    let channel = requests::channels::fetch_by_id(
                         ctx.client, &api_url, server.id, channel_id,
                     )
                     .await?;
@@ -257,19 +257,19 @@ pub async fn handle_default_channel_commands(
 
         DefaultChannelCommands::Set(set_args) => {
             let api_url = get_api_url(&set_args.server_domain);
-            let server = requests::fetch_server_by_id(
+            let server = requests::servers::fetch_by_id(
                 ctx.client,
                 &api_url,
                 set_args.server_id,
             )
             .await?;
-            let server_channels = requests::fetch_channels_by_server(
+            let server_channels = requests::channels::fetch_by_server(
                 ctx.client,
                 &api_url,
                 set_args.server_id,
             )
             .await?;
-            let channel = requests::fetch_channel_by_id(
+            let channel = requests::channels::fetch_by_id(
                 ctx.client,
                 &api_url,
                 server.id,

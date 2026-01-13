@@ -1,4 +1,4 @@
-use clap::{Parser};
+use clap::Parser;
 use cli::handle_cli;
 use reqwest::Client;
 use runelink_client::{requests, util::get_api_url};
@@ -17,7 +17,7 @@ async fn test_connectivities(client: &Client, domains: Vec<&str>) {
     println!("Hosts:");
     for domain in domains {
         let api_url = get_api_url(domain);
-        match requests::do_ping(client, &api_url).await {
+        match requests::ping(client, &api_url).await {
             Ok(_) => println!("{} (ready)", domain),
             Err(_) => println!("{} (down)", domain),
         }
@@ -38,6 +38,6 @@ async fn main() -> ExitCode {
         Err(cli_error) => {
             cli_error.report_for_cli();
             cli_error.into()
-        },
+        }
     }
 }

@@ -130,12 +130,12 @@ pub async fn get_server_selection(
     let servers = match selection_type {
         ServerSelectionType::All { domain } => {
             let api_url = get_api_url(domain);
-            requests::fetch_servers(ctx.client, &api_url).await?
+            requests::servers::fetch_all(ctx.client, &api_url).await?
         }
         ServerSelectionType::MemberOnly => {
             let account = ctx.account.ok_or(CliError::MissingAccount)?;
             let account_api_url = get_api_url(&account.domain);
-            requests::fetch_servers_by_user(
+            requests::servers::fetch_by_user(
                 ctx.client,
                 &account_api_url,
                 account.user_id,
@@ -147,8 +147,8 @@ pub async fn get_server_selection(
             let account_api_url = get_api_url(&account.domain);
             let api_url = get_api_url(domain);
             let all_servers =
-                requests::fetch_servers(ctx.client, &api_url).await?;
-            let member_servers = requests::fetch_servers_by_user(
+                requests::servers::fetch_all(ctx.client, &api_url).await?;
+            let member_servers = requests::servers::fetch_by_user(
                 ctx.client,
                 &account_api_url,
                 account.user_id,
@@ -183,7 +183,7 @@ pub async fn get_channel_selection(
     server_id: Uuid,
 ) -> Result<Channel, CliError> {
     let channels =
-        requests::fetch_channels_by_server(ctx.client, api_url, server_id)
+        requests::channels::fetch_by_server(ctx.client, api_url, server_id)
             .await?;
     if channels.is_empty() {
         return Err(CliError::NoActionPossible(
@@ -208,9 +208,9 @@ pub async fn get_channel_selection_with_inputs(
         (Some(channel_id), Some(server_id)) => {
             let api_url = ctx.config.try_get_server_api_url(server_id)?;
             let server =
-                requests::fetch_server_by_id(ctx.client, &api_url, server_id)
+                requests::servers::fetch_by_id(ctx.client, &api_url, server_id)
                     .await?;
-            let channel = requests::fetch_channel_by_id(
+            let channel = requests::channels::fetch_by_id(
                 ctx.client, &api_url, server_id, channel_id,
             )
             .await?;
@@ -222,7 +222,7 @@ pub async fn get_channel_selection_with_inputs(
         (None, Some(server_id)) => {
             let api_url = ctx.config.try_get_server_api_url(server_id)?;
             let server =
-                requests::fetch_server_by_id(ctx.client, &api_url, server_id)
+                requests::servers::fetch_by_id(ctx.client, &api_url, server_id)
                     .await?;
             let channel =
                 get_channel_selection(ctx, &api_url, server.id).await?;

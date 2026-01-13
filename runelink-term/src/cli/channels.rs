@@ -85,7 +85,7 @@ pub async fn handle_channel_commands(
                 .get_api_url()?;
             let channels;
             if let Some(server_id) = list_args.server_id {
-                channels = requests::fetch_channels_by_server(
+                channels = requests::channels::fetch_by_server(
                     ctx.client, &api_url, server_id,
                 )
                 .await?;
@@ -93,14 +93,14 @@ pub async fn handle_channel_commands(
                 // TODO: only include servers the user is a member of
                 // Also, fetch from multiple hosts (unless one is specified)
                 channels =
-                    requests::fetch_all_channels(ctx.client, &api_url).await?
+                    requests::channels::fetch_all(ctx.client, &api_url).await?
                 // Also, group by server for printing
             } else {
                 let server =
                     get_server_selection(ctx, ServerSelectionType::MemberOnly)
                         .await?;
                 let api_url = get_api_url(&server.domain);
-                channels = requests::fetch_channels_by_server(
+                channels = requests::channels::fetch_by_server(
                     ctx.client, &api_url, server.id,
                 )
                 .await?;
@@ -122,7 +122,7 @@ pub async fn handle_channel_commands(
                 .try_domain(get_args.domain.clone())
                 .try_server(Some(get_args.server_id))
                 .get_api_url()?;
-            let channel = requests::fetch_channel_by_id(
+            let channel = requests::channels::fetch_by_id(
                 ctx.client,
                 &api_url,
                 get_args.server_id,
@@ -138,7 +138,7 @@ pub async fn handle_channel_commands(
                 .try_server(create_args.server_id)
                 .get_api_url()?;
             let server = if let Some(server_id) = create_args.server_id {
-                requests::fetch_server_by_id(ctx.client, &api_url, server_id)
+                requests::servers::fetch_by_id(ctx.client, &api_url, server_id)
                     .await?
             } else {
                 get_server_selection(ctx, ServerSelectionType::MemberOnly)
@@ -158,7 +158,7 @@ pub async fn handle_channel_commands(
                 title,
                 description: desc,
             };
-            let channel = requests::create_channel(
+            let channel = requests::channels::create(
                 ctx.client,
                 &server_api_url,
                 server.id,
@@ -173,7 +173,7 @@ pub async fn handle_channel_commands(
                     ctx.config.save()?;
                 }
             } else {
-                let server = requests::fetch_server_by_id(
+                let server = requests::servers::fetch_by_id(
                     ctx.client,
                     &server_api_url,
                     channel.server_id,

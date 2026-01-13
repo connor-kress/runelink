@@ -6,7 +6,7 @@ use crate::error::Result;
 
 use super::{fetch_json, post_json};
 
-pub async fn create_channel(
+pub async fn create(
     client: &Client,
     api_url: &str,
     server_id: Uuid,
@@ -16,15 +16,12 @@ pub async fn create_channel(
     post_json::<NewChannel, Channel>(client, &url, new_channel).await
 }
 
-pub async fn fetch_all_channels(
-    client: &Client,
-    api_url: &str,
-) -> Result<Vec<Channel>> {
+pub async fn fetch_all(client: &Client, api_url: &str) -> Result<Vec<Channel>> {
     let url = format!("{api_url}/channels");
     fetch_json::<Vec<Channel>>(client, &url).await
 }
 
-pub async fn fetch_channels_by_server(
+pub async fn fetch_by_server(
     client: &Client,
     api_url: &str,
     server_id: Uuid,
@@ -33,7 +30,7 @@ pub async fn fetch_channels_by_server(
     fetch_json::<Vec<Channel>>(client, &url).await
 }
 
-pub async fn fetch_channel_by_id(
+pub async fn fetch_by_id(
     client: &Client,
     api_url: &str,
     server_id: Uuid,
