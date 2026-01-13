@@ -1,3 +1,4 @@
+use log::info;
 use reqwest::Client;
 use runelink_types::{
     FullServerMembership, NewServerMembership, ServerMembership,
@@ -14,6 +15,7 @@ pub async fn fetch_by_user(
     user_id: Uuid,
 ) -> Result<Vec<ServerMembership>> {
     let url = format!("{api_url}/users/{user_id}/servers");
+    info!("fetching memberships by user: {url}");
     fetch_json::<Vec<ServerMembership>>(client, &url).await
 }
 
@@ -24,6 +26,7 @@ pub async fn create(
     new_membership: &NewServerMembership,
 ) -> Result<FullServerMembership> {
     let url = format!("{api_url}/servers/{server_id}/users");
+    info!("creating membership: {url}");
     post_json::<NewServerMembership, FullServerMembership>(
         client,
         &url,
@@ -47,6 +50,7 @@ pub mod federated {
         new_membership: &NewServerMembership,
     ) -> Result<FullServerMembership> {
         let url = format!("{api_url}/federation/servers/{server_id}/users");
+        info!("creating membership (federation): {url}");
         post_json_federated::<NewServerMembership, FullServerMembership>(
             client,
             &url,

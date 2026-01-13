@@ -50,7 +50,7 @@ pub async fn discovery(
         "userinfo_endpoint": userinfo_endpoint,
         "grant_types_supported": ["password", "refresh_token"],
         "response_types_supported": [],
-        "scopes_supported": ["openid", "read:messages", "send:files"],
+        "scopes_supported": [],
         "token_endpoint_auth_methods_supported": ["none"]
     }))
 }

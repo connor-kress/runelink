@@ -30,7 +30,7 @@ pub struct RefreshToken {
     pub revoked: bool,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TokenRequest {
     pub grant_type: String,
     pub username: Option<String>, // password grant
@@ -40,7 +40,7 @@ pub struct TokenRequest {
     pub client_id: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TokenResponse {
     pub access_token: String,
     pub token_type: String, // always "Bearer"
