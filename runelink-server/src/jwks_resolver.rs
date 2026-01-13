@@ -8,9 +8,7 @@ use runelink_types::{FederationClaims, PublicJwk};
 use serde::Deserialize;
 use time::{Duration, OffsetDateTime};
 
-use crate::{
-    crypto::ed25519_public_raw_to_spki_der, error::ApiError, state::AppState,
-};
+use crate::{error::ApiError, state::AppState};
 use runelink_client::util::get_api_url;
 
 #[derive(Debug, Clone)]
@@ -158,12 +156,12 @@ pub async fn decode_federation_jwt(
     let cached = get_cached_jwks(state, &iss).await?;
     let pub_bytes = select_public_key_bytes(&cached, header.kid.as_deref())?;
 
-    // JWKS `x` is raw Ed25519 public key bytes, but jsonwebtoken expects SPKI/DER
-    // for EdDSA when using `from_ed_der()`. Wrap raw bytes into SPKI DER.
-    let spki = ed25519_public_raw_to_spki_der(pub_bytes).map_err(|e| {
-        ApiError::AuthError(format!("invalid jwks ed25519 key: {e}"))
-    })?;
-    let decoding_key = DecodingKey::from_ed_der(&spki);
+    if pub_bytes.len() != 32 {
+        return Err(ApiError::AuthError(
+            "invalid jwks ed25519 key length".into(),
+        ));
+    }
+    let decoding_key = DecodingKey::from_ed_der(pub_bytes);
 
     let mut validation = Validation::new(Algorithm::EdDSA);
     validation.set_audience(&[expected_audience]);

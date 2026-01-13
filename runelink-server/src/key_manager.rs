@@ -12,7 +12,7 @@ use std::path::PathBuf;
 use time::Duration;
 use uuid::Uuid;
 
-use crate::{crypto::ed25519_public_raw_to_spki_der, error::ApiError};
+use crate::error::ApiError;
 
 /// Handles JWT signing keys and JWKS publication
 #[allow(dead_code)]
@@ -37,9 +37,13 @@ impl std::fmt::Debug for KeyManager {
 impl KeyManager {
     /// Load keys if they exist under `path` or generate a new Ed25519 keypair
     pub fn load_or_generate(path: PathBuf) -> Result<Self, ApiError> {
-        // Store keys in standard formats:
+        // Stored formats:
         // - private: PKCS#8 DER
         // - public:  SPKI (SubjectPublicKeyInfo) DER
+        //
+        // Note: jsonwebtoken's EdDSA verifier expects the *raw 32-byte*
+        // Ed25519 public key, so we parse SPKI and convert to raw
+        // for `DecodingKey`.
         let priv_path = path.join("private_ed25519.der");
         let pub_path = path.join("public_ed25519.der");
 
@@ -52,36 +56,37 @@ impl KeyManager {
                 ApiError::Internal(format!("failed to read public key: {e}"))
             })?;
 
-            // Parse keys as PKCS#8 (private) and SPKI (public) DER
+            // Parse private key as PKCS#8 DER
             let signing_key =
                 SigningKey::from_pkcs8_der(&priv_bytes).map_err(|e| {
                     ApiError::Internal(format!(
                         "invalid private key (expected PKCS#8 DER): {e}"
                     ))
                 })?;
-            let verifying_key = VerifyingKey::from_public_key_der(&pub_bytes)
-                .map_err(|e| {
-                ApiError::Internal(format!(
-                    "invalid public key (expected SPKI DER): {e}"
-                ))
-            })?;
-            // Ensure the public key matches the private key (avoids confusing runtime failures).
+
+            // Parse public key as SPKI DER and convert to raw 32 bytes
+            // for jsonwebtoken.
+            let loaded_pub: [u8; 32] =
+                VerifyingKey::from_public_key_der(&pub_bytes)
+                    .map_err(|e| {
+                        ApiError::Internal(format!(
+                            "invalid public key (expected SPKI DER): {e}"
+                        ))
+                    })?
+                    .to_bytes();
+
+            // Ensure the public key matches the private key
             let derived_pub = signing_key.verifying_key().to_bytes();
-            let loaded_pub = verifying_key.to_bytes();
             if derived_pub != loaded_pub {
                 return Err(ApiError::Internal(
                     "public key does not match private key".into(),
                 ));
             }
 
-            // Ensure we can encode the public key to SPKI DER, since downstream JWT verification
-            // expects SPKI DER (via jsonwebtoken's from_ed_der()).
-            let _ = ed25519_public_raw_to_spki_der(&loaded_pub)?;
-
             let kid = "primary".to_string(); // TODO: should this change?
             Ok(Self {
                 private_key: EncodingKey::from_ed_der(&priv_bytes),
-                decoding_key: DecodingKey::from_ed_der(&pub_bytes),
+                decoding_key: DecodingKey::from_ed_der(&loaded_pub),
                 public_jwk: PublicJwk::from_ed25519_bytes(&loaded_pub, kid),
                 path,
             })
@@ -110,12 +115,13 @@ impl KeyManager {
             fs::write(&pub_path, pub_spki.as_bytes()).map_err(|e| {
                 ApiError::Internal(format!("failed to write public key: {e}"))
             })?;
-            println!("Generated new ed25519 keypair");
+            println!("Generated new ed25519 keypair at {:?}", path);
 
             let kid = "primary".to_string(); // TODO: should this change?
+
             Ok(Self {
                 private_key: EncodingKey::from_ed_der(priv_pkcs8.as_bytes()),
-                decoding_key: DecodingKey::from_ed_der(pub_spki.as_bytes()),
+                decoding_key: DecodingKey::from_ed_der(&pub_raw),
                 public_jwk: PublicJwk::from_ed25519_bytes(&pub_raw, kid),
                 path,
             })

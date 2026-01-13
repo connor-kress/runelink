@@ -10,7 +10,6 @@ mod api;
 mod auth;
 mod bearer_auth;
 mod config;
-mod crypto;
 mod db;
 mod error;
 mod jwks_resolver;
