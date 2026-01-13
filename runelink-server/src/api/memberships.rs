@@ -14,7 +14,7 @@ use runelink_types::NewServerMembership;
 use uuid::Uuid;
 
 /// GET /servers/{server_id}/users
-pub async fn list_server_members(
+pub async fn get_members_by_server(
     State(state): State<AppState>,
     Path(server_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
@@ -24,7 +24,7 @@ pub async fn list_server_members(
 }
 
 /// GET /servers/{server_id}/users/{user_id}
-pub async fn get_server_member(
+pub async fn get_by_user_and_server(
     State(state): State<AppState>,
     Path((server_id, user_id)): Path<(Uuid, Uuid)>,
 ) -> Result<impl IntoResponse, ApiError> {
@@ -36,7 +36,7 @@ pub async fn get_server_member(
 }
 
 /// POST /servers/{server_id}/users
-pub async fn add_server_member(
+pub async fn create(
     State(state): State<AppState>,
     headers: HeaderMap,
     Path(server_id): Path<Uuid>,
@@ -97,14 +97,21 @@ pub async fn add_server_member(
     }
 }
 
+/// GET /users/{user_id}/memberships
+pub async fn get_by_user(
+    State(state): State<AppState>,
+    Path(user_id): Path<Uuid>,
+) -> Result<impl IntoResponse, ApiError> {
+    let memberships = ops::memberships::get_by_user(&state, user_id).await?;
+    Ok((StatusCode::OK, Json(memberships)))
+}
+
 /// Federation endpoints (server-to-server authentication required).
 pub mod federated {
     use super::*;
 
     /// POST /federation/servers/{server_id}/users
-    ///
-    /// Create a remote membership (requires federation auth).
-    pub async fn add_server_member(
+    pub async fn create(
         State(state): State<AppState>,
         headers: HeaderMap,
         Path(server_id): Path<Uuid>,

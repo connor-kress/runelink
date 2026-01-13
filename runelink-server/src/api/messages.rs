@@ -13,7 +13,7 @@ use runelink_types::NewMessage;
 use uuid::Uuid;
 
 /// POST /servers/{server_id}/channels/{channel_id}/messages
-pub async fn create_message(
+pub async fn create(
     State(state): State<AppState>,
     headers: HeaderMap,
     Path((server_id, channel_id)): Path<(Uuid, Uuid)>,
@@ -37,7 +37,7 @@ pub async fn create_message(
 }
 
 /// GET /messages
-pub async fn list_messages(
+pub async fn get_all(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, ApiError> {
@@ -52,7 +52,7 @@ pub async fn list_messages(
 }
 
 /// GET /servers/{server_id}/messages
-pub async fn list_messages_by_server(
+pub async fn get_by_server(
     State(state): State<AppState>,
     headers: HeaderMap,
     Path(server_id): Path<Uuid>,
@@ -69,7 +69,7 @@ pub async fn list_messages_by_server(
 }
 
 /// GET /servers/{server_id}/channels/{channel_id}/messages
-pub async fn list_messages_by_channel(
+pub async fn get_by_channel(
     State(state): State<AppState>,
     headers: HeaderMap,
     Path((server_id, channel_id)): Path<(Uuid, Uuid)>,
@@ -86,7 +86,7 @@ pub async fn list_messages_by_channel(
 }
 
 /// GET /servers/{server_id}/channels/{channel_id}/messages/{message_id}
-pub async fn get_message_by_id_handler(
+pub async fn get_by_id(
     State(state): State<AppState>,
     headers: HeaderMap,
     Path((server_id, channel_id, message_id)): Path<(Uuid, Uuid, Uuid)>,

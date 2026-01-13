@@ -13,7 +13,7 @@ use runelink_types::NewServer;
 use uuid::Uuid;
 
 /// POST /servers
-pub async fn create_server(
+pub async fn create(
     State(state): State<AppState>,
     headers: HeaderMap,
     Json(new_server): Json<NewServer>,
@@ -29,7 +29,7 @@ pub async fn create_server(
 }
 
 /// GET /servers
-pub async fn list_servers(
+pub async fn get_all(
     State(state): State<AppState>,
 ) -> Result<impl IntoResponse, ApiError> {
     let servers = ops::servers::get_all(&state).await?;
@@ -37,7 +37,7 @@ pub async fn list_servers(
 }
 
 /// GET /servers/{server_id}
-pub async fn get_server_by_id_handler(
+pub async fn get_by_id(
     State(state): State<AppState>,
     Path(server_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
@@ -46,7 +46,7 @@ pub async fn get_server_by_id_handler(
 }
 
 /// GET /servers/{server_id}/with_channels
-pub async fn get_server_with_channels_handler(
+pub async fn get_with_channels(
     State(state): State<AppState>,
     headers: HeaderMap,
     Path(server_id): Path<Uuid>,
@@ -60,13 +60,4 @@ pub async fn get_server_with_channels_handler(
     let server_with_channels =
         ops::servers::get_with_channels(&state, &session, server_id).await?;
     Ok((StatusCode::OK, Json(server_with_channels)))
-}
-
-/// GET /users/{user_id}/servers
-pub async fn list_server_memberships_by_user(
-    State(state): State<AppState>,
-    Path(user_id): Path<Uuid>,
-) -> Result<impl IntoResponse, ApiError> {
-    let memberships = ops::memberships::get_by_user(&state, user_id).await?;
-    Ok((StatusCode::OK, Json(memberships)))
 }

@@ -13,7 +13,7 @@ use runelink_types::NewChannel;
 use uuid::Uuid;
 
 /// POST /servers/{server_id}/channels
-pub async fn create_channel(
+pub async fn create(
     State(state): State<AppState>,
     headers: HeaderMap,
     Path(server_id): Path<Uuid>,
@@ -32,7 +32,7 @@ pub async fn create_channel(
 }
 
 /// GET /channels
-pub async fn list_channels(
+pub async fn get_all(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, ApiError> {
@@ -47,7 +47,7 @@ pub async fn list_channels(
 }
 
 /// GET /servers/{server_id}/channels
-pub async fn list_channels_by_server(
+pub async fn get_by_server(
     State(state): State<AppState>,
     headers: HeaderMap,
     Path(server_id): Path<Uuid>,
@@ -64,7 +64,7 @@ pub async fn list_channels_by_server(
 }
 
 /// GET /servers/{server_id}/channels/{channel_id}
-pub async fn get_channel_by_id_handler(
+pub async fn get_by_id(
     State(state): State<AppState>,
     headers: HeaderMap,
     Path((server_id, channel_id)): Path<(Uuid, Uuid)>,

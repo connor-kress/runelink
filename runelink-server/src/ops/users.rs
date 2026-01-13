@@ -54,14 +54,4 @@ pub mod auth {
             requirements: vec![Requirement::HostAdmin],
         }
     }
-
-    pub mod federated {
-        use super::*;
-
-        pub fn get_by_id() -> AuthSpec {
-            AuthSpec {
-                requirements: vec![Requirement::Federation],
-            }
-        }
-    }
 }

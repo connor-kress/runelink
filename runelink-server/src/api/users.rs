@@ -20,7 +20,7 @@ pub struct GetUserByNameDomainQuery {
 }
 
 /// POST /users
-pub async fn create_user(
+pub async fn create(
     State(state): State<AppState>,
     headers: HeaderMap,
     Json(new_user): Json<NewUser>,
@@ -36,7 +36,7 @@ pub async fn create_user(
 }
 
 /// GET /users
-pub async fn list_users(
+pub async fn get_all(
     State(state): State<AppState>,
 ) -> Result<impl IntoResponse, ApiError> {
     let users = ops::users::get_all(&state).await?;
@@ -44,7 +44,7 @@ pub async fn list_users(
 }
 
 /// GET /users/{user_id}
-pub async fn get_user_by_id_handler(
+pub async fn get_by_id(
     State(state): State<AppState>,
     Path(user_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
@@ -53,7 +53,7 @@ pub async fn get_user_by_id_handler(
 }
 
 /// GET /users/find?name=...&domain=...
-pub async fn find_user_by_name_domain_handler(
+pub async fn get_by_name_and_domain(
     State(state): State<AppState>,
     Query(params): Query<GetUserByNameDomainQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
@@ -71,27 +71,4 @@ pub async fn get_user_associated_domains(
     let domains =
         ops::hosts::get_user_associated_domains(&state, user_id).await?;
     Ok((StatusCode::OK, Json(domains)))
-}
-
-/// Federation endpoints (server-to-server authentication required).
-pub mod federated {
-    use super::*;
-
-    /// GET /federation/users/{user_id}
-    ///
-    /// Fetch user info for federation purposes (requires federation auth).
-    pub async fn get_user(
-        State(state): State<AppState>,
-        headers: HeaderMap,
-        Path(user_id): Path<Uuid>,
-    ) -> Result<impl IntoResponse, ApiError> {
-        let _session = authorize(
-            &state,
-            Principal::from_federation_headers(&headers, &state).await?,
-            ops::users::auth::federated::get_by_id(),
-        )
-        .await?;
-        let user = ops::users::get_by_id(&state, user_id).await?;
-        Ok((StatusCode::OK, Json(user)))
-    }
 }
