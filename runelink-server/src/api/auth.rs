@@ -82,7 +82,7 @@ pub async fn token(
                 .ok_or(ApiError::BadRequest("missing password".into()))?;
 
             // Get user
-            let user = queries::get_user_by_name_and_domain(
+            let user = queries::users::get_by_name_and_domain(
                 &state.db_pool,
                 username,
                 state.config.local_domain(),
@@ -91,7 +91,7 @@ pub async fn token(
 
             // Verify password hash
             let account =
-                queries::get_local_account(&state.db_pool, user.id).await?;
+                queries::accounts::get_by_user(&state.db_pool, user.id).await?;
             let parsed_hash = PasswordHash::new(&account.password_hash)
                 .map_err(|_| {
                     ApiError::AuthError("invalid password hash".into())
@@ -120,7 +120,7 @@ pub async fn token(
 
             // Create refresh token
             let rt = RefreshToken::new(user.id, client_id, Duration::days(30));
-            queries::insert_refresh_token(&state.db_pool, &rt).await?;
+            queries::tokens::insert_refresh(&state.db_pool, &rt).await?;
 
             Ok((
                 StatusCode::OK,
@@ -140,7 +140,7 @@ pub async fn token(
                 .clone()
                 .ok_or(ApiError::BadRequest("missing refresh_token".into()))?;
             let rt =
-                queries::get_refresh_token(&state.db_pool, &rtoken).await?;
+                queries::tokens::get_refresh(&state.db_pool, &rtoken).await?;
 
             // Validate refresh token
             let now = OffsetDateTime::now_utc();
@@ -210,7 +210,7 @@ pub async fn signup(
         name: req.name,
         domain: state.config.local_domain(),
     };
-    let user = queries::insert_user(&state.db_pool, &new_user).await?;
+    let user = queries::users::insert(&state.db_pool, &new_user).await?;
 
     // Hash password
     let salt = SaltString::generate(&mut OsRng);
@@ -221,7 +221,7 @@ pub async fn signup(
 
     // Insert local account
     let _account =
-        queries::insert_local_account(&state.db_pool, user.id, &password_hash)
+        queries::accounts::insert(&state.db_pool, user.id, &password_hash)
             .await?;
 
     Ok((StatusCode::CREATED, Json(user)))

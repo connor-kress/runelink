@@ -24,14 +24,14 @@ pub async fn create_message(
     new_message: &NewMessage,
 ) -> Result<Message, ApiError> {
     let channel =
-        queries::get_channel_by_id(&state.db_pool, channel_id).await?;
+        queries::channels::get_by_id(&state.db_pool, channel_id).await?;
     if channel.server_id != server_id {
         return Err(ApiError::AuthError(
             "Channel not found in specified server".into(),
         ));
     }
     let message =
-        queries::insert_message(&state.db_pool, channel_id, new_message)
+        queries::messages::insert(&state.db_pool, channel_id, new_message)
             .await?;
     Ok(message)
 }
@@ -48,7 +48,7 @@ pub async fn list_messages(
     state: &AppState,
     _session: &Session,
 ) -> Result<Vec<Message>, ApiError> {
-    let messages = queries::get_all_messages(&state.db_pool).await?;
+    let messages = queries::messages::get_all(&state.db_pool).await?;
     Ok(messages)
 }
 
@@ -66,7 +66,7 @@ pub async fn list_messages_by_server(
     server_id: Uuid,
 ) -> Result<Vec<Message>, ApiError> {
     let messages =
-        queries::get_messages_by_server(&state.db_pool, server_id).await?;
+        queries::messages::get_by_server(&state.db_pool, server_id).await?;
     Ok(messages)
 }
 
@@ -84,7 +84,7 @@ pub async fn list_messages_by_channel(
     channel_id: Uuid,
 ) -> Result<Vec<Message>, ApiError> {
     let messages =
-        queries::get_messages_by_channel(&state.db_pool, channel_id).await?;
+        queries::messages::get_by_channel(&state.db_pool, channel_id).await?;
     Ok(messages)
 }
 
@@ -104,14 +104,14 @@ pub async fn get_message_by_id(
     message_id: Uuid,
 ) -> Result<Message, ApiError> {
     let message =
-        queries::get_message_by_id(&state.db_pool, message_id).await?;
+        queries::messages::get_by_id(&state.db_pool, message_id).await?;
     if message.channel_id != channel_id {
         return Err(ApiError::AuthError(
             "Message not found in specified channel".into(),
         ));
     }
     let channel =
-        queries::get_channel_by_id(&state.db_pool, channel_id).await?;
+        queries::channels::get_by_id(&state.db_pool, channel_id).await?;
     if channel.server_id != server_id {
         return Err(ApiError::AuthError(
             "Message not found in specified server".into(),

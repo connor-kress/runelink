@@ -1,7 +1,8 @@
-use crate::{db::DbPool, error::ApiError};
 use runelink_types::RefreshToken;
 
-pub async fn insert_refresh_token(
+use crate::{db::DbPool, error::ApiError};
+
+pub async fn insert_refresh(
     pool: &DbPool,
     rt: &RefreshToken,
 ) -> Result<RefreshToken, ApiError> {
@@ -25,7 +26,7 @@ pub async fn insert_refresh_token(
     .map_err(ApiError::from)
 }
 
-pub async fn get_refresh_token(
+pub async fn get_refresh(
     pool: &DbPool,
     token_str: &str,
 ) -> Result<RefreshToken, ApiError> {
@@ -44,7 +45,7 @@ pub async fn get_refresh_token(
 }
 
 #[allow(dead_code)]
-pub async fn revoke_refresh_token(
+pub async fn revoke_refresh(
     pool: &DbPool,
     token_str: &str,
 ) -> Result<(), ApiError> {

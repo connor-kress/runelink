@@ -1,8 +1,9 @@
-use crate::{db::DbPool, error::ApiError};
 use runelink_types::LocalAccount;
 use uuid::Uuid;
 
-pub async fn insert_local_account(
+use crate::{db::DbPool, error::ApiError};
+
+pub async fn insert(
     pool: &DbPool,
     user_id: Uuid,
     password_hash: &str,
@@ -22,7 +23,7 @@ pub async fn insert_local_account(
     .map_err(ApiError::from)
 }
 
-pub async fn get_local_account(
+pub async fn get_by_user(
     pool: &DbPool,
     user_id: Uuid,
 ) -> Result<LocalAccount, ApiError> {

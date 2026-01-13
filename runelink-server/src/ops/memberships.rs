@@ -43,14 +43,14 @@ pub async fn add_server_member(
                 new_membership.user_id,
             )
             .await?;
-            queries::insert_remote_user(&state.db_pool, &user).await?;
+            queries::users::insert_remote(&state.db_pool, &user).await?;
         }
     }
 
     // Create the membership
     let member =
-        queries::add_user_to_server(&state.db_pool, new_membership).await?;
-    let membership = queries::get_local_server_membership(
+        queries::memberships::insert(&state.db_pool, new_membership).await?;
+    let membership = queries::memberships::get_local_by_user_and_server(
         state,
         server_id,
         new_membership.user_id,
@@ -73,7 +73,8 @@ pub async fn list_server_members(
     server_id: Uuid,
 ) -> Result<Vec<ServerMember>, ApiError> {
     let members =
-        queries::get_all_server_members(&state.db_pool, server_id).await?;
+        queries::memberships::get_members_by_server(&state.db_pool, server_id)
+            .await?;
     Ok(members)
 }
 
@@ -83,8 +84,12 @@ pub async fn get_server_member(
     server_id: Uuid,
     user_id: Uuid,
 ) -> Result<ServerMember, ApiError> {
-    let member =
-        queries::get_server_member(&state.db_pool, server_id, user_id).await?;
+    let member = queries::memberships::get_member_by_user_and_server(
+        &state.db_pool,
+        server_id,
+        user_id,
+    )
+    .await?;
     Ok(member)
 }
 
@@ -101,13 +106,9 @@ pub async fn add_remote_server_member(
         ));
     }
     // Upsert the remote server into cached_remote_servers
-    queries::upsert_cached_remote_server(&state.db_pool, &membership.server)
-        .await?;
+    queries::servers::upsert_remote(&state.db_pool, &membership.server).await?;
     // Insert the membership itself
-    let new_membership = queries::insert_user_remote_server_membership(
-        &state.db_pool,
-        membership,
-    )
-    .await?;
+    let new_membership =
+        queries::memberships::insert_remote(&state.db_pool, membership).await?;
     Ok(new_membership)
 }

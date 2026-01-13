@@ -1,9 +1,10 @@
-use crate::{db::DbPool, error::ApiError};
 use runelink_types::{Message, NewMessage, User};
 use serde::{Deserialize, Serialize};
 use sqlx::types::Json;
 use time::OffsetDateTime;
 use uuid::Uuid;
+
+use crate::{db::DbPool, error::ApiError};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DbMessage {
@@ -30,7 +31,7 @@ impl From<DbMessage> for Message {
     }
 }
 
-pub async fn insert_message(
+pub async fn insert(
     pool: &DbPool,
     channel_id: Uuid,
     new_message: &NewMessage,
@@ -49,12 +50,10 @@ pub async fn insert_message(
     .await
     .map_err(ApiError::from)?;
 
-    get_message_by_id(pool, new_id).await
+    get_by_id(pool, new_id).await
 }
 
-pub async fn get_all_messages(
-    pool: &DbPool,
-) -> Result<Vec<Message>, ApiError> {
+pub async fn get_all(pool: &DbPool) -> Result<Vec<Message>, ApiError> {
     let rows = sqlx::query_as!(
         DbMessage,
         r#"
@@ -75,7 +74,7 @@ pub async fn get_all_messages(
     Ok(rows.into_iter().map(Message::from).collect())
 }
 
-pub async fn get_messages_by_server(
+pub async fn get_by_server(
     pool: &DbPool,
     server_id: Uuid,
 ) -> Result<Vec<Message>, ApiError> {
@@ -102,7 +101,7 @@ pub async fn get_messages_by_server(
     Ok(rows.into_iter().map(Message::from).collect())
 }
 
-pub async fn get_messages_by_channel(
+pub async fn get_by_channel(
     pool: &DbPool,
     channel_id: Uuid,
 ) -> Result<Vec<Message>, ApiError> {
@@ -128,7 +127,7 @@ pub async fn get_messages_by_channel(
     Ok(rows.into_iter().map(Message::from).collect())
 }
 
-pub async fn get_message_by_id(
+pub async fn get_by_id(
     pool: &DbPool,
     msg_id: Uuid,
 ) -> Result<Message, ApiError> {

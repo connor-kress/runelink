@@ -23,7 +23,8 @@ pub async fn create_channel(
     new_channel: &NewChannel,
 ) -> Result<Channel, ApiError> {
     let channel =
-        queries::insert_channel(&state.db_pool, server_id, new_channel).await?;
+        queries::channels::insert(&state.db_pool, server_id, new_channel)
+            .await?;
     Ok(channel)
 }
 
@@ -39,7 +40,7 @@ pub async fn list_channels(
     state: &AppState,
     _session: &Session,
 ) -> Result<Vec<Channel>, ApiError> {
-    let channels = queries::get_all_channels(&state.db_pool).await?;
+    let channels = queries::channels::get_all(&state.db_pool).await?;
     Ok(channels)
 }
 
@@ -56,7 +57,7 @@ pub async fn list_channels_by_server(
     _session: &Session,
     server_id: Uuid,
 ) -> Result<Vec<Channel>, ApiError> {
-    queries::get_channels_by_server(&state.db_pool, server_id).await
+    queries::channels::get_by_server(&state.db_pool, server_id).await
 }
 
 /// Auth requirements for `get_channel_by_id`.
@@ -73,6 +74,6 @@ pub async fn get_channel_by_id(
     channel_id: Uuid,
 ) -> Result<Channel, ApiError> {
     let channel =
-        queries::get_channel_by_id(&state.db_pool, channel_id).await?;
+        queries::channels::get_by_id(&state.db_pool, channel_id).await?;
     Ok(channel)
 }

@@ -87,7 +87,7 @@ impl Session {
         };
         // Perform DB lookup
         let user_result =
-            queries::get_user_by_id(&state.db_pool, user_ref.id).await;
+            queries::users::get_by_id(&state.db_pool, user_ref.id).await;
         let user = match user_result {
             Ok(user) => Some(user),
             Err(ApiError::NotFound) => None,
@@ -184,15 +184,16 @@ pub async fn authorize(
                         "User reference required for membership check".into(),
                     )
                 })?;
-                let member = queries::get_server_member(
-                    &state.db_pool,
-                    *server_id,
-                    user_ref.id,
-                )
-                .await
-                .map_err(|_| {
-                    ApiError::AuthError("Not a server member".into())
-                })?;
+                let member =
+                    queries::memberships::get_member_by_user_and_server(
+                        &state.db_pool,
+                        *server_id,
+                        user_ref.id,
+                    )
+                    .await
+                    .map_err(|_| {
+                        ApiError::AuthError("Not a server member".into())
+                    })?;
                 session.cached_user = Some(Some(member.user));
             }
 
@@ -203,15 +204,16 @@ pub async fn authorize(
                         "User reference required for admin check".into(),
                     )
                 })?;
-                let member = queries::get_server_member(
-                    &state.db_pool,
-                    *server_id,
-                    user_ref.id,
-                )
-                .await
-                .map_err(|_| {
-                    ApiError::AuthError("Not a server admin".into())
-                })?;
+                let member =
+                    queries::memberships::get_member_by_user_and_server(
+                        &state.db_pool,
+                        *server_id,
+                        user_ref.id,
+                    )
+                    .await
+                    .map_err(|_| {
+                        ApiError::AuthError("Not a server admin".into())
+                    })?;
                 if member.role != ServerRole::Admin {
                     return Err(ApiError::AuthError("Admin only".into()));
                 }

@@ -21,7 +21,7 @@ pub async fn create_server(
     session: &Session,
     new_server: &NewServer,
 ) -> Result<Server, ApiError> {
-    let server = queries::insert_server(state, new_server).await?;
+    let server = queries::servers::insert(state, new_server).await?;
 
     // Get the creator's user identity
     // Since this requires HostAdmin (which requires client auth), these fields are always present
@@ -38,7 +38,7 @@ pub async fn create_server(
         server_domain: server.domain.clone(),
         role: ServerRole::Admin,
     };
-    queries::add_user_to_server(&state.db_pool, &new_membership).await?;
+    queries::memberships::insert(&state.db_pool, &new_membership).await?;
     Ok(server)
 }
 
@@ -47,7 +47,7 @@ pub async fn list_servers(state: &AppState) -> Result<Vec<Server>, ApiError> {
     // TODO: add visibility specification for servers
     // We could then have an admin endpoint for all servers
     // and a public endpoint for only public servers
-    let servers = queries::get_all_servers(state).await?;
+    let servers = queries::servers::get_all(state).await?;
     Ok(servers)
 }
 
@@ -57,7 +57,7 @@ pub async fn get_server_by_id(
     server_id: Uuid,
 ) -> Result<Server, ApiError> {
     // TODO: separate public and private server objects?
-    let server = queries::get_server_by_id(state, server_id).await?;
+    let server = queries::servers::get_by_id(state, server_id).await?;
     Ok(server)
 }
 
@@ -75,8 +75,8 @@ pub async fn get_server_with_channels(
     server_id: Uuid,
 ) -> Result<ServerWithChannels, ApiError> {
     let (server, channels) = tokio::join!(
-        queries::get_server_by_id(state, server_id),
-        queries::get_channels_by_server(&state.db_pool, server_id),
+        queries::servers::get_by_id(state, server_id),
+        queries::channels::get_by_server(&state.db_pool, server_id),
     );
     Ok(ServerWithChannels {
         server: server?,
@@ -89,7 +89,6 @@ pub async fn list_server_memberships_by_user(
     state: &AppState,
     user_id: Uuid,
 ) -> Result<Vec<ServerMembership>, ApiError> {
-    let memberships =
-        queries::get_all_memberships_for_user(state, user_id).await?;
+    let memberships = queries::memberships::get_by_user(state, user_id).await?;
     Ok(memberships)
 }

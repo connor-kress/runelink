@@ -21,13 +21,13 @@ pub async fn create_user(
     _session: &Session,
     new_user: &NewUser,
 ) -> Result<User, ApiError> {
-    let user = queries::insert_user(&state.db_pool, new_user).await?;
+    let user = queries::users::insert(&state.db_pool, new_user).await?;
     Ok(user)
 }
 
 /// List all users (public).
 pub async fn list_users(state: &AppState) -> Result<Vec<User>, ApiError> {
-    let users = queries::get_all_users(&state.db_pool).await?;
+    let users = queries::users::get_all(&state.db_pool).await?;
     Ok(users)
 }
 
@@ -43,7 +43,7 @@ pub async fn get_user_by_id(
     state: &AppState,
     user_id: Uuid,
 ) -> Result<User, ApiError> {
-    let user = queries::get_user_by_id(&state.db_pool, user_id).await?;
+    let user = queries::users::get_by_id(&state.db_pool, user_id).await?;
     Ok(user)
 }
 
@@ -54,7 +54,7 @@ pub async fn find_user_by_name_domain(
     domain: String,
 ) -> Result<User, ApiError> {
     let user =
-        queries::get_user_by_name_and_domain(&state.db_pool, name, domain)
+        queries::users::get_by_name_and_domain(&state.db_pool, name, domain)
             .await?;
     Ok(user)
 }
@@ -65,7 +65,7 @@ pub async fn get_user_associated_domains(
     user_id: Uuid,
 ) -> Result<Vec<String>, ApiError> {
     let domains =
-        queries::get_associated_domains_for_user(&state.db_pool, user_id)
+        queries::hosts::get_user_associated_domains(&state.db_pool, user_id)
             .await?;
     Ok(domains)
 }

@@ -1,8 +1,9 @@
-use crate::{db::DbPool, error::ApiError};
 use runelink_types::{Channel, NewChannel};
 use uuid::Uuid;
 
-pub async fn insert_channel(
+use crate::{db::DbPool, error::ApiError};
+
+pub async fn insert(
     pool: &DbPool,
     server_id: Uuid,
     new_channel: &NewChannel,
@@ -23,7 +24,7 @@ pub async fn insert_channel(
     .map_err(ApiError::from)
 }
 
-pub async fn get_channel_by_id(
+pub async fn get_by_id(
     pool: &DbPool,
     channel_id: Uuid,
 ) -> Result<Channel, ApiError> {
@@ -37,19 +38,14 @@ pub async fn get_channel_by_id(
     .map_err(ApiError::from)
 }
 
-pub async fn get_all_channels(
-    pool: &DbPool,
-) -> Result<Vec<Channel>, ApiError> {
-    sqlx::query_as!(
-        Channel,
-        "SELECT * FROM channels",
-    )
-    .fetch_all(pool)
-    .await
-    .map_err(ApiError::from)
+pub async fn get_all(pool: &DbPool) -> Result<Vec<Channel>, ApiError> {
+    sqlx::query_as!(Channel, "SELECT * FROM channels",)
+        .fetch_all(pool)
+        .await
+        .map_err(ApiError::from)
 }
 
-pub async fn get_channels_by_server(
+pub async fn get_by_server(
     pool: &DbPool,
     server_id: Uuid,
 ) -> Result<Vec<Channel>, ApiError> {
