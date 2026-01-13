@@ -1,4 +1,4 @@
-use runelink_client::{requests, util::get_api_url};
+use runelink_client::requests;
 use uuid::Uuid;
 
 use crate::{
@@ -218,8 +218,13 @@ pub async fn handle_default_channel_commands(
                 };
                 if let Some(channel_id) = server_config.default_channel {
                     let api_url = ctx.account.try_get_api_url()?;
+                    let access_token = ctx.get_access_token().await?;
                     let channel = requests::channels::fetch_by_id(
-                        ctx.client, &api_url, server_id, channel_id,
+                        ctx.client,
+                        &api_url,
+                        &access_token,
+                        server_id,
+                        channel_id,
                     )
                     .await?;
                     println!("{}", channel.verbose());
@@ -233,9 +238,10 @@ pub async fn handle_default_channel_commands(
                 println!("No default channels set.");
                 return Ok(());
             }
+            let api_url = ctx.home_api_url()?;
+            let access_token = ctx.get_access_token().await?;
             for server_config in ctx.config.servers.iter() {
                 // TODO: endpoint for batch fetching servers/channels
-                let api_url = get_api_url(&server_config.domain);
                 let server = requests::servers::fetch_by_id(
                     ctx.client,
                     &api_url,
@@ -245,7 +251,11 @@ pub async fn handle_default_channel_commands(
                 println!("{} ({})", server.title, server.id);
                 if let Some(channel_id) = server_config.default_channel {
                     let channel = requests::channels::fetch_by_id(
-                        ctx.client, &api_url, server.id, channel_id,
+                        ctx.client,
+                        &api_url,
+                        &access_token,
+                        server.id,
+                        channel_id,
                     )
                     .await?;
                     println!("\tDefault Channel: {}", channel.verbose());
@@ -256,7 +266,8 @@ pub async fn handle_default_channel_commands(
         }
 
         DefaultChannelCommands::Set(set_args) => {
-            let api_url = get_api_url(&set_args.server_domain);
+            let api_url = ctx.home_api_url()?;
+            let access_token = ctx.get_access_token().await?;
             let server = requests::servers::fetch_by_id(
                 ctx.client,
                 &api_url,
@@ -266,12 +277,14 @@ pub async fn handle_default_channel_commands(
             let server_channels = requests::channels::fetch_by_server(
                 ctx.client,
                 &api_url,
+                &access_token,
                 set_args.server_id,
             )
             .await?;
             let channel = requests::channels::fetch_by_id(
                 ctx.client,
                 &api_url,
+                &access_token,
                 server.id,
                 set_args.channel_id,
             )

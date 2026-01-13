@@ -4,13 +4,12 @@ use context::CliContext;
 use log::LevelFilter;
 use reqwest::Client;
 
-use crate::{error::CliError, storage::AppConfig};
+use crate::{error::CliError, storage::AppConfig, storage_auth::AuthCache};
 
 pub mod account;
 pub mod channels;
 pub mod config;
 pub mod context;
-pub mod domain_query;
 pub mod input;
 pub mod messages;
 pub mod select;
@@ -67,26 +66,27 @@ fn init_logging(verbosity: u8) {
         _ => LevelFilter::Trace,
     };
 
-    env_logger::Builder::new()
-        .filter_level(level)
-        .init();
+    env_logger::Builder::new().filter_level(level).init();
 }
 
 pub async fn handle_cli(
     client: &Client,
     cli: &Cli,
     config: &mut AppConfig,
+    auth_cache: &mut AuthCache,
 ) -> Result<(), CliError> {
     init_logging(cli.verbose);
     let account_owned = match (&cli.name, &cli.domain) {
         (Some(name), Some(domain)) => {
             config.get_account_config_by_name(name, domain)
-        },
+        }
         _ => config.get_default_account(),
-    }.cloned();
+    }
+    .cloned();
     let mut ctx_owned = CliContext {
         client,
         config,
+        auth_cache,
         account: account_owned.as_ref(),
     };
     let ctx = &mut ctx_owned;
@@ -114,8 +114,10 @@ pub async fn handle_cli(
             let mut cmd = Cli::command();
             let cmd_name = cmd.get_name().to_string();
             clap_complete::generate(
-                args.shell, &mut cmd,
-                cmd_name, &mut std::io::stdout(),
+                args.shell,
+                &mut cmd,
+                cmd_name,
+                &mut std::io::stdout(),
             );
         }
     }

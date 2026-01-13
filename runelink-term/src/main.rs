@@ -4,12 +4,14 @@ use reqwest::Client;
 use runelink_client::{requests, util::get_api_url};
 use std::process::ExitCode;
 use storage::AppConfig;
+use storage_auth::AuthCache;
 
 use crate::{cli::Cli, error::CliError};
 
 mod cli;
 mod error;
 mod storage;
+mod storage_auth;
 mod util;
 
 #[allow(dead_code)]
@@ -28,9 +30,12 @@ async fn test_connectivities(client: &Client, domains: Vec<&str>) {
 async fn main() -> ExitCode {
     async fn run_app() -> Result<(), CliError> {
         let mut config = AppConfig::load()?;
+        let mut auth_cache = AuthCache::load()?;
         let cli = Cli::parse();
         let client = Client::new();
-        handle_cli(&client, &cli, &mut config).await
+        handle_cli(&client, &cli, &mut config, &mut auth_cache).await?;
+        auth_cache.save()?;
+        Ok(())
     }
 
     match run_app().await {

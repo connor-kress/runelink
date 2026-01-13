@@ -2,7 +2,7 @@
 #![allow(unused_variables)]
 #![allow(unreachable_code)]
 
-use runelink_client::{requests, util::get_api_url};
+use runelink_client::requests;
 use runelink_types::{NewServer, NewServerMembership, ServerRole};
 use uuid::Uuid;
 
@@ -11,9 +11,7 @@ use crate::{error::CliError, util::group_memberships_by_host};
 use super::{
     config::{DefaultServerArgs, handle_default_server_commands},
     context::CliContext,
-    domain_query::DomainQueryBuilder,
     input::{read_input, unwrap_or_prompt},
-    select::{ServerSelectionType, get_server_selection},
 };
 
 #[derive(clap::Args, Debug)]
@@ -79,7 +77,7 @@ pub async fn handle_server_commands(
     match &server_args.command {
         ServerCommands::List => {
             let account = ctx.account.ok_or(CliError::MissingAccount)?;
-            let api_url = get_api_url(&account.domain);
+            let api_url = ctx.home_api_url()?;
             let memberships = requests::memberships::fetch_by_user(
                 ctx.client,
                 &api_url,
@@ -114,10 +112,7 @@ pub async fn handle_server_commands(
         }
 
         ServerCommands::Get(get_args) => {
-            let api_url = DomainQueryBuilder::new(ctx)
-                .try_domain(get_args.domain.clone())
-                .try_server(Some(get_args.server_id))
-                .get_api_url()?;
+            let api_url = ctx.home_api_url()?;
             let server = requests::servers::fetch_by_id(
                 ctx.client,
                 &api_url,
@@ -134,12 +129,8 @@ pub async fn handle_server_commands(
 
         ServerCommands::Create(create_args) => {
             let account = ctx.account.ok_or(CliError::MissingAccount)?;
-            let api_url = DomainQueryBuilder::new(ctx)
-                .try_domain(create_args.domain.clone())
-                .get_api_url()?;
-            // TODO: servers can't handle cross host server membership yet.
-            // We need to sync the membership with another request to the home
-            // server too.
+            let api_url = ctx.home_api_url()?;
+            let access_token = ctx.get_access_token().await?;
             let title =
                 unwrap_or_prompt(create_args.title.clone(), "Server Title")?;
             let description = if create_args.description.is_some() {
@@ -149,16 +140,14 @@ pub async fn handle_server_commands(
             } else {
                 read_input("Server Description (leave blank for none):\n> ")?
             };
-            todo!("Include bearer token in request");
-            let new_server = NewServer {
-                title,
-                description,
-                // user_domain: account.domain.clone(),
-                // user_id: account.user_id,
-            };
-            let server =
-                requests::servers::create(ctx.client, &api_url, &new_server)
-                    .await?;
+            let new_server = NewServer { title, description };
+            let server = requests::servers::create(
+                ctx.client,
+                &api_url,
+                &access_token,
+                &new_server,
+            )
+            .await?;
             ctx.config
                 .get_or_create_server_config(&server, &account.domain);
             ctx.config.save()?;
@@ -167,19 +156,19 @@ pub async fn handle_server_commands(
 
         ServerCommands::Join(join_args) => {
             let account = ctx.account.ok_or(CliError::MissingAccount)?;
-            let (domain, api_url) = DomainQueryBuilder::new(ctx)
-                .try_domain(join_args.domain.clone())
-                .try_server(join_args.server_id)
-                .get_domain_and_api_url()?;
+            let api_url = ctx.home_api_url()?;
+            let access_token = ctx.get_access_token().await?;
+            // For now, we'll need to fetch server info from home server
+            // TODO: Add proxy discovery endpoints for remote servers
             let server = if let Some(server_id) = join_args.server_id {
                 requests::servers::fetch_by_id(ctx.client, &api_url, server_id)
                     .await?
             } else {
-                get_server_selection(
-                    ctx,
-                    ServerSelectionType::NonMemberOnly { domain: &domain },
-                )
-                .await?
+                // For now, require server_id if domain not provided
+                // TODO: Implement server selection via home server proxy
+                return Err(CliError::InvalidArgument(
+                    "Server ID required. Remote server discovery not yet implemented.".into(),
+                ));
             };
             let new_member = NewServerMembership {
                 user_id: account.user_id,
@@ -191,6 +180,7 @@ pub async fn handle_server_commands(
             let _member = requests::memberships::create(
                 ctx.client,
                 &api_url,
+                &access_token,
                 server.id,
                 &new_member,
             )

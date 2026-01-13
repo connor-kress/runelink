@@ -1,12 +1,12 @@
-use runelink_client::{requests, util::get_api_url};
+use runelink_client::requests;
 use runelink_types::NewMessage;
 use uuid::Uuid;
 
 use crate::error::CliError;
 
 use super::{
-    context::CliContext, domain_query::DomainQueryBuilder,
-    input::unwrap_or_prompt, select::get_channel_selection_with_inputs,
+    context::CliContext, input::unwrap_or_prompt,
+    select::get_channel_selection_with_inputs,
 };
 
 #[derive(clap::Args, Debug)]
@@ -80,9 +80,14 @@ pub async fn handle_message_commands(
                 list_args.server_id,
             )
             .await?;
-            let api_url = get_api_url(&server.domain);
+            let api_url = ctx.home_api_url()?;
+            let access_token = ctx.get_access_token().await?;
             let messages = requests::messages::fetch_by_channel(
-                ctx.client, &api_url, server.id, channel.id,
+                ctx.client,
+                &api_url,
+                &access_token,
+                server.id,
+                channel.id,
             )
             .await?;
             for message in messages.iter().rev() {
@@ -92,13 +97,12 @@ pub async fn handle_message_commands(
 
         MessageCommands::Get(get_args) => {
             ctx.account.ok_or(CliError::MissingAccount)?;
-            let api_url = DomainQueryBuilder::new(ctx)
-                .try_domain(get_args.domain.clone())
-                .try_server(Some(get_args.server_id))
-                .get_api_url()?;
+            let api_url = ctx.home_api_url()?;
+            let access_token = ctx.get_access_token().await?;
             let message = requests::messages::fetch_by_id(
                 ctx.client,
                 &api_url,
+                &access_token,
                 get_args.server_id,
                 get_args.channel_id,
                 get_args.message_id,
@@ -116,14 +120,16 @@ pub async fn handle_message_commands(
             )
             .await?;
             let body = unwrap_or_prompt(send_args.body.clone(), "Message")?;
-            let server_api_url = get_api_url(&server.domain);
+            let api_url = ctx.home_api_url()?;
+            let access_token = ctx.get_access_token().await?;
             let new_message = NewMessage {
                 body,
                 author_id: account.user_id,
             };
             let message = requests::messages::create(
                 ctx.client,
-                &server_api_url,
+                &api_url,
+                &access_token,
                 server.id,
                 channel.id,
                 &new_message,
