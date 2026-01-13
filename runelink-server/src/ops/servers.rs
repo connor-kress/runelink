@@ -1,28 +1,22 @@
-use crate::{error::ApiError, queries, state::AppState};
 use runelink_types::{
-    NewServer, NewServerMembership, Server, ServerMembership, ServerRole,
-    ServerWithChannels,
+    NewServer, NewServerMembership, Server, ServerRole, ServerWithChannels,
 };
 use uuid::Uuid;
 
-use super::Session;
-use crate::auth::{AuthSpec, Requirement};
-
-/// Auth requirements for `create_server`.
-pub fn auth_create_server() -> AuthSpec {
-    AuthSpec {
-        requirements: vec![Requirement::HostAdmin],
-    }
-}
+use crate::{
+    auth::{AuthSpec, Requirement, Session},
+    error::ApiError,
+    queries,
+    state::AppState,
+};
 
 /// Create a new server (local resource) and add the creator as admin.
-pub async fn create_server(
+pub async fn create(
     state: &AppState,
     session: &Session,
     new_server: &NewServer,
 ) -> Result<Server, ApiError> {
     let server = queries::servers::insert(state, new_server).await?;
-
     // Get the creator's user identity
     // Since this requires HostAdmin (which requires client auth), these fields are always present
     let user_ref = session.user_ref.clone().ok_or_else(|| {
@@ -30,7 +24,6 @@ pub async fn create_server(
             "Session missing user identity for server creation".into(),
         )
     })?;
-
     let new_membership = NewServerMembership {
         user_id: user_ref.id,
         user_domain: user_ref.domain,
@@ -43,7 +36,7 @@ pub async fn create_server(
 }
 
 /// List all local servers (public).
-pub async fn list_servers(state: &AppState) -> Result<Vec<Server>, ApiError> {
+pub async fn get_all(state: &AppState) -> Result<Vec<Server>, ApiError> {
     // TODO: add visibility specification for servers
     // We could then have an admin endpoint for all servers
     // and a public endpoint for only public servers
@@ -52,7 +45,7 @@ pub async fn list_servers(state: &AppState) -> Result<Vec<Server>, ApiError> {
 }
 
 /// Get a server by ID (public).
-pub async fn get_server_by_id(
+pub async fn get_by_id(
     state: &AppState,
     server_id: Uuid,
 ) -> Result<Server, ApiError> {
@@ -61,15 +54,8 @@ pub async fn get_server_by_id(
     Ok(server)
 }
 
-/// Auth requirements for `get_server_with_channels`.
-pub fn auth_get_server_with_channels(server_id: Uuid) -> AuthSpec {
-    AuthSpec {
-        requirements: vec![Requirement::ServerMember { server_id }],
-    }
-}
-
 /// Get a server with its channels.
-pub async fn get_server_with_channels(
+pub async fn get_with_channels(
     state: &AppState,
     _session: &Session,
     server_id: Uuid,
@@ -84,11 +70,19 @@ pub async fn get_server_with_channels(
     })
 }
 
-/// List all server memberships for a user (public).
-pub async fn list_server_memberships_by_user(
-    state: &AppState,
-    user_id: Uuid,
-) -> Result<Vec<ServerMembership>, ApiError> {
-    let memberships = queries::memberships::get_by_user(state, user_id).await?;
-    Ok(memberships)
+/// Auth requirements for server operations.
+pub mod auth {
+    use super::*;
+
+    pub fn create() -> AuthSpec {
+        AuthSpec {
+            requirements: vec![Requirement::HostAdmin],
+        }
+    }
+
+    pub fn get_with_channels(server_id: Uuid) -> AuthSpec {
+        AuthSpec {
+            requirements: vec![Requirement::ServerMember { server_id }],
+        }
+    }
 }

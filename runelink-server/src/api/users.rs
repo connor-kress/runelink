@@ -28,10 +28,10 @@ pub async fn create_user(
     let session = authorize(
         &state,
         Principal::from_client_headers(&headers, &state)?,
-        ops::auth_create_user(),
+        ops::users::auth::create(),
     )
     .await?;
-    let user = ops::create_user(&state, &session, &new_user).await?;
+    let user = ops::users::create(&state, &session, &new_user).await?;
     Ok((StatusCode::CREATED, Json(user)))
 }
 
@@ -39,7 +39,7 @@ pub async fn create_user(
 pub async fn list_users(
     State(state): State<AppState>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let users = ops::list_users(&state).await?;
+    let users = ops::users::get_all(&state).await?;
     Ok((StatusCode::OK, Json(users)))
 }
 
@@ -48,7 +48,7 @@ pub async fn get_user_by_id_handler(
     State(state): State<AppState>,
     Path(user_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let user = ops::get_user_by_id(&state, user_id).await?;
+    let user = ops::users::get_by_id(&state, user_id).await?;
     Ok((StatusCode::OK, Json(user)))
 }
 
@@ -58,7 +58,7 @@ pub async fn find_user_by_name_domain_handler(
     Query(params): Query<GetUserByNameDomainQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
     let user =
-        ops::find_user_by_name_domain(&state, params.name, params.domain)
+        ops::users::get_by_name_and_domain(&state, params.name, params.domain)
             .await?;
     Ok((StatusCode::OK, Json(user)))
 }
@@ -68,7 +68,8 @@ pub async fn get_user_associated_domains(
     State(state): State<AppState>,
     Path(user_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let domains = ops::get_user_associated_domains(&state, user_id).await?;
+    let domains =
+        ops::hosts::get_user_associated_domains(&state, user_id).await?;
     Ok((StatusCode::OK, Json(domains)))
 }
 
@@ -87,10 +88,10 @@ pub mod federated {
         let _session = authorize(
             &state,
             Principal::from_federation_headers(&headers, &state).await?,
-            ops::auth_federation_get_user(),
+            ops::users::auth::federated::get_by_id(),
         )
         .await?;
-        let user = ops::get_user_by_id(&state, user_id).await?;
+        let user = ops::users::get_by_id(&state, user_id).await?;
         Ok((StatusCode::OK, Json(user)))
     }
 }

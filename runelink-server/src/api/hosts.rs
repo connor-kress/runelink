@@ -9,7 +9,7 @@ use axum::{
 pub async fn list_hosts(
     State(state): State<AppState>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let hosts = ops::list_hosts(&state).await?;
+    let hosts = ops::hosts::get_all(&state).await?;
     Ok((StatusCode::OK, Json(hosts)))
 }
 
@@ -18,6 +18,6 @@ pub async fn get_host(
     State(state): State<AppState>,
     Path(domain): Path<String>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let host = ops::get_host(&state, &domain).await?;
+    let host = ops::hosts::get_by_domain(&state, &domain).await?;
     Ok((StatusCode::OK, Json(host)))
 }

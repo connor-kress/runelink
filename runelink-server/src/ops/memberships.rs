@@ -1,32 +1,21 @@
-use super::Session;
-use crate::auth::Requirement;
-use crate::{auth::AuthSpec, error::ApiError, queries, state::AppState};
 use runelink_client::{requests, util::get_api_url};
 use runelink_types::{
     FullServerMembership, NewServerMembership, ServerMember, ServerMembership,
 };
 use uuid::Uuid;
 
-/// Auth requirements for `create_remote_membership` (federation).
-pub fn auth_federation_create_membership(_server_id: Uuid) -> AuthSpec {
-    AuthSpec {
-        requirements: vec![Requirement::Federation],
-    }
-}
+use crate::{
+    auth::{AuthSpec, Requirement, Session},
+    error::ApiError,
+    queries,
+    state::AppState,
+};
 
-/// Auth requirements for `add_server_member`.
-pub fn auth_add_server_member(_server_id: Uuid) -> AuthSpec {
-    AuthSpec {
-        // TODO: make this admin only and create an invite system
-        requirements: vec![],
-    }
-}
-
-/// Add a user to a server (handles both local and remote users).
+/// Create a new membership for a user in a server (handles both local and remote users).
 ///
 /// For remote users, this function will fetch and cache the user profile from their
 /// home server if they don't already exist locally.
-pub async fn add_server_member(
+pub async fn create(
     state: &AppState,
     session: &mut Session,
     server_id: Uuid,
@@ -67,8 +56,8 @@ pub async fn add_server_member(
     Ok(full_membership)
 }
 
-/// List all members of a server (public).
-pub async fn list_server_members(
+/// Get all members of a server (public).
+pub async fn get_members_by_server(
     state: &AppState,
     server_id: Uuid,
 ) -> Result<Vec<ServerMember>, ApiError> {
@@ -79,7 +68,7 @@ pub async fn list_server_members(
 }
 
 /// Get a specific server member (public).
-pub async fn get_server_member(
+pub async fn get_member_by_user_and_server(
     state: &AppState,
     server_id: Uuid,
     user_id: Uuid,
@@ -94,7 +83,7 @@ pub async fn get_server_member(
 }
 
 /// Add a user to a remote server (federation endpoint).
-pub async fn add_remote_server_member(
+pub async fn add_remote(
     state: &AppState,
     server_id: Uuid,
     membership: &ServerMembership,
@@ -111,4 +100,35 @@ pub async fn add_remote_server_member(
     let new_membership =
         queries::memberships::insert_remote(&state.db_pool, membership).await?;
     Ok(new_membership)
+}
+
+/// Get all server memberships for a user (public).
+pub async fn get_by_user(
+    state: &AppState,
+    user_id: Uuid,
+) -> Result<Vec<ServerMembership>, ApiError> {
+    let memberships = queries::memberships::get_by_user(state, user_id).await?;
+    Ok(memberships)
+}
+
+/// Auth requirements for membership operations.
+pub mod auth {
+    use super::*;
+
+    pub fn create() -> AuthSpec {
+        AuthSpec {
+            // TODO: make this admin only and create an invite system
+            requirements: vec![],
+        }
+    }
+
+    pub mod federated {
+        use super::*;
+
+        pub fn create() -> AuthSpec {
+            AuthSpec {
+                requirements: vec![Requirement::Federation],
+            }
+        }
+    }
 }

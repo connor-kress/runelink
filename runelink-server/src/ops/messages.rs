@@ -1,22 +1,15 @@
-use super::Session;
+use runelink_types::{Message, NewMessage};
+use uuid::Uuid;
+
 use crate::{
-    auth::{AuthSpec, Requirement},
+    auth::{AuthSpec, Requirement, Session},
     error::ApiError,
     queries,
     state::AppState,
 };
-use runelink_types::{Message, NewMessage};
-use uuid::Uuid;
-
-/// Auth requirements for `create_message`.
-pub fn auth_create_message(server_id: Uuid) -> AuthSpec {
-    AuthSpec {
-        requirements: vec![Requirement::ServerMember { server_id }],
-    }
-}
 
 /// Create a new message in a channel.
-pub async fn create_message(
+pub async fn create(
     state: &AppState,
     _session: &Session,
     server_id: Uuid,
@@ -36,15 +29,8 @@ pub async fn create_message(
     Ok(message)
 }
 
-/// Auth requirements for `list_messages`.
-pub fn auth_list_messages() -> AuthSpec {
-    AuthSpec {
-        requirements: vec![Requirement::HostAdmin],
-    }
-}
-
-/// List all messages.
-pub async fn list_messages(
+/// Get all messages.
+pub async fn get_all(
     state: &AppState,
     _session: &Session,
 ) -> Result<Vec<Message>, ApiError> {
@@ -52,15 +38,8 @@ pub async fn list_messages(
     Ok(messages)
 }
 
-/// Auth requirements for `list_messages_by_server`.
-pub fn auth_list_messages_by_server(server_id: Uuid) -> AuthSpec {
-    AuthSpec {
-        requirements: vec![Requirement::ServerMember { server_id }],
-    }
-}
-
-/// List messages in a server.
-pub async fn list_messages_by_server(
+/// Get messages in a server.
+pub async fn get_by_server(
     state: &AppState,
     _session: &Session,
     server_id: Uuid,
@@ -70,15 +49,8 @@ pub async fn list_messages_by_server(
     Ok(messages)
 }
 
-/// Auth requirements for `list_messages_by_channel`.
-pub fn auth_list_messages_by_channel(server_id: Uuid) -> AuthSpec {
-    AuthSpec {
-        requirements: vec![Requirement::ServerMember { server_id }],
-    }
-}
-
-/// List messages in a channel.
-pub async fn list_messages_by_channel(
+/// Get messages in a channel.
+pub async fn get_by_channel(
     state: &AppState,
     _session: &Session,
     channel_id: Uuid,
@@ -88,15 +60,8 @@ pub async fn list_messages_by_channel(
     Ok(messages)
 }
 
-/// Auth requirements for `get_message_by_id`.
-pub fn auth_get_message_by_id(server_id: Uuid) -> AuthSpec {
-    AuthSpec {
-        requirements: vec![Requirement::ServerMember { server_id }],
-    }
-}
-
-/// Get a message by ID.
-pub async fn get_message_by_id(
+/// Get a message by its ID.
+pub async fn get_by_id(
     state: &AppState,
     _session: &Session,
     server_id: Uuid,
@@ -118,4 +83,39 @@ pub async fn get_message_by_id(
         ));
     }
     Ok(message)
+}
+
+/// Auth requirements for message operations.
+pub mod auth {
+    use super::*;
+
+    pub fn create(server_id: Uuid) -> AuthSpec {
+        AuthSpec {
+            requirements: vec![Requirement::ServerMember { server_id }],
+        }
+    }
+
+    pub fn get_all() -> AuthSpec {
+        AuthSpec {
+            requirements: vec![Requirement::HostAdmin],
+        }
+    }
+
+    pub fn get_by_server(server_id: Uuid) -> AuthSpec {
+        AuthSpec {
+            requirements: vec![Requirement::ServerMember { server_id }],
+        }
+    }
+
+    pub fn get_by_channel(server_id: Uuid) -> AuthSpec {
+        AuthSpec {
+            requirements: vec![Requirement::ServerMember { server_id }],
+        }
+    }
+
+    pub fn get_by_id(server_id: Uuid) -> AuthSpec {
+        AuthSpec {
+            requirements: vec![Requirement::ServerMember { server_id }],
+        }
+    }
 }

@@ -1,22 +1,15 @@
-use super::Session;
+use runelink_types::{NewUser, User};
+use uuid::Uuid;
+
 use crate::{
-    auth::{AuthSpec, Requirement},
+    auth::{AuthSpec, Requirement, Session},
     error::ApiError,
     queries,
     state::AppState,
 };
-use runelink_types::{NewUser, User};
-use uuid::Uuid;
-
-/// Auth requirements for `create_user`.
-pub fn auth_create_user() -> AuthSpec {
-    AuthSpec {
-        requirements: vec![Requirement::HostAdmin],
-    }
-}
 
 /// Create a new user.
-pub async fn create_user(
+pub async fn create(
     state: &AppState,
     _session: &Session,
     new_user: &NewUser,
@@ -26,20 +19,13 @@ pub async fn create_user(
 }
 
 /// List all users (public).
-pub async fn list_users(state: &AppState) -> Result<Vec<User>, ApiError> {
+pub async fn get_all(state: &AppState) -> Result<Vec<User>, ApiError> {
     let users = queries::users::get_all(&state.db_pool).await?;
     Ok(users)
 }
 
-/// Auth requirements for `get_user_by_id` (federation).
-pub fn auth_federation_get_user() -> AuthSpec {
-    AuthSpec {
-        requirements: vec![Requirement::Federation],
-    }
-}
-
 /// Get a user by ID (public).
-pub async fn get_user_by_id(
+pub async fn get_by_id(
     state: &AppState,
     user_id: Uuid,
 ) -> Result<User, ApiError> {
@@ -48,7 +34,7 @@ pub async fn get_user_by_id(
 }
 
 /// Find a user by name and domain (public).
-pub async fn find_user_by_name_domain(
+pub async fn get_by_name_and_domain(
     state: &AppState,
     name: String,
     domain: String,
@@ -59,13 +45,23 @@ pub async fn find_user_by_name_domain(
     Ok(user)
 }
 
-/// Get all domains associated with a user (public).
-pub async fn get_user_associated_domains(
-    state: &AppState,
-    user_id: Uuid,
-) -> Result<Vec<String>, ApiError> {
-    let domains =
-        queries::hosts::get_user_associated_domains(&state.db_pool, user_id)
-            .await?;
-    Ok(domains)
+/// Auth requirements for user operations.
+pub mod auth {
+    use super::*;
+
+    pub fn create() -> AuthSpec {
+        AuthSpec {
+            requirements: vec![Requirement::HostAdmin],
+        }
+    }
+
+    pub mod federated {
+        use super::*;
+
+        pub fn get_by_id() -> AuthSpec {
+            AuthSpec {
+                requirements: vec![Requirement::Federation],
+            }
+        }
+    }
 }

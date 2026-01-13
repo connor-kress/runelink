@@ -21,10 +21,10 @@ pub async fn create_server(
     let session = authorize(
         &state,
         Principal::from_client_headers(&headers, &state)?,
-        ops::auth_create_server(),
+        ops::servers::auth::create(),
     )
     .await?;
-    let server = ops::create_server(&state, &session, &new_server).await?;
+    let server = ops::servers::create(&state, &session, &new_server).await?;
     Ok((StatusCode::CREATED, Json(server)))
 }
 
@@ -32,7 +32,7 @@ pub async fn create_server(
 pub async fn list_servers(
     State(state): State<AppState>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let servers = ops::list_servers(&state).await?;
+    let servers = ops::servers::get_all(&state).await?;
     Ok((StatusCode::OK, Json(servers)))
 }
 
@@ -41,7 +41,7 @@ pub async fn get_server_by_id_handler(
     State(state): State<AppState>,
     Path(server_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let server = ops::get_server_by_id(&state, server_id).await?;
+    let server = ops::servers::get_by_id(&state, server_id).await?;
     Ok((StatusCode::OK, Json(server)))
 }
 
@@ -54,11 +54,11 @@ pub async fn get_server_with_channels_handler(
     let session = authorize(
         &state,
         Principal::from_client_headers(&headers, &state)?,
-        ops::auth_get_server_with_channels(server_id),
+        ops::servers::auth::get_with_channels(server_id),
     )
     .await?;
     let server_with_channels =
-        ops::get_server_with_channels(&state, &session, server_id).await?;
+        ops::servers::get_with_channels(&state, &session, server_id).await?;
     Ok((StatusCode::OK, Json(server_with_channels)))
 }
 
@@ -67,7 +67,6 @@ pub async fn list_server_memberships_by_user(
     State(state): State<AppState>,
     Path(user_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let memberships =
-        ops::list_server_memberships_by_user(&state, user_id).await?;
+    let memberships = ops::memberships::get_by_user(&state, user_id).await?;
     Ok((StatusCode::OK, Json(memberships)))
 }

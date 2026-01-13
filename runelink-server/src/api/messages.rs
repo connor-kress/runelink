@@ -22,10 +22,10 @@ pub async fn create_message(
     let session = authorize(
         &state,
         Principal::from_client_headers(&headers, &state)?,
-        ops::auth_create_message(server_id),
+        ops::messages::auth::create(server_id),
     )
     .await?;
-    let message = ops::create_message(
+    let message = ops::messages::create(
         &state,
         &session,
         server_id,
@@ -44,10 +44,10 @@ pub async fn list_messages(
     let session = authorize(
         &state,
         Principal::from_client_headers(&headers, &state)?,
-        ops::auth_list_messages(),
+        ops::messages::auth::get_all(),
     )
     .await?;
-    let messages = ops::list_messages(&state, &session).await?;
+    let messages = ops::messages::get_all(&state, &session).await?;
     Ok((StatusCode::OK, Json(messages)))
 }
 
@@ -60,11 +60,11 @@ pub async fn list_messages_by_server(
     let session = authorize(
         &state,
         Principal::from_client_headers(&headers, &state)?,
-        ops::auth_list_messages_by_server(server_id),
+        ops::messages::auth::get_by_server(server_id),
     )
     .await?;
     let messages =
-        ops::list_messages_by_server(&state, &session, server_id).await?;
+        ops::messages::get_by_server(&state, &session, server_id).await?;
     Ok((StatusCode::OK, Json(messages)))
 }
 
@@ -77,11 +77,11 @@ pub async fn list_messages_by_channel(
     let session = authorize(
         &state,
         Principal::from_client_headers(&headers, &state)?,
-        ops::auth_list_messages_by_channel(server_id),
+        ops::messages::auth::get_by_channel(server_id),
     )
     .await?;
     let messages =
-        ops::list_messages_by_channel(&state, &session, channel_id).await?;
+        ops::messages::get_by_channel(&state, &session, channel_id).await?;
     Ok((StatusCode::OK, Json(messages)))
 }
 
@@ -94,10 +94,10 @@ pub async fn get_message_by_id_handler(
     let session = authorize(
         &state,
         Principal::from_client_headers(&headers, &state)?,
-        ops::auth_get_message_by_id(server_id),
+        ops::messages::auth::get_by_id(server_id),
     )
     .await?;
-    let message = ops::get_message_by_id(
+    let message = ops::messages::get_by_id(
         &state, &session, server_id, channel_id, message_id,
     )
     .await?;

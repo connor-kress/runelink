@@ -18,7 +18,8 @@ pub async fn list_server_members(
     State(state): State<AppState>,
     Path(server_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let members = ops::list_server_members(&state, server_id).await?;
+    let members =
+        ops::memberships::get_members_by_server(&state, server_id).await?;
     Ok((StatusCode::OK, Json(members)))
 }
 
@@ -27,7 +28,10 @@ pub async fn get_server_member(
     State(state): State<AppState>,
     Path((server_id, user_id)): Path<(Uuid, Uuid)>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let member = ops::get_server_member(&state, server_id, user_id).await?;
+    let member = ops::memberships::get_member_by_user_and_server(
+        &state, server_id, user_id,
+    )
+    .await?;
     Ok((StatusCode::OK, Json(member)))
 }
 
@@ -51,11 +55,11 @@ pub async fn add_server_member(
     let mut session = authorize(
         &state,
         Principal::from_client_headers(&headers, &state)?,
-        ops::auth_add_server_member(server_id),
+        ops::memberships::auth::create(),
     )
     .await?;
     if new_membership.server_domain == state.config.local_domain() {
-        let full_membership = ops::add_server_member(
+        let full_membership = ops::memberships::create(
             &state,
             &mut session,
             server_id,
@@ -80,7 +84,7 @@ pub async fn add_server_member(
         )
         .await?;
         // We will use this membership as it has the correct synced_at timestamp
-        let membership = ops::add_remote_server_member(
+        let membership = ops::memberships::add_remote(
             &state,
             server_id,
             &full_membership.clone().into(),
@@ -121,10 +125,10 @@ pub mod federated {
         let mut session = authorize(
             &state,
             Principal::from_federation_headers(&headers, &state).await?,
-            ops::auth_federation_create_membership(server_id),
+            ops::memberships::auth::federated::create(),
         )
         .await?;
-        let full_membership = ops::add_server_member(
+        let full_membership = ops::memberships::create(
             &state,
             &mut session,
             server_id,

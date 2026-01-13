@@ -22,11 +22,12 @@ pub async fn create_channel(
     let session = authorize(
         &state,
         Principal::from_client_headers(&headers, &state)?,
-        ops::auth_create_channel(server_id),
+        ops::channels::auth::create(server_id),
     )
     .await?;
     let channel =
-        ops::create_channel(&state, &session, server_id, &new_channel).await?;
+        ops::channels::create(&state, &session, server_id, &new_channel)
+            .await?;
     Ok((StatusCode::CREATED, Json(channel)))
 }
 
@@ -38,10 +39,10 @@ pub async fn list_channels(
     let session = authorize(
         &state,
         Principal::from_client_headers(&headers, &state)?,
-        ops::auth_list_channels(),
+        ops::channels::auth::get_all(),
     )
     .await?;
-    let channels = ops::list_channels(&state, &session).await?;
+    let channels = ops::channels::get_all(&state, &session).await?;
     Ok((StatusCode::OK, Json(channels)))
 }
 
@@ -54,11 +55,11 @@ pub async fn list_channels_by_server(
     let session = authorize(
         &state,
         Principal::from_client_headers(&headers, &state)?,
-        ops::auth_list_channels_by_server(server_id),
+        ops::channels::auth::get_by_server(server_id),
     )
     .await?;
     let channels =
-        ops::list_channels_by_server(&state, &session, server_id).await?;
+        ops::channels::get_by_server(&state, &session, server_id).await?;
     Ok((StatusCode::OK, Json(channels)))
 }
 
@@ -71,9 +72,10 @@ pub async fn get_channel_by_id_handler(
     let session = authorize(
         &state,
         Principal::from_client_headers(&headers, &state)?,
-        ops::auth_get_channel_by_id(server_id),
+        ops::channels::auth::get_by_id(server_id),
     )
     .await?;
-    let channel = ops::get_channel_by_id(&state, &session, channel_id).await?;
+    let channel =
+        ops::channels::get_by_id(&state, &session, channel_id).await?;
     Ok((StatusCode::OK, Json(channel)))
 }

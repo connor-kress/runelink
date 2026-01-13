@@ -1,22 +1,15 @@
-use super::Session;
+use runelink_types::{Channel, NewChannel};
+use uuid::Uuid;
+
 use crate::{
-    auth::{AuthSpec, Requirement},
+    auth::{AuthSpec, Requirement, Session},
     error::ApiError,
     queries,
     state::AppState,
 };
-use runelink_types::{Channel, NewChannel};
-use uuid::Uuid;
-
-/// Auth requirements for `create_channel`.
-pub fn auth_create_channel(server_id: Uuid) -> AuthSpec {
-    AuthSpec {
-        requirements: vec![Requirement::ServerAdmin { server_id }],
-    }
-}
 
 /// Create a new channel in a server.
-pub async fn create_channel(
+pub async fn create(
     state: &AppState,
     _session: &Session,
     server_id: Uuid,
@@ -28,15 +21,8 @@ pub async fn create_channel(
     Ok(channel)
 }
 
-/// Auth requirements for `list_channels`.
-pub fn auth_list_channels() -> AuthSpec {
-    AuthSpec {
-        requirements: vec![Requirement::HostAdmin],
-    }
-}
-
-/// List all channels.
-pub async fn list_channels(
+/// Get all channels.
+pub async fn get_all(
     state: &AppState,
     _session: &Session,
 ) -> Result<Vec<Channel>, ApiError> {
@@ -44,15 +30,8 @@ pub async fn list_channels(
     Ok(channels)
 }
 
-/// Auth requirements for `list_channels_by_server`.
-pub fn auth_list_channels_by_server(server_id: Uuid) -> AuthSpec {
-    AuthSpec {
-        requirements: vec![Requirement::ServerMember { server_id }],
-    }
-}
-
-/// List channels in a server.
-pub async fn list_channels_by_server(
+/// Get channels in a server.
+pub async fn get_by_server(
     state: &AppState,
     _session: &Session,
     server_id: Uuid,
@@ -60,15 +39,8 @@ pub async fn list_channels_by_server(
     queries::channels::get_by_server(&state.db_pool, server_id).await
 }
 
-/// Auth requirements for `get_channel_by_id`.
-pub fn auth_get_channel_by_id(server_id: Uuid) -> AuthSpec {
-    AuthSpec {
-        requirements: vec![Requirement::ServerMember { server_id }],
-    }
-}
-
-/// Get a channel by ID.
-pub async fn get_channel_by_id(
+/// Get a channel by its ID.
+pub async fn get_by_id(
     state: &AppState,
     _session: &Session,
     channel_id: Uuid,
@@ -76,4 +48,33 @@ pub async fn get_channel_by_id(
     let channel =
         queries::channels::get_by_id(&state.db_pool, channel_id).await?;
     Ok(channel)
+}
+
+/// Auth requirements for channel operations.
+pub mod auth {
+    use super::*;
+
+    pub fn create(server_id: Uuid) -> AuthSpec {
+        AuthSpec {
+            requirements: vec![Requirement::ServerAdmin { server_id }],
+        }
+    }
+
+    pub fn get_all() -> AuthSpec {
+        AuthSpec {
+            requirements: vec![Requirement::HostAdmin],
+        }
+    }
+
+    pub fn get_by_server(server_id: Uuid) -> AuthSpec {
+        AuthSpec {
+            requirements: vec![Requirement::ServerMember { server_id }],
+        }
+    }
+
+    pub fn get_by_id(server_id: Uuid) -> AuthSpec {
+        AuthSpec {
+            requirements: vec![Requirement::ServerMember { server_id }],
+        }
+    }
 }
