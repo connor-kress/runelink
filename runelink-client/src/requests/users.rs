@@ -5,16 +5,18 @@ use uuid::Uuid;
 
 use crate::error::Result;
 
-use super::{fetch_json, post_json};
+use super::{fetch_json, post_json_authed};
 
 pub async fn create(
     client: &Client,
     api_url: &str,
+    access_token: &str,
     new_user: &NewUser,
 ) -> Result<User> {
     let url = format!("{api_url}/users");
     info!("creating user: {url}");
-    post_json::<NewUser, User>(client, &url, new_user).await
+    post_json_authed::<NewUser, User>(client, &url, access_token, new_user)
+        .await
 }
 
 pub async fn fetch_all(client: &Client, api_url: &str) -> Result<Vec<User>> {

@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use crate::error::Result;
 
-use super::{fetch_json, post_json, post_json_federated};
+use super::{fetch_json, post_json_authed, post_json_federated};
 
 pub async fn fetch_by_user(
     client: &Client,
@@ -22,14 +22,16 @@ pub async fn fetch_by_user(
 pub async fn create(
     client: &Client,
     api_url: &str,
+    access_token: &str,
     server_id: Uuid,
     new_membership: &NewServerMembership,
 ) -> Result<FullServerMembership> {
     let url = format!("{api_url}/servers/{server_id}/users");
     info!("creating membership: {url}");
-    post_json::<NewServerMembership, FullServerMembership>(
+    post_json_authed::<NewServerMembership, FullServerMembership>(
         client,
         &url,
+        access_token,
         new_membership,
     )
     .await
