@@ -86,7 +86,7 @@ pub async fn handle_channel_commands(
                     &api_url,
                     &access_token,
                     server_id,
-                    None,
+                    list_args.domain.as_deref(),
                 )
                 .await?;
             } else if list_args.all {
@@ -94,7 +94,7 @@ pub async fn handle_channel_commands(
                     ctx.client,
                     &api_url,
                     &access_token,
-                    None,
+                    list_args.domain.as_deref(),
                 )
                 .await?;
             } else {
@@ -123,7 +123,7 @@ pub async fn handle_channel_commands(
                 &access_token,
                 get_args.server_id,
                 get_args.channel_id,
-                None,
+                get_args.domain.as_deref(),
             )
             .await?;
             println!("{}", channel.verbose());
@@ -155,13 +155,18 @@ pub async fn handle_channel_commands(
                 title,
                 description: desc,
             };
+            let target_domain = if server.domain != account.domain {
+                Some(server.domain.as_str())
+            } else {
+                None
+            };
             let channel = requests::channels::create(
                 ctx.client,
                 &api_url,
                 &access_token,
                 server_id,
                 &new_channel,
-                None,
+                target_domain,
             )
             .await?;
             if let Some(server_config) =

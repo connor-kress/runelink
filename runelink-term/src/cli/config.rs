@@ -272,30 +272,34 @@ pub async fn handle_default_channel_commands(
         DefaultChannelCommands::Set(set_args) => {
             let api_url = ctx.home_api_url()?;
             let access_token = ctx.get_access_token().await?;
-            let server = requests::servers::fetch_by_id(
-                ctx.client,
-                &api_url,
-                set_args.server_id,
-                None,
-            )
-            .await?;
-            let server_channels = requests::channels::fetch_by_server(
-                ctx.client,
-                &api_url,
-                &access_token,
-                set_args.server_id,
-                None,
-            )
-            .await?;
-            let channel = requests::channels::fetch_by_id(
-                ctx.client,
-                &api_url,
-                &access_token,
-                server.id,
-                set_args.channel_id,
-                None,
-            )
-            .await?;
+            let target_domain = Some(set_args.server_domain.as_str());
+            let (server_result, server_channels_result, channel_result) = tokio::join!(
+                requests::servers::fetch_by_id(
+                    ctx.client,
+                    &api_url,
+                    set_args.server_id,
+                    target_domain,
+                ),
+                requests::channels::fetch_by_server(
+                    ctx.client,
+                    &api_url,
+                    &access_token,
+                    set_args.server_id,
+                    target_domain,
+                ),
+                requests::channels::fetch_by_id(
+                    ctx.client,
+                    &api_url,
+                    &access_token,
+                    set_args.server_id,
+                    set_args.channel_id,
+                    target_domain,
+                ),
+            );
+            let server = server_result?;
+            let server_channels = server_channels_result?;
+            let channel = channel_result?;
+
             if !server_channels.iter().any(|sc| sc.id == channel.id) {
                 return Err(CliError::InvalidArgument(
                     "Channel not found in server.".into(),

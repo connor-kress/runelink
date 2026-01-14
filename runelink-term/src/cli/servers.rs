@@ -147,7 +147,7 @@ pub async fn handle_server_commands(
                 &api_url,
                 &access_token,
                 &new_server,
-                None,
+                create_args.domain.as_deref(),
             )
             .await?;
             ctx.config

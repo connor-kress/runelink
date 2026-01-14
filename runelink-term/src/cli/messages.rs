@@ -74,6 +74,7 @@ pub async fn handle_message_commands(
     match &message_args.command {
         MessageCommands::List(list_args) => {
             ctx.account.ok_or(CliError::MissingAccount)?;
+            let account = ctx.account.ok_or(CliError::MissingAccount)?;
             let (server, channel) = get_channel_selection_with_inputs(
                 ctx,
                 list_args.channel_id,
@@ -82,13 +83,18 @@ pub async fn handle_message_commands(
             .await?;
             let api_url = ctx.home_api_url()?;
             let access_token = ctx.get_access_token().await?;
+            let target_domain = if server.domain != account.domain {
+                Some(server.domain.as_str())
+            } else {
+                None
+            };
             let messages = requests::messages::fetch_by_channel(
                 ctx.client,
                 &api_url,
                 &access_token,
                 server.id,
                 channel.id,
-                None,
+                target_domain,
             )
             .await?;
             for message in messages.iter().rev() {
@@ -107,7 +113,7 @@ pub async fn handle_message_commands(
                 get_args.server_id,
                 get_args.channel_id,
                 get_args.message_id,
-                None,
+                get_args.domain.as_deref(),
             )
             .await?;
             println!("{message}");
@@ -128,6 +134,13 @@ pub async fn handle_message_commands(
                 body,
                 author_id: account.user_id,
             };
+            let target_domain = send_args.domain.as_deref().or_else(|| {
+                if server.domain != account.domain {
+                    Some(server.domain.as_str())
+                } else {
+                    None
+                }
+            });
             let message = requests::messages::create(
                 ctx.client,
                 &api_url,
@@ -135,7 +148,7 @@ pub async fn handle_message_commands(
                 server.id,
                 channel.id,
                 &new_message,
-                None,
+                target_domain,
             )
             .await?;
             println!("Sent message: {}", message.body);

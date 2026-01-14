@@ -7,6 +7,7 @@ use crossterm::{
 };
 use runelink_client::requests;
 use runelink_types::{Channel, Server};
+use std::collections::HashSet;
 use std::io::Write;
 use uuid::Uuid;
 
@@ -131,14 +132,15 @@ pub async fn get_server_selection(
     let account = ctx.account.ok_or(CliError::MissingAccount)?;
     let servers = match selection_type {
         ServerSelectionType::All { domain } => {
-            if Some(domain) == ctx.account.map(|ac| ac.domain.as_str()) {
-                requests::servers::fetch_all(ctx.client, &api_url, None).await?
-            } else {
-                // TODO: Use home server proxy for remote server discovery
-                return Err(CliError::InvalidArgument(
-                    "Remote server discovery not yet implemented. Use --server-id instead.".into(),
-                ));
-            }
+            // Use target_domain if it's different from account domain
+            let target_domain =
+                if Some(domain) != ctx.account.map(|ac| ac.domain.as_str()) {
+                    Some(domain)
+                } else {
+                    None
+                };
+            requests::servers::fetch_all(ctx.client, &api_url, target_domain)
+                .await?
         }
 
         ServerSelectionType::MemberOnly => {
@@ -150,28 +152,41 @@ pub async fn get_server_selection(
             .await?
         }
 
-        ServerSelectionType::NonMemberOnly { domain: _ } => {
-            todo!()
-            // let account = ctx.account.ok_or(CliError::MissingAccount)?;
-            // let api_url = get_api_url(domain);
-            // let all_servers =
-            //     requests::servers::fetch_all(ctx.client, &api_url).await?;
-            // let member_servers = requests::servers::fetch_by_user(
-            //     ctx.client,
-            //     &account_api_url,
-            //     account.user_id,
-            // )
-            // .await?;
-            // let member_server_ids = member_servers
-            //     .iter()
-            //     .map(|s| s.id)
-            //     .collect::<HashSet<Uuid>>();
-            // all_servers
-            //     .into_iter()
-            //     .filter(|s| !member_server_ids.contains(&s.id))
-            //     .collect()
+        ServerSelectionType::NonMemberOnly { domain } => {
+            // Fetch all servers from the specified domain
+            let target_domain =
+                if Some(domain) != ctx.account.map(|ac| ac.domain.as_str()) {
+                    Some(domain)
+                } else {
+                    None
+                };
+            let (all_servers_result, member_servers_result) = tokio::join!(
+                requests::servers::fetch_all(
+                    ctx.client,
+                    &api_url,
+                    target_domain
+                ),
+                requests::servers::fetch_by_user(
+                    ctx.client,
+                    &api_url,
+                    account.user_id
+                )
+            );
+            let all_servers = all_servers_result?;
+            let member_servers = member_servers_result?;
+            // Create a set of member server IDs for efficient lookup
+            let member_server_ids = member_servers
+                .iter()
+                .map(|s| s.id)
+                .collect::<HashSet<Uuid>>();
+            // Filter out servers the user is already a member of
+            all_servers
+                .into_iter()
+                .filter(|s| !member_server_ids.contains(&s.id))
+                .collect()
         }
     };
+
     if servers.is_empty() {
         return Err(CliError::NoActionPossible(format!(
             "No applicable servers (viewing {:?}).\n\
