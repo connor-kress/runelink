@@ -86,6 +86,7 @@ pub async fn handle_channel_commands(
                     &api_url,
                     &access_token,
                     server_id,
+                    None,
                 )
                 .await?;
             } else if list_args.all {
@@ -93,6 +94,7 @@ pub async fn handle_channel_commands(
                     ctx.client,
                     &api_url,
                     &access_token,
+                    None,
                 )
                 .await?;
             } else {
@@ -121,6 +123,7 @@ pub async fn handle_channel_commands(
                 &access_token,
                 get_args.server_id,
                 get_args.channel_id,
+                None,
             )
             .await?;
             println!("{}", channel.verbose());
@@ -135,9 +138,10 @@ pub async fn handle_channel_commands(
                     "Server ID required (--server-id)".into(),
                 )
             })?;
-            let server =
-                requests::servers::fetch_by_id(ctx.client, &api_url, server_id)
-                    .await?;
+            let server = requests::servers::fetch_by_id(
+                ctx.client, &api_url, server_id, None,
+            )
+            .await?;
             let title =
                 unwrap_or_prompt(create_args.title.clone(), "Channel Title")?;
             let desc = if create_args.description.is_some() {
@@ -157,6 +161,7 @@ pub async fn handle_channel_commands(
                 &access_token,
                 server_id,
                 &new_channel,
+                None,
             )
             .await?;
             if let Some(server_config) =

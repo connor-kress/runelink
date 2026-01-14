@@ -142,7 +142,7 @@ pub async fn handle_default_server_commands(
             if let Some(server_id) = ctx.config.default_server {
                 let api_url = ctx.account.try_get_api_url()?;
                 let server = requests::servers::fetch_by_id(
-                    ctx.client, &api_url, server_id,
+                    ctx.client, &api_url, server_id, None,
                 )
                 .await?;
                 println!("{}", server.verbose());
@@ -157,6 +157,7 @@ pub async fn handle_default_server_commands(
                 ctx.client,
                 &api_url,
                 set_args.server_id,
+                None,
             )
             .await?;
             ctx.config.default_server = Some(server.id);
@@ -225,6 +226,7 @@ pub async fn handle_default_channel_commands(
                         &access_token,
                         server_id,
                         channel_id,
+                        None,
                     )
                     .await?;
                     println!("{}", channel.verbose());
@@ -246,6 +248,7 @@ pub async fn handle_default_channel_commands(
                     ctx.client,
                     &api_url,
                     server_config.server_id,
+                    None,
                 )
                 .await?;
                 println!("{} ({})", server.title, server.id);
@@ -256,6 +259,7 @@ pub async fn handle_default_channel_commands(
                         &access_token,
                         server.id,
                         channel_id,
+                        None,
                     )
                     .await?;
                     println!("\tDefault Channel: {}", channel.verbose());
@@ -272,6 +276,7 @@ pub async fn handle_default_channel_commands(
                 ctx.client,
                 &api_url,
                 set_args.server_id,
+                None,
             )
             .await?;
             let server_channels = requests::channels::fetch_by_server(
@@ -279,6 +284,7 @@ pub async fn handle_default_channel_commands(
                 &api_url,
                 &access_token,
                 set_args.server_id,
+                None,
             )
             .await?;
             let channel = requests::channels::fetch_by_id(
@@ -287,6 +293,7 @@ pub async fn handle_default_channel_commands(
                 &access_token,
                 server.id,
                 set_args.channel_id,
+                None,
             )
             .await?;
             if !server_channels.iter().any(|sc| sc.id == channel.id) {

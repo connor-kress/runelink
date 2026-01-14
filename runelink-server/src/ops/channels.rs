@@ -1,3 +1,4 @@
+use runelink_client::{requests, util::get_api_url};
 use runelink_types::{Channel, NewChannel};
 use uuid::Uuid;
 
@@ -9,45 +10,195 @@ use crate::{
 };
 
 /// Create a new channel in a server.
+/// If target_domain is provided and not the local domain, creates on that remote domain.
+/// Otherwise, creates locally.
 pub async fn create(
     state: &AppState,
-    _session: &Session,
+    session: &Session,
     server_id: Uuid,
     new_channel: &NewChannel,
+    target_domain: Option<&str>,
 ) -> Result<Channel, ApiError> {
-    let channel =
-        queries::channels::insert(&state.db_pool, server_id, new_channel)
-            .await?;
-    Ok(channel)
+    // Handle local case
+    if target_domain.is_none()
+        || target_domain == Some(state.config.local_domain().as_str())
+    {
+        let channel =
+            queries::channels::insert(&state.db_pool, server_id, new_channel)
+                .await?;
+        Ok(channel)
+    } else {
+        // Create on remote domain using federation
+        let domain = target_domain.unwrap();
+        let api_url = get_api_url(domain);
+        let user_ref = session.user_ref.as_ref().ok_or_else(|| {
+            ApiError::Internal(
+                "User reference required for federated channel creation"
+                    .to_string(),
+            )
+        })?;
+        let token = state.key_manager.issue_federation_jwt_delegated(
+            state.config.api_url(),
+            api_url.clone(),
+            user_ref.id,
+            user_ref.domain.clone(),
+        )?;
+        let channel = requests::channels::federated::create(
+            &state.http_client,
+            &api_url,
+            &token,
+            server_id,
+            new_channel,
+        )
+        .await
+        .map_err(|e| {
+            ApiError::Internal(format!(
+                "Failed to create channel on {domain}: {e}"
+            ))
+        })?;
+        Ok(channel)
+    }
 }
 
 /// Get all channels.
+/// If target_domain is provided and not the local domain, fetches from that remote domain.
+/// Otherwise, returns local channels.
 pub async fn get_all(
     state: &AppState,
-    _session: &Session,
+    session: &Session,
+    target_domain: Option<&str>,
 ) -> Result<Vec<Channel>, ApiError> {
-    let channels = queries::channels::get_all(&state.db_pool).await?;
-    Ok(channels)
+    if target_domain.is_none()
+        || target_domain == Some(state.config.local_domain().as_str())
+    {
+        // Handle local case
+        let channels = queries::channels::get_all(&state.db_pool).await?;
+        Ok(channels)
+    } else {
+        // Fetch from remote domain using federation
+        let domain = target_domain.unwrap();
+        let api_url = get_api_url(domain);
+        let user_ref = session.user_ref.as_ref().ok_or_else(|| {
+            ApiError::Internal(
+                "User reference required for federated channel fetching"
+                    .to_string(),
+            )
+        })?;
+        let token = state.key_manager.issue_federation_jwt_delegated(
+            state.config.api_url(),
+            api_url.clone(),
+            user_ref.id,
+            user_ref.domain.clone(),
+        )?;
+        let channels = requests::channels::federated::fetch_all(
+            &state.http_client,
+            &api_url,
+            &token,
+        )
+        .await
+        .map_err(|e| {
+            ApiError::Internal(format!(
+                "Failed to fetch channels from {domain}: {e}"
+            ))
+        })?;
+        Ok(channels)
+    }
 }
 
 /// Get channels in a server.
+/// If target_domain is provided and not the local domain, fetches from that remote domain.
+/// Otherwise, returns local channels.
 pub async fn get_by_server(
     state: &AppState,
-    _session: &Session,
+    session: &Session,
     server_id: Uuid,
+    target_domain: Option<&str>,
 ) -> Result<Vec<Channel>, ApiError> {
-    queries::channels::get_by_server(&state.db_pool, server_id).await
+    if target_domain.is_none()
+        || target_domain == Some(state.config.local_domain().as_str())
+    {
+        // Handle local case
+        queries::channels::get_by_server(&state.db_pool, server_id).await
+    } else {
+        // Fetch from remote domain using federation
+        let domain = target_domain.unwrap();
+        let api_url = get_api_url(domain);
+        let user_ref = session.user_ref.as_ref().ok_or_else(|| {
+            ApiError::Internal(
+                "User reference required for federated channel fetching"
+                    .to_string(),
+            )
+        })?;
+        let token = state.key_manager.issue_federation_jwt_delegated(
+            state.config.api_url(),
+            api_url.clone(),
+            user_ref.id,
+            user_ref.domain.clone(),
+        )?;
+        let channels = requests::channels::federated::fetch_by_server(
+            &state.http_client,
+            &api_url,
+            &token,
+            server_id,
+        )
+        .await
+        .map_err(|e| {
+            ApiError::Internal(format!(
+                "Failed to fetch channels from {domain}: {e}"
+            ))
+        })?;
+        Ok(channels)
+    }
 }
 
 /// Get a channel by its ID.
+/// If target_domain is provided and not the local domain, fetches from that remote domain.
+/// Otherwise, returns local channel.
 pub async fn get_by_id(
     state: &AppState,
-    _session: &Session,
+    session: &Session,
+    server_id: Uuid,
     channel_id: Uuid,
+    target_domain: Option<&str>,
 ) -> Result<Channel, ApiError> {
-    let channel =
-        queries::channels::get_by_id(&state.db_pool, channel_id).await?;
-    Ok(channel)
+    if target_domain.is_none()
+        || target_domain == Some(state.config.local_domain().as_str())
+    {
+        // Handle local case
+        let channel =
+            queries::channels::get_by_id(&state.db_pool, channel_id).await?;
+        Ok(channel)
+    } else {
+        // Fetch from remote domain using federation
+        let domain = target_domain.unwrap();
+        let api_url = get_api_url(domain);
+        let user_ref = session.user_ref.as_ref().ok_or_else(|| {
+            ApiError::Internal(
+                "User reference required for federated channel fetching"
+                    .to_string(),
+            )
+        })?;
+        let token = state.key_manager.issue_federation_jwt_delegated(
+            state.config.api_url(),
+            api_url.clone(),
+            user_ref.id,
+            user_ref.domain.clone(),
+        )?;
+        let channel = requests::channels::federated::fetch_by_id(
+            &state.http_client,
+            &api_url,
+            &token,
+            server_id,
+            channel_id,
+        )
+        .await
+        .map_err(|e| {
+            ApiError::Internal(format!(
+                "Failed to fetch channel from {domain}: {e}"
+            ))
+        })?;
+        Ok(channel)
+    }
 }
 
 /// Auth requirements for channel operations.
@@ -75,6 +226,46 @@ pub mod auth {
     pub fn get_by_id(server_id: Uuid) -> AuthSpec {
         AuthSpec {
             requirements: vec![Requirement::ServerMember { server_id }],
+        }
+    }
+
+    pub mod federated {
+        use super::*;
+
+        pub fn create(server_id: Uuid) -> AuthSpec {
+            AuthSpec {
+                requirements: vec![
+                    Requirement::Federation,
+                    Requirement::ServerAdmin { server_id },
+                ],
+            }
+        }
+
+        pub fn get_all() -> AuthSpec {
+            AuthSpec {
+                requirements: vec![
+                    Requirement::Federation,
+                    Requirement::HostAdmin,
+                ],
+            }
+        }
+
+        pub fn get_by_server(server_id: Uuid) -> AuthSpec {
+            AuthSpec {
+                requirements: vec![
+                    Requirement::Federation,
+                    Requirement::ServerMember { server_id },
+                ],
+            }
+        }
+
+        pub fn get_by_id(server_id: Uuid) -> AuthSpec {
+            AuthSpec {
+                requirements: vec![
+                    Requirement::Federation,
+                    Requirement::ServerMember { server_id },
+                ],
+            }
         }
     }
 }

@@ -88,6 +88,7 @@ pub async fn handle_message_commands(
                 &access_token,
                 server.id,
                 channel.id,
+                None,
             )
             .await?;
             for message in messages.iter().rev() {
@@ -106,6 +107,7 @@ pub async fn handle_message_commands(
                 get_args.server_id,
                 get_args.channel_id,
                 get_args.message_id,
+                None,
             )
             .await?;
             println!("{message}");
@@ -133,6 +135,7 @@ pub async fn handle_message_commands(
                 server.id,
                 channel.id,
                 &new_message,
+                None,
             )
             .await?;
             println!("Sent message: {}", message.body);

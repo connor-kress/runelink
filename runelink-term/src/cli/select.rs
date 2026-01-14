@@ -132,7 +132,7 @@ pub async fn get_server_selection(
     let servers = match selection_type {
         ServerSelectionType::All { domain } => {
             if Some(domain) == ctx.account.map(|ac| ac.domain.as_str()) {
-                requests::servers::fetch_all(ctx.client, &api_url).await?
+                requests::servers::fetch_all(ctx.client, &api_url, None).await?
             } else {
                 // TODO: Use home server proxy for remote server discovery
                 return Err(CliError::InvalidArgument(
@@ -196,6 +196,7 @@ pub async fn get_channel_selection(
         &api_url,
         &access_token,
         server_id,
+        None,
     )
     .await?;
     if channels.is_empty() {
@@ -221,15 +222,17 @@ pub async fn get_channel_selection_with_inputs(
     match (channel_id, server_id) {
         (Some(channel_id), Some(server_id)) => {
             let access_token = ctx.get_access_token().await?;
-            let server =
-                requests::servers::fetch_by_id(ctx.client, &api_url, server_id)
-                    .await?;
+            let server = requests::servers::fetch_by_id(
+                ctx.client, &api_url, server_id, None,
+            )
+            .await?;
             let channel = requests::channels::fetch_by_id(
                 ctx.client,
                 &api_url,
                 &access_token,
                 server_id,
                 channel_id,
+                None,
             )
             .await?;
             Ok((server, channel))
@@ -238,9 +241,10 @@ pub async fn get_channel_selection_with_inputs(
             "Server ID must be passed with channel ID.".into(),
         )),
         (None, Some(server_id)) => {
-            let server =
-                requests::servers::fetch_by_id(ctx.client, &api_url, server_id)
-                    .await?;
+            let server = requests::servers::fetch_by_id(
+                ctx.client, &api_url, server_id, None,
+            )
+            .await?;
             let channel = get_channel_selection(ctx, server.id).await?;
             Ok((server, channel))
         }

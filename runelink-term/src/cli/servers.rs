@@ -117,6 +117,7 @@ pub async fn handle_server_commands(
                 ctx.client,
                 &api_url,
                 get_args.server_id,
+                get_args.domain.as_deref(),
             )
             .await?;
             println!(
@@ -146,6 +147,7 @@ pub async fn handle_server_commands(
                 &api_url,
                 &access_token,
                 &new_server,
+                None,
             )
             .await?;
             ctx.config
@@ -161,8 +163,13 @@ pub async fn handle_server_commands(
             // For now, we'll need to fetch server info from home server
             // TODO: Add proxy discovery endpoints for remote servers
             let server = if let Some(server_id) = join_args.server_id {
-                requests::servers::fetch_by_id(ctx.client, &api_url, server_id)
-                    .await?
+                requests::servers::fetch_by_id(
+                    ctx.client,
+                    &api_url,
+                    server_id,
+                    join_args.domain.as_deref(),
+                )
+                .await?
             } else {
                 // For now, require server_id if domain not provided
                 // TODO: Implement server selection via home server proxy
