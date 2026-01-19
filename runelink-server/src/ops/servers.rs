@@ -39,7 +39,7 @@ pub async fn create(
             server_domain: server.domain.clone(),
             role: ServerRole::Admin,
         };
-        queries::memberships::insert(&state.db_pool, &new_membership).await?;
+        queries::memberships::insert_local(&state.db_pool, &new_membership).await?;
         Ok(server)
     } else {
         // Create on remote domain using federation

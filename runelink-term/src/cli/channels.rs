@@ -121,7 +121,7 @@ pub async fn handle_channel_commands(
                         &api_url,
                         &access_token,
                         server.id,
-                        list_args.domain.as_deref(),
+                        Some(server.domain.as_str()),
                     )
                     .await?
                 }

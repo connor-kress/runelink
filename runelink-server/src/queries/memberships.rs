@@ -80,7 +80,7 @@ impl ServerMembershipRow {
     }
 }
 
-pub async fn insert(
+pub async fn insert_local(
     pool: &DbPool,
     new_membership: &NewServerMembership,
 ) -> Result<ServerMember, ApiError> {
@@ -95,7 +95,7 @@ pub async fn insert(
     )
     .execute(pool)
     .await?;
-    get_member_by_user_and_server(
+    get_local_member_by_user_and_server(
         pool,
         new_membership.server_id,
         new_membership.user_id,
@@ -166,7 +166,7 @@ pub async fn insert_remote(
     })
 }
 
-pub async fn get_member_by_user_and_server(
+pub async fn get_local_member_by_user_and_server(
     pool: &DbPool,
     server_id: Uuid,
     user_id: Uuid,
@@ -190,6 +190,50 @@ pub async fn get_member_by_user_and_server(
     .fetch_one(pool)
     .await?
     .try_into()
+}
+
+/// Get a server member from the cached remote memberships table (home-server cache).
+pub async fn get_remote_member_by_user_and_server(
+    pool: &DbPool,
+    server_id: Uuid,
+    user_id: Uuid,
+) -> Result<ServerMember, ApiError> {
+    sqlx::query_as!(
+        ServerMemberRow,
+        r#"
+        SELECT
+            to_jsonb(u) "user: Json<User>",
+            m.role AS "role: ServerRole",
+            m.remote_created_at AS created_at,
+            m.remote_updated_at AS updated_at
+        FROM users u
+        JOIN user_remote_server_memberships m
+          ON u.id = m.user_id
+        WHERE m.remote_server_id = $1 AND u.id = $2
+        "#,
+        server_id,
+        user_id,
+    )
+    .fetch_one(pool)
+    .await?
+    .try_into()
+}
+
+/// Get a server member from either local or remote memberships.
+pub async fn get_member_by_user_and_server(
+    pool: &DbPool,
+    server_id: Uuid,
+    user_id: Uuid,
+) -> Result<ServerMember, ApiError> {
+    // TODO: This could be optimized to check both in one query
+    // Try local membership first
+    match get_local_member_by_user_and_server(pool, server_id, user_id).await {
+        Ok(member) => Ok(member),
+        Err(_) => {
+            // Fall back to remote membership cache
+            get_remote_member_by_user_and_server(pool, server_id, user_id).await
+        }
+    }
 }
 
 pub async fn get_members_by_server(

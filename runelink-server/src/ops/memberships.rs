@@ -35,21 +35,24 @@ pub async fn create(
             new_membership.user_id,
             new_membership.user_domain.clone(),
         )?;
-        let full_membership = requests::memberships::federated::create(
+        let membership = requests::memberships::federated::create(
             &state.http_client,
             &server_api_url,
             &token,
             new_membership,
         )
         .await?;
-        // Cache the remote membership locally (synced_at comes from remote)
-        let membership = add_remote(
-            state,
-            new_membership.server_id,
-            &full_membership.clone().into(),
+        let user = membership.user.clone();
+        // Cache the remote server and membership locally
+        queries::servers::upsert_remote(&state.db_pool, &membership.server)
+            .await?;
+        let cached_membership = queries::memberships::insert_remote(
+            &state.db_pool,
+            &membership.into(),
         )
         .await?;
-        return Ok(membership.as_full(full_membership.user));
+        // synced_at comes from cached membership
+        return Ok(cached_membership.as_full(user));
     }
 
     // Ensure remote user exists locally before creating membership
@@ -70,7 +73,8 @@ pub async fn create(
 
     // Create the membership
     let member =
-        queries::memberships::insert(&state.db_pool, new_membership).await?;
+        queries::memberships::insert_local(&state.db_pool, new_membership)
+            .await?;
     let membership = queries::memberships::get_local_by_user_and_server(
         state,
         new_membership.server_id,
@@ -139,7 +143,7 @@ pub async fn get_member_by_user_and_server(
     if target_domain.is_none()
         || target_domain == Some(state.config.local_domain().as_str())
     {
-        let member = queries::memberships::get_member_by_user_and_server(
+        let member = queries::memberships::get_local_member_by_user_and_server(
             &state.db_pool,
             server_id,
             user_id,
@@ -165,26 +169,6 @@ pub async fn get_member_by_user_and_server(
         })?;
         Ok(member)
     }
-}
-
-/// Add a user to a remote server (called on the home server).
-pub async fn add_remote(
-    state: &AppState,
-    server_id: Uuid,
-    membership: &ServerMembership,
-) -> Result<ServerMembership, ApiError> {
-    // Ensure path and payload server ID match
-    if membership.server.id != server_id {
-        return Err(ApiError::Unknown(
-            "Path server ID doesn't match payload server ID.".into(),
-        ));
-    }
-    // Upsert the remote server into cached_remote_servers
-    queries::servers::upsert_remote(&state.db_pool, &membership.server).await?;
-    // Insert the membership itself
-    let new_membership =
-        queries::memberships::insert_remote(&state.db_pool, membership).await?;
-    Ok(new_membership)
 }
 
 /// Get all server memberships for a user (public).
