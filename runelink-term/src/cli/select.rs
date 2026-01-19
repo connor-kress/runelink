@@ -203,6 +203,7 @@ pub async fn get_server_selection(
 pub async fn get_channel_selection(
     ctx: &mut CliContext<'_>,
     server_id: Uuid,
+    server_domain: Option<&str>,
 ) -> Result<Channel, CliError> {
     let api_url = ctx.home_api_url()?;
     let access_token = ctx.get_access_token().await?;
@@ -211,7 +212,7 @@ pub async fn get_channel_selection(
         &api_url,
         &access_token,
         server_id,
-        None,
+        server_domain,
     )
     .await?;
     if channels.is_empty() {
@@ -247,7 +248,7 @@ pub async fn get_channel_selection_with_inputs(
                 &access_token,
                 server_id,
                 channel_id,
-                None,
+                Some(server.domain.as_str()),
             )
             .await?;
             Ok((server, channel))
@@ -260,14 +261,24 @@ pub async fn get_channel_selection_with_inputs(
                 ctx.client, &api_url, server_id, None,
             )
             .await?;
-            let channel = get_channel_selection(ctx, server.id).await?;
+            let channel = get_channel_selection(
+                ctx,
+                server.id,
+                Some(server.domain.as_str()),
+            )
+            .await?;
             Ok((server, channel))
         }
         (None, None) => {
             let server =
                 get_server_selection(&*ctx, ServerSelectionType::MemberOnly)
                     .await?;
-            let channel = get_channel_selection(ctx, server.id).await?;
+            let channel = get_channel_selection(
+                ctx,
+                server.id,
+                Some(server.domain.as_str()),
+            )
+            .await?;
             Ok((server, channel))
         }
     }
