@@ -12,6 +12,7 @@ use super::{
     config::{DefaultServerArgs, handle_default_server_commands},
     context::CliContext,
     input::{read_input, unwrap_or_prompt},
+    select::{ServerSelectionType, get_server_selection},
 };
 
 #[derive(clap::Args, Debug)]
@@ -23,7 +24,7 @@ pub struct ServerArgs {
 #[derive(clap::Subcommand, Debug)]
 pub enum ServerCommands {
     /// List all servers
-    List,
+    List(ServerListArgs),
     /// Get a server by ID
     Get(ServerGetArg),
     /// Create a new server
@@ -32,6 +33,13 @@ pub enum ServerCommands {
     Join(ServerJoinArgs),
     /// Manage default server
     Default(DefaultServerArgs),
+}
+
+#[derive(clap::Args, Debug)]
+pub struct ServerListArgs {
+    /// The domain to list servers from (if not provided, lists servers the user is a member of)
+    #[clap(long)]
+    pub domain: Option<String>,
 }
 
 #[derive(clap::Args, Debug)]
@@ -75,37 +83,57 @@ pub async fn handle_server_commands(
     server_args: &ServerArgs,
 ) -> Result<(), CliError> {
     match &server_args.command {
-        ServerCommands::List => {
-            let account = ctx.account.ok_or(CliError::MissingAccount)?;
+        ServerCommands::List(list_args) => {
             let api_url = ctx.home_api_url()?;
-            let memberships = requests::memberships::fetch_by_user(
-                ctx.client,
-                &api_url,
-                account.user_id,
-            )
-            .await?;
-            if memberships.is_empty() {
-                println!(
-                    "No servers joined.\n\
-                    For more information, try `rune server --help`."
+
+            if let Some(domain) = &list_args.domain {
+                // List all servers in the specified domain
+                let servers = requests::servers::fetch_all(
+                    ctx.client,
+                    &api_url,
+                    Some(domain.as_str()),
                 )
-            }
-            let mut is_first = true;
-            for (domain, memberships) in group_memberships_by_host(&memberships)
-            {
-                if is_first {
-                    is_first = false
+                .await?;
+                if servers.is_empty() {
+                    println!("No servers found in domain: {domain}");
                 } else {
-                    println!(); // separation between host groups
+                    for server in servers {
+                        println!("{}", server.verbose());
+                    }
                 }
-                println!("{domain}");
-                for membership in memberships {
-                    let server = &membership.server;
-                    print!("    {}", server.verbose());
-                    if membership.role == ServerRole::Admin {
-                        println!(" - admin");
+            } else {
+                // List servers the user is a member of (current behavior)
+                let account = ctx.account.ok_or(CliError::MissingAccount)?;
+                let memberships = requests::memberships::fetch_by_user(
+                    ctx.client,
+                    &api_url,
+                    account.user_id,
+                )
+                .await?;
+                if memberships.is_empty() {
+                    println!(
+                        "No servers joined.\n\
+                        For more information, try `rune server --help`."
+                    )
+                }
+                let mut is_first = true;
+                for (domain, memberships) in
+                    group_memberships_by_host(&memberships)
+                {
+                    if is_first {
+                        is_first = false
                     } else {
-                        println!();
+                        println!(); // separation between host groups
+                    }
+                    println!("{domain}");
+                    for membership in memberships {
+                        let server = &membership.server;
+                        print!("    {}", server.verbose());
+                        if membership.role == ServerRole::Admin {
+                            println!(" - admin");
+                        } else {
+                            println!();
+                        }
                     }
                 }
             }
@@ -160,8 +188,6 @@ pub async fn handle_server_commands(
             let account = ctx.account.ok_or(CliError::MissingAccount)?;
             let api_url = ctx.home_api_url()?;
             let access_token = ctx.get_access_token().await?;
-            // For now, we'll need to fetch server info from home server
-            // TODO: Add proxy discovery endpoints for remote servers
             let server = if let Some(server_id) = join_args.server_id {
                 requests::servers::fetch_by_id(
                     ctx.client,
@@ -171,11 +197,15 @@ pub async fn handle_server_commands(
                 )
                 .await?
             } else {
-                // For now, require server_id if domain not provided
-                // TODO: Implement server selection via home server proxy
-                return Err(CliError::InvalidArgument(
-                    "Server ID required. Remote server discovery not yet implemented.".into(),
-                ));
+                let domain = join_args
+                    .domain
+                    .as_deref()
+                    .unwrap_or(account.domain.as_str());
+                get_server_selection(
+                    ctx,
+                    ServerSelectionType::NonMemberOnly { domain },
+                )
+                .await?
             };
             let new_member = NewServerMembership {
                 user_id: account.user_id,

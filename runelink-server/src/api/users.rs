@@ -19,6 +19,11 @@ pub struct GetUserByNameDomainQuery {
     domain: String,
 }
 
+#[derive(Deserialize, Debug)]
+pub struct UserQueryParams {
+    pub target_domain: Option<String>,
+}
+
 /// POST /users
 pub async fn create(
     State(state): State<AppState>,
@@ -38,8 +43,10 @@ pub async fn create(
 /// GET /users
 pub async fn get_all(
     State(state): State<AppState>,
+    Query(params): Query<UserQueryParams>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let users = ops::users::get_all(&state).await?;
+    let users =
+        ops::users::get_all(&state, params.target_domain.as_deref()).await?;
     Ok((StatusCode::OK, Json(users)))
 }
 
@@ -47,8 +54,11 @@ pub async fn get_all(
 pub async fn get_by_id(
     State(state): State<AppState>,
     Path(user_id): Path<Uuid>,
+    Query(params): Query<UserQueryParams>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let user = ops::users::get_by_id(&state, user_id).await?;
+    let user =
+        ops::users::get_by_id(&state, user_id, params.target_domain.as_deref())
+            .await?;
     Ok((StatusCode::OK, Json(user)))
 }
 
@@ -67,8 +77,13 @@ pub async fn get_by_name_and_domain(
 pub async fn get_user_associated_domains(
     State(state): State<AppState>,
     Path(user_id): Path<Uuid>,
+    Query(params): Query<UserQueryParams>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let domains =
-        ops::hosts::get_user_associated_domains(&state, user_id).await?;
+    let domains = ops::hosts::get_user_associated_domains(
+        &state,
+        user_id,
+        params.target_domain.as_deref(),
+    )
+    .await?;
     Ok((StatusCode::OK, Json(domains)))
 }

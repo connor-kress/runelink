@@ -19,6 +19,35 @@ pub async fn fetch_by_user(
     fetch_json::<Vec<ServerMembership>>(client, &url).await
 }
 
+pub async fn fetch_members_by_server(
+    client: &Client,
+    api_url: &str,
+    server_id: Uuid,
+    target_domain: Option<&str>,
+) -> Result<Vec<runelink_types::ServerMember>> {
+    let mut url = format!("{api_url}/servers/{server_id}/users");
+    if let Some(domain) = target_domain {
+        url = format!("{url}?target_domain={domain}");
+    }
+    info!("fetching members by server: {url}");
+    fetch_json::<Vec<runelink_types::ServerMember>>(client, &url).await
+}
+
+pub async fn fetch_member_by_user_and_server(
+    client: &Client,
+    api_url: &str,
+    server_id: Uuid,
+    user_id: Uuid,
+    target_domain: Option<&str>,
+) -> Result<runelink_types::ServerMember> {
+    let mut url = format!("{api_url}/servers/{server_id}/users/{user_id}");
+    if let Some(domain) = target_domain {
+        url = format!("{url}?target_domain={domain}");
+    }
+    info!("fetching member by user and server: {url}");
+    fetch_json::<runelink_types::ServerMember>(client, &url).await
+}
+
 pub async fn create(
     client: &Client,
     api_url: &str,

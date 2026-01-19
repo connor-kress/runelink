@@ -33,8 +33,9 @@ impl ClientAuth {
         let token = extract_bearer_token(headers)?;
         let server_id = state.config.api_url();
         let mut validation = Validation::new(Algorithm::EdDSA);
-        validation.set_audience(&[server_id.clone()]);
-        validation.set_issuer(&[server_id]);
+        // Avoid using &[server_id.clone()] for performance
+        validation.set_audience(std::slice::from_ref(&server_id));
+        validation.set_issuer(std::slice::from_ref(&server_id));
 
         let data = jsonwebtoken::decode::<ClientAccessClaims>(
             &token,

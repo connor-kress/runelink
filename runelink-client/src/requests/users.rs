@@ -19,8 +19,15 @@ pub async fn create(
         .await
 }
 
-pub async fn fetch_all(client: &Client, api_url: &str) -> Result<Vec<User>> {
-    let url = format!("{api_url}/users");
+pub async fn fetch_all(
+    client: &Client,
+    api_url: &str,
+    target_domain: Option<&str>,
+) -> Result<Vec<User>> {
+    let mut url = format!("{api_url}/users");
+    if let Some(domain) = target_domain {
+        url = format!("{url}?target_domain={domain}");
+    }
     info!("fetching all users: {url}");
     fetch_json::<Vec<User>>(client, &url).await
 }
@@ -29,8 +36,12 @@ pub async fn fetch_by_id(
     client: &Client,
     api_url: &str,
     user_id: Uuid,
+    target_domain: Option<&str>,
 ) -> Result<User> {
-    let url = format!("{api_url}/users/{user_id}");
+    let mut url = format!("{api_url}/users/{user_id}");
+    if let Some(domain) = target_domain {
+        url = format!("{url}?target_domain={domain}");
+    }
     info!("fetching user: {url}");
     fetch_json::<User>(client, &url).await
 }

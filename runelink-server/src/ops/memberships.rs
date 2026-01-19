@@ -30,6 +30,7 @@ pub async fn create(
                 &state.http_client,
                 &api_url,
                 new_membership.user_id,
+                Some(&new_membership.user_domain),
             )
             .await?;
             queries::users::insert_remote(&state.db_pool, &user).await?;
@@ -57,29 +58,82 @@ pub async fn create(
 }
 
 /// Get all members of a server (public).
+/// If target_domain is provided and not the local domain, fetches from that remote domain.
+/// Otherwise, returns local members.
 pub async fn get_members_by_server(
     state: &AppState,
     server_id: Uuid,
+    target_domain: Option<&str>,
 ) -> Result<Vec<ServerMember>, ApiError> {
-    let members =
-        queries::memberships::get_members_by_server(&state.db_pool, server_id)
-            .await?;
-    Ok(members)
+    // Handle local case
+    if target_domain.is_none()
+        || target_domain == Some(state.config.local_domain().as_str())
+    {
+        let members = queries::memberships::get_members_by_server(
+            &state.db_pool,
+            server_id,
+        )
+        .await?;
+        Ok(members)
+    } else {
+        // Fetch from remote domain (public endpoint, no auth needed)
+        let domain = target_domain.unwrap();
+        let api_url = get_api_url(domain);
+        let members = requests::memberships::fetch_members_by_server(
+            &state.http_client,
+            &api_url,
+            server_id,
+            None,
+        )
+        .await
+        .map_err(|e| {
+            ApiError::Internal(format!(
+                "Failed to fetch members from {domain}: {e}"
+            ))
+        })?;
+        Ok(members)
+    }
 }
 
 /// Get a specific server member (public).
+/// If target_domain is provided and not the local domain, fetches from that remote domain.
+/// Otherwise, returns local member.
 pub async fn get_member_by_user_and_server(
     state: &AppState,
     server_id: Uuid,
     user_id: Uuid,
+    target_domain: Option<&str>,
 ) -> Result<ServerMember, ApiError> {
-    let member = queries::memberships::get_member_by_user_and_server(
-        &state.db_pool,
-        server_id,
-        user_id,
-    )
-    .await?;
-    Ok(member)
+    // Handle local case
+    if target_domain.is_none()
+        || target_domain == Some(state.config.local_domain().as_str())
+    {
+        let member = queries::memberships::get_member_by_user_and_server(
+            &state.db_pool,
+            server_id,
+            user_id,
+        )
+        .await?;
+        Ok(member)
+    } else {
+        // Fetch from remote domain (public endpoint, no auth needed)
+        let domain = target_domain.unwrap();
+        let api_url = get_api_url(domain);
+        let member = requests::memberships::fetch_member_by_user_and_server(
+            &state.http_client,
+            &api_url,
+            server_id,
+            user_id,
+            None,
+        )
+        .await
+        .map_err(|e| {
+            ApiError::Internal(format!(
+                "Failed to fetch member from {domain}: {e}"
+            ))
+        })?;
+        Ok(member)
+    }
 }
 
 /// Add a user to a remote server (federation endpoint).

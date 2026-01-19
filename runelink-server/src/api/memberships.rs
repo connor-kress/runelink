@@ -5,21 +5,32 @@ use crate::{
     state::AppState,
 };
 use axum::{
-    extract::{Json, Path, State},
+    extract::{Json, Path, Query, State},
     http::{HeaderMap, StatusCode},
     response::IntoResponse,
 };
 use runelink_client::{requests, util::get_api_url};
 use runelink_types::NewServerMembership;
+use serde::Deserialize;
 use uuid::Uuid;
+
+#[derive(Deserialize, Debug)]
+pub struct MembershipQueryParams {
+    pub target_domain: Option<String>,
+}
 
 /// GET /servers/{server_id}/users
 pub async fn get_members_by_server(
     State(state): State<AppState>,
     Path(server_id): Path<Uuid>,
+    Query(params): Query<MembershipQueryParams>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let members =
-        ops::memberships::get_members_by_server(&state, server_id).await?;
+    let members = ops::memberships::get_members_by_server(
+        &state,
+        server_id,
+        params.target_domain.as_deref(),
+    )
+    .await?;
     Ok((StatusCode::OK, Json(members)))
 }
 
@@ -27,9 +38,13 @@ pub async fn get_members_by_server(
 pub async fn get_by_user_and_server(
     State(state): State<AppState>,
     Path((server_id, user_id)): Path<(Uuid, Uuid)>,
+    Query(params): Query<MembershipQueryParams>,
 ) -> Result<impl IntoResponse, ApiError> {
     let member = ops::memberships::get_member_by_user_and_server(
-        &state, server_id, user_id,
+        &state,
+        server_id,
+        user_id,
+        params.target_domain.as_deref(),
     )
     .await?;
     Ok((StatusCode::OK, Json(member)))

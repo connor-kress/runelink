@@ -132,7 +132,7 @@ impl ServerMembership {
     pub fn as_full(self, user: User) -> FullServerMembership {
         FullServerMembership {
             server: self.server,
-            user: user,
+            user,
             role: self.role,
             joined_at: self.joined_at,
             updated_at: self.updated_at,

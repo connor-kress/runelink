@@ -45,27 +45,25 @@ pub async fn handle_user_commands(
 ) -> Result<(), CliError> {
     match &user_args.command {
         UserCommands::List(list_args) => {
-            let account = ctx.account.ok_or(CliError::MissingAccount)?;
             let api_url = ctx.home_api_url()?;
-
             let users;
-            if let Some(_server_id) = list_args.server_id {
-                todo!(
-                    "Missing endpoint: list users by server via Home Server (requires federated/proxy support)"
-                );
-            } else if let Some(domain) = &list_args.domain {
-                // In the new model, clients never talk to remote servers directly.
-                // Listing users from a remote server requires a Home Server proxy/federation endpoint.
-                if domain != &account.domain {
-                    todo!(
-                        "Missing endpoint: list users from remote domain via Home Server (federated/proxy)"
-                    );
-                }
-                users =
-                    requests::users::fetch_all(ctx.client, &api_url).await?;
+            if let Some(server_id) = list_args.server_id {
+                // Fetch members of the server, then extract users
+                let members = requests::memberships::fetch_members_by_server(
+                    ctx.client,
+                    &api_url,
+                    server_id,
+                    list_args.domain.as_deref(),
+                )
+                .await?;
+                users = members.into_iter().map(|m| m.user).collect();
             } else {
-                users =
-                    requests::users::fetch_all(ctx.client, &api_url).await?;
+                users = requests::users::fetch_all(
+                    ctx.client,
+                    &api_url,
+                    list_args.domain.as_deref(),
+                )
+                .await?;
             }
             for user in users {
                 println!("{}", user.verbose());
@@ -73,21 +71,12 @@ pub async fn handle_user_commands(
         }
 
         UserCommands::Get(get_args) => {
-            let account = ctx.account.ok_or(CliError::MissingAccount)?;
             let api_url = ctx.home_api_url()?;
-
-            if let Some(domain) = &get_args.domain {
-                // If they explicitly ask for a remote domain, we need a federated lookup.
-                if domain != &account.domain {
-                    todo!(
-                        "Missing endpoint: fetch user by id from remote domain via Home Server (federated/proxy)"
-                    );
-                }
-            }
             let user = requests::users::fetch_by_id(
                 ctx.client,
                 &api_url,
                 get_args.user_id,
+                get_args.domain.as_deref(),
             )
             .await?;
             println!("{}", user.verbose());

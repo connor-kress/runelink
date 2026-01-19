@@ -58,7 +58,7 @@ impl RefreshToken {
         Self {
             token: token_str,
             user_id,
-            client_id: client_id,
+            client_id,
             issued_at: now,
             expires_at: now + lifetime,
             revoked: false,

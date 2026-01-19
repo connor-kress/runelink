@@ -1,3 +1,4 @@
+use runelink_client::{requests::hosts, util::get_api_url};
 use runelink_types::Host;
 use uuid::Uuid;
 
@@ -19,12 +20,39 @@ pub async fn get_by_domain(
 }
 
 /// Get all domains associated with a user (public).
+/// If target_domain is provided and not the local domain, fetches from
+/// that remote domain. Otherwise, returns local domains.
 pub async fn get_user_associated_domains(
     state: &AppState,
     user_id: Uuid,
+    target_domain: Option<&str>,
 ) -> Result<Vec<String>, ApiError> {
-    let domains =
-        queries::hosts::get_user_associated_domains(&state.db_pool, user_id)
-            .await?;
-    Ok(domains)
+    // Handle local case
+    if target_domain.is_none()
+        || target_domain == Some(state.config.local_domain().as_str())
+    {
+        let domains = queries::hosts::get_user_associated_domains(
+            &state.db_pool,
+            user_id,
+        )
+        .await?;
+        Ok(domains)
+    } else {
+        // Fetch from remote domain (public endpoint, no auth needed)
+        let domain = target_domain.unwrap();
+        let api_url = get_api_url(domain);
+        let domains = hosts::fetch_user_associated_domains(
+            &state.http_client,
+            &api_url,
+            user_id,
+            None,
+        )
+        .await
+        .map_err(|e| {
+            ApiError::Internal(format!(
+                "Failed to fetch user associated domains from {domain}: {e}"
+            ))
+        })?;
+        Ok(domains)
+    }
 }
