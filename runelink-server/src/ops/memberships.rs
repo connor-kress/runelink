@@ -18,9 +18,40 @@ use crate::{
 pub async fn create(
     state: &AppState,
     session: &mut Session,
-    server_id: Uuid,
     new_membership: &NewServerMembership,
 ) -> Result<FullServerMembership, ApiError> {
+    // If this membership is for a remote server, proxy via federation and cache locally.
+    if new_membership.server_domain != state.config.local_domain() {
+        // Home Server should only create memberships for its own users.
+        if new_membership.user_domain != state.config.local_domain() {
+            return Err(ApiError::BadRequest(
+                "User domain in membership does not match local domain".into(),
+            ));
+        }
+        let server_api_url = get_api_url(&new_membership.server_domain);
+        let token = state.key_manager.issue_federation_jwt_delegated(
+            state.config.api_url(),
+            server_api_url.clone(),
+            new_membership.user_id,
+            new_membership.user_domain.clone(),
+        )?;
+        let full_membership = requests::memberships::federated::create(
+            &state.http_client,
+            &server_api_url,
+            &token,
+            new_membership,
+        )
+        .await?;
+        // Cache the remote membership locally (synced_at comes from remote)
+        let membership = add_remote(
+            state,
+            new_membership.server_id,
+            &full_membership.clone().into(),
+        )
+        .await?;
+        return Ok(membership.as_full(full_membership.user));
+    }
+
     // Ensure remote user exists locally before creating membership
     if new_membership.user_domain != state.config.local_domain() {
         let user = session.lookup_user(state).await?;
@@ -42,7 +73,7 @@ pub async fn create(
         queries::memberships::insert(&state.db_pool, new_membership).await?;
     let membership = queries::memberships::get_local_by_user_and_server(
         state,
-        server_id,
+        new_membership.server_id,
         new_membership.user_id,
     )
     .await?;
@@ -136,7 +167,7 @@ pub async fn get_member_by_user_and_server(
     }
 }
 
-/// Add a user to a remote server (federation endpoint).
+/// Add a user to a remote server (called on the home server).
 pub async fn add_remote(
     state: &AppState,
     server_id: Uuid,

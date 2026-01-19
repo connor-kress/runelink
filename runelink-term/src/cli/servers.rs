@@ -218,7 +218,6 @@ pub async fn handle_server_commands(
                 ctx.client,
                 &api_url,
                 &access_token,
-                server.id,
                 &new_member,
             )
             .await?;

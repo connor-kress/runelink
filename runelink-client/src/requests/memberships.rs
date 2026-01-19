@@ -52,10 +52,12 @@ pub async fn create(
     client: &Client,
     api_url: &str,
     access_token: &str,
-    server_id: Uuid,
     new_membership: &NewServerMembership,
 ) -> Result<FullServerMembership> {
-    let url = format!("{api_url}/servers/{server_id}/users");
+    let url = format!(
+        "{api_url}/servers/{server_id}/users",
+        server_id = new_membership.server_id
+    );
     info!("creating membership: {url}");
     post_json_authed::<NewServerMembership, FullServerMembership>(
         client,
@@ -77,10 +79,12 @@ pub mod federated {
         client: &Client,
         api_url: &str,
         token: &str,
-        server_id: Uuid,
         new_membership: &NewServerMembership,
     ) -> Result<FullServerMembership> {
-        let url = format!("{api_url}/federation/servers/{server_id}/users");
+        let url = format!(
+            "{api_url}/federation/servers/{server_id}/users",
+            server_id = new_membership.server_id
+        );
         info!("creating membership (federation): {url}");
         post_json_federated::<NewServerMembership, FullServerMembership>(
             client,
