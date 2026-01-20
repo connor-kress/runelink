@@ -7,7 +7,6 @@ use uuid::Uuid;
 use crate::{
     auth::{AuthSpec, Requirement, Session},
     error::ApiError,
-    ops::is_remote_domain,
     queries,
     state::AppState,
 };
@@ -22,7 +21,7 @@ pub async fn create(
     target_domain: Option<&str>,
 ) -> Result<Server, ApiError> {
     // Handle local case
-    if !is_remote_domain(target_domain, state.config.local_domain().as_str()) {
+    if !state.config.is_remote_domain(target_domain) {
         let server = queries::servers::insert(state, new_server).await?;
         // Get the creator's user identity
         // Since this requires HostAdmin (which requires client auth), these fields are always present
@@ -80,7 +79,7 @@ pub async fn get_all(
     state: &AppState,
     target_domain: Option<&str>,
 ) -> Result<Vec<Server>, ApiError> {
-    if !is_remote_domain(target_domain, state.config.local_domain().as_str()) {
+    if !state.config.is_remote_domain(target_domain) {
         // Handle local case
         // TODO: add visibility specification for servers
         // We could then have an admin endpoint for all servers
@@ -111,7 +110,7 @@ pub async fn get_by_id(
     server_id: Uuid,
     target_domain: Option<&str>,
 ) -> Result<Server, ApiError> {
-    if !is_remote_domain(target_domain, state.config.local_domain().as_str()) {
+    if !state.config.is_remote_domain(target_domain) {
         // Handle local case
         // TODO: separate public and private server objects?
         let server = queries::servers::get_by_id(state, server_id).await?;
@@ -145,7 +144,7 @@ pub async fn get_with_channels(
     server_id: Uuid,
     target_domain: Option<&str>,
 ) -> Result<ServerWithChannels, ApiError> {
-    if !is_remote_domain(target_domain, state.config.local_domain().as_str()) {
+    if !state.config.is_remote_domain(target_domain) {
         // Handle local case
         let (server, channels) = tokio::join!(
             queries::servers::get_by_id(state, server_id),
@@ -198,7 +197,7 @@ pub async fn delete(
     target_domain: Option<&str>,
 ) -> Result<(), ApiError> {
     // Handle local case
-    if !is_remote_domain(target_domain, state.config.local_domain().as_str()) {
+    if !state.config.is_remote_domain(target_domain) {
         queries::servers::delete(state, server_id).await?;
         Ok(())
     } else {

@@ -5,7 +5,6 @@ use uuid::Uuid;
 use crate::{
     auth::{AuthSpec, Requirement, Session},
     error::ApiError,
-    ops::is_remote_domain,
     queries,
     state::AppState,
 };
@@ -22,7 +21,7 @@ pub async fn create(
     target_domain: Option<&str>,
 ) -> Result<Message, ApiError> {
     // Handle local case
-    if !is_remote_domain(target_domain, state.config.local_domain().as_str()) {
+    if !state.config.is_remote_domain(target_domain) {
         let channel =
             queries::channels::get_by_id(&state.db_pool, channel_id).await?;
         if channel.server_id != server_id {
@@ -77,7 +76,7 @@ pub async fn get_all(
     target_domain: Option<&str>,
 ) -> Result<Vec<Message>, ApiError> {
     // Handle local case
-    if !is_remote_domain(target_domain, state.config.local_domain().as_str()) {
+    if !state.config.is_remote_domain(target_domain) {
         let messages = queries::messages::get_all(&state.db_pool).await?;
         Ok(messages)
     } else {
@@ -121,7 +120,7 @@ pub async fn get_by_server(
     target_domain: Option<&str>,
 ) -> Result<Vec<Message>, ApiError> {
     // Handle local case
-    if !is_remote_domain(target_domain, state.config.local_domain().as_str()) {
+    if !state.config.is_remote_domain(target_domain) {
         let messages =
             queries::messages::get_by_server(&state.db_pool, server_id).await?;
         Ok(messages)
@@ -168,7 +167,7 @@ pub async fn get_by_channel(
     target_domain: Option<&str>,
 ) -> Result<Vec<Message>, ApiError> {
     // Handle local case
-    if !is_remote_domain(target_domain, state.config.local_domain().as_str()) {
+    if !state.config.is_remote_domain(target_domain) {
         let messages =
             queries::messages::get_by_channel(&state.db_pool, channel_id)
                 .await?;
@@ -218,7 +217,7 @@ pub async fn get_by_id(
     target_domain: Option<&str>,
 ) -> Result<Message, ApiError> {
     // Handle local case
-    if !is_remote_domain(target_domain, state.config.local_domain().as_str()) {
+    if !state.config.is_remote_domain(target_domain) {
         let message =
             queries::messages::get_by_id(&state.db_pool, message_id).await?;
         if message.channel_id != channel_id {
@@ -280,7 +279,7 @@ pub async fn delete(
     target_domain: Option<&str>,
 ) -> Result<(), ApiError> {
     // Handle local case
-    if !is_remote_domain(target_domain, state.config.local_domain().as_str()) {
+    if !state.config.is_remote_domain(target_domain) {
         // Verify the message belongs to the channel and server
         // TODO: This should be done with one database query
         let message =

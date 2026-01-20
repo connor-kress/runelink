@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use runelink_client::util::get_api_url;
+use runelink_client::util::{get_api_url, pad_domain};
 
 #[derive(thiserror::Error, Debug)]
 pub enum ConfigError {
@@ -64,5 +64,12 @@ impl ServerConfig {
 
     pub fn api_url(&self) -> String {
         get_api_url(self.local_domain_with_explicit_port().as_str())
+    }
+
+    pub fn is_remote_domain(&self, domain: Option<&str>) -> bool {
+        let Some(domain) = domain else {
+            return false;
+        };
+        pad_domain(domain) != pad_domain(self.local_domain().as_str())
     }
 }

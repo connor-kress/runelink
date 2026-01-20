@@ -6,7 +6,6 @@ use uuid::Uuid;
 use crate::{
     auth::{AuthSpec, Requirement, Session},
     error::ApiError,
-    ops::is_remote_domain,
     queries,
     state::AppState,
 };
@@ -29,7 +28,7 @@ pub async fn get_all(
     target_domain: Option<&str>,
 ) -> Result<Vec<User>, ApiError> {
     // Handle local case
-    if !is_remote_domain(target_domain, state.config.local_domain().as_str()) {
+    if !state.config.is_remote_domain(target_domain) {
         let users = queries::users::get_all(&state.db_pool).await?;
         Ok(users)
     } else {
@@ -57,7 +56,7 @@ pub async fn get_by_id(
     target_domain: Option<&str>,
 ) -> Result<User, ApiError> {
     // Handle local case
-    if !is_remote_domain(target_domain, state.config.local_domain().as_str()) {
+    if !state.config.is_remote_domain(target_domain) {
         let user = queries::users::get_by_id(&state.db_pool, user_id).await?;
         Ok(user)
     } else {

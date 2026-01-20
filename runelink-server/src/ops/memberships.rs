@@ -7,7 +7,6 @@ use uuid::Uuid;
 use crate::{
     auth::{AuthSpec, Requirement, Session},
     error::ApiError,
-    ops::is_remote_domain,
     queries,
     state::AppState,
 };
@@ -22,7 +21,10 @@ pub async fn create(
     new_membership: &NewServerMembership,
 ) -> Result<FullServerMembership, ApiError> {
     // If this membership is for a remote server, proxy via federation and cache locally.
-    if new_membership.server_domain != state.config.local_domain() {
+    if state
+        .config
+        .is_remote_domain(Some(&new_membership.server_domain))
+    {
         // Home Server should only create memberships for its own users.
         if new_membership.user_domain != state.config.local_domain() {
             return Err(ApiError::BadRequest(
@@ -65,7 +67,7 @@ pub async fn create(
                 &state.http_client,
                 &api_url,
                 new_membership.user_id,
-                Some(&new_membership.user_domain),
+                None,
             )
             .await?;
             queries::users::insert_remote(&state.db_pool, &user).await?;
@@ -102,7 +104,7 @@ pub async fn get_members_by_server(
     target_domain: Option<&str>,
 ) -> Result<Vec<ServerMember>, ApiError> {
     // Handle local case
-    if !is_remote_domain(target_domain, state.config.local_domain().as_str()) {
+    if !state.config.is_remote_domain(target_domain) {
         let members = queries::memberships::get_members_by_server(
             &state.db_pool,
             server_id,
@@ -139,7 +141,7 @@ pub async fn get_member_by_user_and_server(
     target_domain: Option<&str>,
 ) -> Result<ServerMember, ApiError> {
     // Handle local case
-    if !is_remote_domain(target_domain, state.config.local_domain().as_str()) {
+    if !state.config.is_remote_domain(target_domain) {
         let member = queries::memberships::get_local_member_by_user_and_server(
             &state.db_pool,
             server_id,

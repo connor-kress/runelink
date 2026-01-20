@@ -5,7 +5,6 @@ use uuid::Uuid;
 use crate::{
     auth::{AuthSpec, Requirement, Session},
     error::ApiError,
-    ops::is_remote_domain,
     queries,
     state::AppState,
 };
@@ -21,7 +20,7 @@ pub async fn create(
     target_domain: Option<&str>,
 ) -> Result<Channel, ApiError> {
     // Handle local case
-    if !is_remote_domain(target_domain, state.config.local_domain().as_str()) {
+    if !state.config.is_remote_domain(target_domain) {
         let channel =
             queries::channels::insert(&state.db_pool, server_id, new_channel)
                 .await?;
@@ -67,7 +66,7 @@ pub async fn get_all(
     session: &Session,
     target_domain: Option<&str>,
 ) -> Result<Vec<Channel>, ApiError> {
-    if !is_remote_domain(target_domain, state.config.local_domain().as_str()) {
+    if !state.config.is_remote_domain(target_domain) {
         // Handle local case
         let channels = queries::channels::get_all(&state.db_pool).await?;
         Ok(channels)
@@ -111,7 +110,7 @@ pub async fn get_by_server(
     server_id: Uuid,
     target_domain: Option<&str>,
 ) -> Result<Vec<Channel>, ApiError> {
-    if !is_remote_domain(target_domain, state.config.local_domain().as_str()) {
+    if !state.config.is_remote_domain(target_domain) {
         // Handle local case
         queries::channels::get_by_server(&state.db_pool, server_id).await
     } else {
@@ -156,7 +155,7 @@ pub async fn get_by_id(
     channel_id: Uuid,
     target_domain: Option<&str>,
 ) -> Result<Channel, ApiError> {
-    if !is_remote_domain(target_domain, state.config.local_domain().as_str()) {
+    if !state.config.is_remote_domain(target_domain) {
         // Handle local case
         let channel =
             queries::channels::get_by_id(&state.db_pool, channel_id).await?;
@@ -205,7 +204,7 @@ pub async fn delete(
     target_domain: Option<&str>,
 ) -> Result<(), ApiError> {
     // Handle local case
-    if !is_remote_domain(target_domain, state.config.local_domain().as_str()) {
+    if !state.config.is_remote_domain(target_domain) {
         // Verify the channel belongs to the server
         let channel =
             queries::channels::get_by_id(&state.db_pool, channel_id).await?;
