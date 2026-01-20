@@ -152,3 +152,11 @@ pub async fn get_by_id(
     .map_err(ApiError::from)
     .map(Message::from)
 }
+
+pub async fn delete(pool: &DbPool, message_id: Uuid) -> Result<(), ApiError> {
+    sqlx::query!("DELETE FROM messages WHERE id = $1;", message_id)
+        .execute(pool)
+        .await
+        .map_err(ApiError::from)?;
+    Ok(())
+}

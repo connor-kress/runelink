@@ -137,6 +137,31 @@ pub async fn get_by_id(
     Ok((StatusCode::OK, Json(message)))
 }
 
+/// DELETE /servers/{server_id}/channels/{channel_id}/messages/{message_id}
+pub async fn delete(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path((server_id, channel_id, message_id)): Path<(Uuid, Uuid, Uuid)>,
+    Query(params): Query<MessageQueryParams>,
+) -> Result<impl IntoResponse, ApiError> {
+    let session = authorize(
+        &state,
+        Principal::from_client_headers(&headers, &state)?,
+        ops::messages::auth::delete(server_id),
+    )
+    .await?;
+    ops::messages::delete(
+        &state,
+        &session,
+        server_id,
+        channel_id,
+        message_id,
+        params.target_domain.as_deref(),
+    )
+    .await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 /// Federation endpoints (server-to-server authentication required).
 pub mod federated {
     use super::*;
@@ -235,5 +260,24 @@ pub mod federated {
         )
         .await?;
         Ok((StatusCode::OK, Json(message)))
+    }
+
+    /// DELETE /federation/servers/{server_id}/channels/{channel_id}/messages/{message_id}
+    pub async fn delete(
+        State(state): State<AppState>,
+        headers: HeaderMap,
+        Path((server_id, channel_id, message_id)): Path<(Uuid, Uuid, Uuid)>,
+    ) -> Result<impl IntoResponse, ApiError> {
+        let session = authorize(
+            &state,
+            Principal::from_federation_headers(&headers, &state).await?,
+            ops::messages::auth::federated::delete(server_id),
+        )
+        .await?;
+        ops::messages::delete(
+            &state, &session, server_id, channel_id, message_id, None,
+        )
+        .await?;
+        Ok(StatusCode::NO_CONTENT)
     }
 }

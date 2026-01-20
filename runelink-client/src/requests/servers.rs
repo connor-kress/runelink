@@ -6,7 +6,8 @@ use uuid::Uuid;
 use crate::{error::Result, requests};
 
 use super::{
-    fetch_json, fetch_json_federated, post_json_authed, post_json_federated,
+    delete_authed, delete_federated, fetch_json, fetch_json_federated,
+    post_json_authed, post_json_federated,
 };
 
 pub async fn create(
@@ -66,6 +67,21 @@ pub async fn fetch_by_user(
     Ok(servers)
 }
 
+pub async fn delete(
+    client: &Client,
+    api_url: &str,
+    access_token: &str,
+    server_id: Uuid,
+    target_domain: Option<&str>,
+) -> Result<()> {
+    let mut url = format!("{api_url}/servers/{server_id}");
+    if let Some(domain) = target_domain {
+        url = format!("{url}?target_domain={domain}");
+    }
+    info!("deleting server: {url}");
+    delete_authed(client, &url, access_token).await
+}
+
 /// Federation endpoints (server-to-server authentication required).
 pub mod federated {
     use super::*;
@@ -96,5 +112,17 @@ pub mod federated {
             format!("{api_url}/federation/servers/{server_id}/with_channels");
         info!("fetching server with channels (federation): {url}");
         fetch_json_federated::<ServerWithChannels>(client, &url, token).await
+    }
+
+    /// DELETE /federation/servers/{server_id}
+    pub async fn delete(
+        client: &Client,
+        api_url: &str,
+        token: &str,
+        server_id: Uuid,
+    ) -> Result<()> {
+        let url = format!("{api_url}/federation/servers/{server_id}");
+        info!("deleting server (federation): {url}");
+        delete_federated(client, &url, token).await
     }
 }

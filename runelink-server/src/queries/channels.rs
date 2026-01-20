@@ -62,3 +62,11 @@ pub async fn get_by_server(
     .await
     .map_err(ApiError::from)
 }
+
+pub async fn delete(pool: &DbPool, channel_id: Uuid) -> Result<(), ApiError> {
+    sqlx::query!("DELETE FROM channels WHERE id = $1;", channel_id)
+        .execute(pool)
+        .await
+        .map_err(ApiError::from)?;
+    Ok(())
+}

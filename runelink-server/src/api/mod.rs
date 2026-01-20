@@ -3,7 +3,7 @@ use axum::{
     Router,
     extract::Query,
     response::IntoResponse,
-    routing::{get, post},
+    routing::{delete, get, post},
 };
 use serde::Deserialize;
 
@@ -35,19 +35,22 @@ pub fn router() -> Router<AppState> {
         .route("/messages", get(messages::get_all))
         .route(
             "/servers/{server_id}/channels/{channel_id}/messages/{message_id}",
-            get(messages::get_by_id),
+            get(messages::get_by_id).delete(messages::delete),
         )
         .route("/channels", get(channels::get_all))
         .route(
             "/servers/{server_id}/channels/{channel_id}",
-            get(channels::get_by_id),
+            get(channels::get_by_id).delete(channels::delete),
         )
         .route(
             "/servers/{server_id}/channels/{channel_id}/messages",
             get(messages::get_by_channel).post(messages::create),
         )
         .route("/servers", get(servers::get_all).post(servers::create))
-        .route("/servers/{server_id}", get(servers::get_by_id))
+        .route(
+            "/servers/{server_id}",
+            get(servers::get_by_id).delete(servers::delete),
+        )
         .route(
             "/servers/{server_id}/channels",
             get(channels::get_by_server).post(channels::create),
@@ -80,6 +83,7 @@ pub fn federation_router() -> Router<AppState> {
             post(memberships::federated::create),
         )
         .route("/servers", post(servers::federated::create))
+        .route("/servers/{server_id}", delete(servers::federated::delete))
         .route(
             "/servers/{server_id}/with_channels",
             get(servers::federated::get_with_channels),
@@ -92,7 +96,8 @@ pub fn federation_router() -> Router<AppState> {
         .route("/channels", get(channels::federated::get_all))
         .route(
             "/servers/{server_id}/channels/{channel_id}",
-            get(channels::federated::get_by_id),
+            get(channels::federated::get_by_id)
+                .delete(channels::federated::delete),
         )
         .route("/messages", get(messages::federated::get_all))
         .route(
@@ -106,7 +111,8 @@ pub fn federation_router() -> Router<AppState> {
         )
         .route(
             "/servers/{server_id}/channels/{channel_id}/messages/{message_id}",
-            get(messages::federated::get_by_id),
+            get(messages::federated::get_by_id)
+                .delete(messages::federated::delete),
         )
 }
 

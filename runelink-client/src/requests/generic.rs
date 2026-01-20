@@ -198,3 +198,47 @@ where
     let data = response.json::<O>().await?;
     Ok(data)
 }
+
+/// Helper to delete with client access token.
+pub async fn delete_authed(
+    client: &Client,
+    url: &str,
+    access_token: &str,
+) -> Result<()> {
+    info!("deleting (authenticated): {url}");
+    let response = client
+        .delete(url)
+        .header("Authorization", format!("Bearer {access_token}"))
+        .send()
+        .await?;
+    let status = response.status();
+    if !status.is_success() {
+        let message = response.text().await.unwrap_or_else(|e| {
+            format!("Failed to get error message body: {e}")
+        });
+        return Err(Error::Status(status, message));
+    }
+    Ok(())
+}
+
+/// Helper to delete with federation auth token.
+pub async fn delete_federated(
+    client: &Client,
+    url: &str,
+    token: &str,
+) -> Result<()> {
+    info!("deleting (federation): {url}");
+    let response = client
+        .delete(url)
+        .header("Authorization", format!("Bearer {token}"))
+        .send()
+        .await?;
+    let status = response.status();
+    if !status.is_success() {
+        let message = response.text().await.unwrap_or_else(|e| {
+            format!("Failed to get error message body: {e}")
+        });
+        return Err(Error::Status(status, message));
+    }
+    Ok(())
+}

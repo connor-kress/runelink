@@ -6,8 +6,8 @@ use uuid::Uuid;
 use crate::error::Result;
 
 use super::{
-    fetch_json_authed, fetch_json_federated, post_json_authed,
-    post_json_federated,
+    delete_authed, delete_federated, fetch_json_authed, fetch_json_federated,
+    post_json_authed, post_json_federated,
 };
 
 pub async fn create(
@@ -78,6 +78,23 @@ pub async fn fetch_by_id(
     fetch_json_authed::<Channel>(client, &url, access_token).await
 }
 
+pub async fn delete(
+    client: &Client,
+    api_url: &str,
+    access_token: &str,
+    server_id: Uuid,
+    channel_id: Uuid,
+    target_domain: Option<&str>,
+) -> Result<()> {
+    let mut url =
+        format!("{api_url}/servers/{server_id}/channels/{channel_id}");
+    if let Some(domain) = target_domain {
+        url = format!("{url}?target_domain={domain}");
+    }
+    info!("deleting channel: {url}");
+    delete_authed(client, &url, access_token).await
+}
+
 /// Federation endpoints (server-to-server authentication required).
 pub mod federated {
     use super::*;
@@ -137,5 +154,20 @@ pub mod federated {
         );
         info!("fetching channel (federation): {url}");
         fetch_json_federated::<Channel>(client, &url, token).await
+    }
+
+    /// DELETE /federation/servers/{server_id}/channels/{channel_id}
+    pub async fn delete(
+        client: &Client,
+        api_url: &str,
+        token: &str,
+        server_id: Uuid,
+        channel_id: Uuid,
+    ) -> Result<()> {
+        let url = format!(
+            "{api_url}/federation/servers/{server_id}/channels/{channel_id}"
+        );
+        info!("deleting channel (federation): {url}");
+        delete_federated(client, &url, token).await
     }
 }

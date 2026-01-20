@@ -102,3 +102,10 @@ pub async fn get_all(state: &AppState) -> Result<Vec<Server>, ApiError> {
         .collect();
     Ok(servers)
 }
+
+pub async fn delete(state: &AppState, server_id: Uuid) -> Result<(), ApiError> {
+    sqlx::query!("DELETE FROM servers WHERE id = $1;", server_id)
+        .execute(state.db_pool.as_ref())
+        .await?;
+    Ok(())
+}

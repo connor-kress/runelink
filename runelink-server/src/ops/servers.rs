@@ -39,7 +39,8 @@ pub async fn create(
             server_domain: server.domain.clone(),
             role: ServerRole::Admin,
         };
-        queries::memberships::insert_local(&state.db_pool, &new_membership).await?;
+        queries::memberships::insert_local(&state.db_pool, &new_membership)
+            .await?;
         Ok(server)
     } else {
         // Create on remote domain using federation
@@ -194,6 +195,53 @@ pub async fn get_with_channels(
     }
 }
 
+/// Delete a server by ID.
+/// If target_domain is provided and not the local domain, deletes on that remote domain.
+/// Otherwise, deletes locally.
+pub async fn delete(
+    state: &AppState,
+    session: &Session,
+    server_id: Uuid,
+    target_domain: Option<&str>,
+) -> Result<(), ApiError> {
+    // Handle local case
+    if target_domain.is_none()
+        || target_domain == Some(state.config.local_domain().as_str())
+    {
+        queries::servers::delete(state, server_id).await?;
+        Ok(())
+    } else {
+        // Delete on remote domain using federation
+        let domain = target_domain.unwrap();
+        let api_url = get_api_url(domain);
+        let user_ref = session.user_ref.as_ref().ok_or_else(|| {
+            ApiError::Internal(
+                "User reference required for federated server deletion"
+                    .to_string(),
+            )
+        })?;
+        let token = state.key_manager.issue_federation_jwt_delegated(
+            state.config.api_url(),
+            api_url.clone(),
+            user_ref.id,
+            user_ref.domain.clone(),
+        )?;
+        requests::servers::federated::delete(
+            &state.http_client,
+            &api_url,
+            &token,
+            server_id,
+        )
+        .await
+        .map_err(|e| {
+            ApiError::Internal(format!(
+                "Failed to delete server on {domain}: {e}"
+            ))
+        })?;
+        Ok(())
+    }
+}
+
 /// Auth requirements for server operations.
 pub mod auth {
     use super::*;
@@ -207,6 +255,12 @@ pub mod auth {
     pub fn get_with_channels(server_id: Uuid) -> AuthSpec {
         AuthSpec {
             requirements: vec![Requirement::ServerMember { server_id }],
+        }
+    }
+
+    pub fn delete(server_id: Uuid) -> AuthSpec {
+        AuthSpec {
+            requirements: vec![Requirement::ServerAdmin { server_id }],
         }
     }
 
@@ -227,6 +281,15 @@ pub mod auth {
                 requirements: vec![
                     Requirement::Federation,
                     Requirement::ServerMember { server_id },
+                ],
+            }
+        }
+
+        pub fn delete(server_id: Uuid) -> AuthSpec {
+            AuthSpec {
+                requirements: vec![
+                    Requirement::Federation,
+                    Requirement::ServerAdmin { server_id },
                 ],
             }
         }
