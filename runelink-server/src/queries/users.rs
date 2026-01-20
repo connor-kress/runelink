@@ -75,3 +75,30 @@ pub async fn get_by_name_and_domain(
     .await
     .map_err(ApiError::from)
 }
+
+pub async fn delete_by_id(
+    pool: &DbPool,
+    user_id: Uuid,
+) -> Result<(), ApiError> {
+    sqlx::query!("DELETE FROM users WHERE id = $1;", user_id)
+        .execute(pool)
+        .await
+        .map_err(ApiError::from)?;
+    Ok(())
+}
+
+pub async fn delete_by_id_and_domain(
+    pool: &DbPool,
+    user_id: Uuid,
+    domain: &str,
+) -> Result<(), ApiError> {
+    sqlx::query!(
+        "DELETE FROM users WHERE id = $1 AND domain = $2;",
+        user_id,
+        domain
+    )
+    .execute(pool)
+    .await
+    .map_err(ApiError::from)?;
+    Ok(())
+}

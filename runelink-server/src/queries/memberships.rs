@@ -360,3 +360,24 @@ pub async fn get_by_user(
         .map(|row| row.try_into_server_membership(user_id, &state.config))
         .collect()
 }
+
+/// Get distinct remote server domains where a user has memberships.
+pub async fn get_remote_server_domains_for_user(
+    pool: &DbPool,
+    user_id: Uuid,
+) -> Result<Vec<String>, ApiError> {
+    let rows = sqlx::query!(
+        r#"
+        SELECT DISTINCT crs.domain
+        FROM cached_remote_servers crs
+        JOIN user_remote_server_memberships ursm
+            ON crs.id = ursm.remote_server_id
+        WHERE ursm.user_id = $1
+        "#,
+        user_id,
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(ApiError::from)?;
+    Ok(rows.into_iter().map(|row| row.domain).collect())
+}

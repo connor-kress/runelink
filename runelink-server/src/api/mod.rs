@@ -26,7 +26,10 @@ pub fn router() -> Router<AppState> {
         .route("/ping", get(ping))
         .route("/users", get(users::get_all).post(users::create))
         .route("/users/find", get(users::get_by_name_and_domain))
-        .route("/users/{user_id}", get(users::get_by_id))
+        .route(
+            "/users/{user_id}",
+            get(users::get_by_id).delete(users::delete),
+        )
         .route(
             "/users/{user_id}/domains",
             get(users::get_user_associated_domains),
@@ -114,6 +117,7 @@ pub fn federation_router() -> Router<AppState> {
             get(messages::federated::get_by_id)
                 .delete(messages::federated::delete),
         )
+        .route("/users/{user_id}", delete(users::federated::delete))
 }
 
 #[derive(Deserialize, Debug)]

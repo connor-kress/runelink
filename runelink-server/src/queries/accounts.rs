@@ -36,3 +36,15 @@ pub async fn get_by_user(
     .await
     .map_err(ApiError::from)
 }
+
+#[allow(dead_code)]
+pub async fn delete_by_user(
+    pool: &DbPool,
+    user_id: Uuid,
+) -> Result<(), ApiError> {
+    sqlx::query!("DELETE FROM local_accounts WHERE user_id = $1;", user_id)
+        .execute(pool)
+        .await
+        .map_err(ApiError::from)?;
+    Ok(())
+}

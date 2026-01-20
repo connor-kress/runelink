@@ -87,3 +87,41 @@ pub async fn get_user_associated_domains(
     .await?;
     Ok((StatusCode::OK, Json(domains)))
 }
+
+/// DELETE /users/{user_id}
+pub async fn delete(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(user_id): Path<Uuid>,
+) -> Result<impl IntoResponse, ApiError> {
+    let session = authorize(
+        &state,
+        Principal::from_client_headers(&headers, &state)?,
+        ops::users::auth::delete(),
+    )
+    .await?;
+    ops::users::delete_home_user(&state, &session, user_id).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// Federation endpoints (server-to-server authentication required).
+pub mod federated {
+    use super::*;
+
+    /// DELETE /federation/users/{user_id}
+    pub async fn delete(
+        State(state): State<AppState>,
+        headers: HeaderMap,
+        Path(user_id): Path<Uuid>,
+    ) -> Result<impl IntoResponse, ApiError> {
+        let session = authorize(
+            &state,
+            Principal::from_federation_headers(&headers, &state).await?,
+            ops::users::auth::federated::delete(),
+        )
+        .await?;
+        ops::users::delete_remote_user_record(&state, &session, user_id)
+            .await?;
+        Ok(StatusCode::NO_CONTENT)
+    }
+}

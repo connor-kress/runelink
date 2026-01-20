@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use crate::error::Result;
 
-use super::{fetch_json, post_json_authed};
+use super::{delete_authed, delete_federated, fetch_json, post_json_authed};
 
 pub async fn create(
     client: &Client,
@@ -55,4 +55,32 @@ pub async fn fetch_by_name_and_domain(
     let url = format!("{api_url}/users/find?name={name}&domain={domain}");
     info!("fetching user: {url}");
     fetch_json::<User>(client, &url).await
+}
+
+pub async fn delete(
+    client: &Client,
+    api_url: &str,
+    access_token: &str,
+    user_id: Uuid,
+) -> Result<()> {
+    let url = format!("{api_url}/users/{user_id}");
+    info!("deleting user: {url}");
+    delete_authed(client, &url, access_token).await
+}
+
+/// Federation endpoints (server-to-server authentication required).
+pub mod federated {
+    use super::*;
+
+    /// DELETE /federation/users/{user_id}
+    pub async fn delete(
+        client: &Client,
+        api_url: &str,
+        token: &str,
+        user_id: Uuid,
+    ) -> Result<()> {
+        let url = format!("{api_url}/federation/users/{user_id}");
+        info!("deleting user (federation): {url}");
+        delete_federated(client, &url, token).await
+    }
 }

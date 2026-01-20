@@ -1,4 +1,5 @@
-use runelink_client::{requests::users, util::get_api_url};
+use log::warn;
+use runelink_client::{requests, util::get_api_url};
 use runelink_types::{NewUser, User};
 use uuid::Uuid;
 
@@ -36,14 +37,17 @@ pub async fn get_all(
         // Fetch from remote domain (public endpoint, no auth needed)
         let domain = target_domain.unwrap();
         let api_url = get_api_url(domain);
-        let users =
-            users::fetch_all(&state.http_client, &api_url, Some(domain))
-                .await
-                .map_err(|e| {
-                    ApiError::Internal(format!(
-                        "Failed to fetch users from {domain}: {e}"
-                    ))
-                })?;
+        let users = requests::users::fetch_all(
+            &state.http_client,
+            &api_url,
+            Some(domain),
+        )
+        .await
+        .map_err(|e| {
+            ApiError::Internal(format!(
+                "Failed to fetch users from {domain}: {e}"
+            ))
+        })?;
         Ok(users)
     }
 }
@@ -66,7 +70,7 @@ pub async fn get_by_id(
         // Fetch from remote domain (public endpoint, no auth needed)
         let domain = target_domain.unwrap();
         let api_url = get_api_url(domain);
-        let user = users::fetch_by_id(
+        let user = requests::users::fetch_by_id(
             &state.http_client,
             &api_url,
             user_id,
@@ -101,7 +105,7 @@ pub async fn get_by_name_and_domain(
     } else {
         // Fetch from remote domain (public endpoint, no auth needed)
         let api_url = get_api_url(domain.as_str());
-        let user = users::fetch_by_name_and_domain(
+        let user = requests::users::fetch_by_name_and_domain(
             &state.http_client,
             &api_url,
             name,
@@ -117,6 +121,114 @@ pub async fn get_by_name_and_domain(
     }
 }
 
+/// Delete a user from their home server.
+/// This will additionally send federated delete requests to all foreign
+/// servers where the user has memberships (best-effort).
+pub async fn delete_home_user(
+    state: &AppState,
+    _session: &Session,
+    user_id: Uuid,
+) -> Result<(), ApiError> {
+    // Load user and verify they belong to the local domain
+    let user = queries::users::get_by_id(&state.db_pool, user_id).await?;
+    if user.domain != state.config.local_domain() {
+        return Err(ApiError::BadRequest(
+            "Can only delete users from their home server".into(),
+        ));
+    }
+
+    // Get all foreign server domains where this user has memberships
+    let foreign_domains =
+        queries::memberships::get_remote_server_domains_for_user(
+            &state.db_pool,
+            user_id,
+        )
+        .await?;
+
+    // Send federated delete requests to each foreign server (best-effort)
+    for domain in &foreign_domains {
+        let api_url = get_api_url(domain);
+        let token_result = state.key_manager.issue_federation_jwt_delegated(
+            state.config.api_url(),
+            api_url.clone(),
+            user_id,
+            user.domain.clone(),
+        );
+        match token_result {
+            Ok(token) => {
+                let user_result = requests::users::federated::delete(
+                    &state.http_client,
+                    &api_url,
+                    &token,
+                    user_id,
+                )
+                .await;
+                if let Err(e) = user_result {
+                    warn!(
+                        "Failed to delete user {user_id} on foreign server {domain}: {e}"
+                    );
+                }
+            }
+            Err(e) => {
+                warn!(
+                    "Failed to issue federation token for user {user_id} on domain {domain}: {e}"
+                );
+            }
+        }
+    }
+
+    // Delete the user record (cascades will handle local_accounts, memberships, etc.)
+    queries::users::delete_by_id(&state.db_pool, user_id).await?;
+    Ok(())
+}
+
+/// Delete a remote user record from a foreign server.
+/// This is called by the home server via federation to delete a cached user record.
+pub async fn delete_remote_user_record(
+    state: &AppState,
+    session: &Session,
+    user_id: Uuid,
+) -> Result<(), ApiError> {
+    // Require user_ref exists and matches the user_id
+    let user_ref = session.user_ref.as_ref().ok_or_else(|| {
+        ApiError::AuthError(
+            "User reference required for federated user deletion".into(),
+        )
+    })?;
+    if user_ref.id != user_id {
+        return Err(ApiError::BadRequest(
+            "User ID in path does not match user reference in token".into(),
+        ));
+    }
+    // Require the user is not from the local domain
+    if user_ref.domain == state.config.local_domain() {
+        return Err(ApiError::BadRequest(
+            "Cannot delete local users via federation".into(),
+        ));
+    }
+
+    // Verify the caller is the home server for this user
+    let expected_home_server_url = get_api_url(&user_ref.domain);
+    let federation_claims = session.federation.as_ref().ok_or_else(|| {
+        ApiError::AuthError("Federation claims required".into())
+    })?;
+
+    if federation_claims.iss != expected_home_server_url {
+        return Err(ApiError::AuthError(
+            "Only the home server can delete a user".into(),
+        ));
+    }
+
+    // Delete the remote user record
+    queries::users::delete_by_id_and_domain(
+        &state.db_pool,
+        user_id,
+        &user_ref.domain,
+    )
+    .await?;
+    Ok(())
+}
+
 /// Auth requirements for user operations.
 pub mod auth {
     use super::*;
@@ -124,6 +236,22 @@ pub mod auth {
     pub fn create() -> AuthSpec {
         AuthSpec {
             requirements: vec![Requirement::HostAdmin],
+        }
+    }
+
+    pub fn delete() -> AuthSpec {
+        AuthSpec {
+            requirements: vec![Requirement::HostAdmin],
+        }
+    }
+
+    pub mod federated {
+        use super::*;
+
+        pub fn delete() -> AuthSpec {
+            AuthSpec {
+                requirements: vec![Requirement::Federation],
+            }
         }
     }
 }

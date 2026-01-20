@@ -25,6 +25,14 @@ static MIGRATOR: Migrator = sqlx::migrate!();
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenvy::dotenv().ok();
 
+    // Initialize logger - reads RUST_LOG environment variable
+    // Examples: RUST_LOG=info, RUST_LOG=debug, RUST_LOG=runelink_server=debug
+    // Defaults to info level if RUST_LOG is not set
+    env_logger::Builder::from_env(
+        env_logger::Env::default().default_filter_or("info"),
+    )
+    .init();
+
     let config = Arc::new(ServerConfig::from_env()?);
     let pool = Arc::new(db::get_pool(config.as_ref()).await?);
     let http_client = reqwest::Client::new();
@@ -41,14 +49,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     MIGRATOR.run(pool.as_ref()).await?;
-    println!("Migrations are up to date.");
+    log::info!("Migrations are up to date.");
 
     let app = api::router().with_state(app_state);
 
     let ip_addr = format!("0.0.0.0:{}", config.port);
     let listener = TcpListener::bind(&ip_addr).await?;
 
-    println!("Starting server on {}", ip_addr);
+    log::info!("Starting server on {ip_addr}");
     axum::serve(listener, app).await?;
     Ok(())
 }
