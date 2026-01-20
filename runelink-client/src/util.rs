@@ -1,5 +1,5 @@
-pub fn get_api_url(domain: &str) -> String {
-    let host_with_port = if domain.starts_with('[') {
+pub fn pad_domain(domain: &str) -> String {
+    if domain.starts_with('[') {
         // IPv6 literal
         match domain.find(']') {
             Some(closing) => {
@@ -19,8 +19,11 @@ pub fn get_api_url(domain: &str) -> String {
         domain.to_string()
     } else {
         format!("{domain}:7000")
-    };
+    }
+}
 
+pub fn get_api_url(domain: &str) -> String {
+    let host_with_port = pad_domain(domain);
     format!("http://{host_with_port}")
 }
 

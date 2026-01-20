@@ -7,6 +7,7 @@ use uuid::Uuid;
 use crate::{
     auth::{AuthSpec, Requirement, Session},
     error::ApiError,
+    ops::is_remote_domain,
     queries,
     state::AppState,
 };
@@ -101,9 +102,7 @@ pub async fn get_members_by_server(
     target_domain: Option<&str>,
 ) -> Result<Vec<ServerMember>, ApiError> {
     // Handle local case
-    if target_domain.is_none()
-        || target_domain == Some(state.config.local_domain().as_str())
-    {
+    if !is_remote_domain(target_domain, state.config.local_domain().as_str()) {
         let members = queries::memberships::get_members_by_server(
             &state.db_pool,
             server_id,
@@ -140,9 +139,7 @@ pub async fn get_member_by_user_and_server(
     target_domain: Option<&str>,
 ) -> Result<ServerMember, ApiError> {
     // Handle local case
-    if target_domain.is_none()
-        || target_domain == Some(state.config.local_domain().as_str())
-    {
+    if !is_remote_domain(target_domain, state.config.local_domain().as_str()) {
         let member = queries::memberships::get_local_member_by_user_and_server(
             &state.db_pool,
             server_id,
