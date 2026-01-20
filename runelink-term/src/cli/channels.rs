@@ -11,7 +11,6 @@ use crate::{
 };
 
 use super::{
-    config::{DefaultChannelArgs, handle_default_channel_commands},
     context::CliContext,
     input::{read_input, unwrap_or_prompt},
 };
@@ -32,8 +31,6 @@ pub enum ChannelCommands {
     Create(ChannelCreateArgs),
     /// Delete a channel
     Delete(ChannelDeleteArgs),
-    /// Manage default channels
-    Default(DefaultChannelArgs),
 }
 
 #[derive(clap::Args, Debug)]
@@ -217,18 +214,6 @@ pub async fn handle_channel_commands(
                 target_domain,
             )
             .await?;
-            if let Some(server_config) =
-                ctx.config.get_server_config_mut(channel.server_id)
-            {
-                if server_config.default_channel.is_none() {
-                    server_config.default_channel = Some(channel.id);
-                    ctx.config.save()?;
-                }
-            } else {
-                ctx.config
-                    .get_or_create_server_config(&server, &account.domain);
-                ctx.config.save()?;
-            }
             println!("Created channel: {}", channel.verbose());
         }
 
@@ -267,10 +252,6 @@ pub async fn handle_channel_commands(
             )
             .await?;
             println!("Deleted channel: {channel_id}");
-        }
-
-        ChannelCommands::Default(default_args) => {
-            handle_default_channel_commands(ctx, default_args).await?;
         }
     };
     Ok(())

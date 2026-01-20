@@ -1,6 +1,6 @@
 use directories::ProjectDirs;
 use runelink_client::util::get_api_url;
-use runelink_types::{Server, User};
+use runelink_types::User;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::{fmt, fs};
@@ -16,7 +16,6 @@ pub struct AppConfig {
     pub default_account: Option<Uuid>,
     pub default_server: Option<Uuid>,
     pub accounts: Vec<AccountConfig>,
-    pub servers: Vec<ServerConfig>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -36,14 +35,6 @@ impl AccountConfig {
     pub fn verbose(&self) -> String {
         format!("{} ({})", self, self.user_id)
     }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ServerConfig {
-    pub server_id: Uuid,
-    pub title: String,
-    pub domain: String,
-    pub default_channel: Option<Uuid>,
 }
 
 #[allow(dead_code)]
@@ -66,11 +57,6 @@ impl AppConfig {
         self.default_account.and_then(|user_id| {
             self.accounts.iter_mut().find(|ac| ac.user_id == user_id)
         })
-    }
-
-    pub fn get_default_channel(&self, server_id: Uuid) -> Option<Uuid> {
-        self.get_server_config(server_id)
-            .and_then(|sc| sc.default_channel)
     }
 
     pub fn get_account_config(&self, user_id: Uuid) -> Option<&AccountConfig> {
@@ -104,17 +90,6 @@ impl AppConfig {
             .find(|ac| ac.name == name && ac.domain == domain)
     }
 
-    pub fn get_server_config(&self, server_id: Uuid) -> Option<&ServerConfig> {
-        self.servers.iter().find(|sc| sc.server_id == server_id)
-    }
-
-    pub fn get_server_config_mut(
-        &mut self,
-        server_id: Uuid,
-    ) -> Option<&mut ServerConfig> {
-        self.servers.iter_mut().find(|sc| sc.server_id == server_id)
-    }
-
     pub fn get_or_create_account_config(
         &mut self,
         user: &User,
@@ -135,51 +110,6 @@ impl AppConfig {
             });
             self.accounts.last_mut().unwrap()
         }
-    }
-
-    pub fn get_or_create_server_config(
-        &mut self,
-        server: &Server,
-        domain: &str,
-    ) -> &mut ServerConfig {
-        if let Some(idx) =
-            self.servers.iter().position(|sc| sc.server_id == server.id)
-        {
-            &mut self.servers[idx]
-        } else {
-            if self.servers.is_empty() {
-                self.default_server = Some(server.id);
-            }
-            self.servers.push(ServerConfig {
-                server_id: server.id,
-                title: server.title.clone(),
-                domain: domain.to_string(),
-                default_channel: None,
-            });
-            self.servers.last_mut().unwrap()
-        }
-    }
-
-    pub fn try_get_server_domain(
-        &self,
-        server_id: Uuid,
-    ) -> Result<String, CliError> {
-        self.get_server_config(server_id)
-            .map(|sc| sc.domain.clone())
-            .ok_or_else(|| {
-                CliError::MissingContext(
-                    "Server domain could not be determined.".into(),
-                )
-            })
-    }
-
-    pub fn try_get_server_api_url(
-        &self,
-        server_id: Uuid,
-    ) -> Result<String, CliError> {
-        // TODO: use user membership endpoint of account home server
-        self.try_get_server_domain(server_id)
-            .map(|ref domain| get_api_url(domain))
     }
 }
 

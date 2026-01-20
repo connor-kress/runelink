@@ -9,7 +9,6 @@ use uuid::Uuid;
 use crate::{error::CliError, util::group_memberships_by_host};
 
 use super::{
-    config::{DefaultServerArgs, handle_default_server_commands},
     context::CliContext,
     input::{read_input, unwrap_or_prompt},
     select::{ServerSelectionType, get_server_selection},
@@ -33,8 +32,6 @@ pub enum ServerCommands {
     Join(ServerJoinArgs),
     /// Delete a server
     Delete(ServerDeleteArgs),
-    /// Manage default server
-    Default(DefaultServerArgs),
 }
 
 #[derive(clap::Args, Debug)]
@@ -190,9 +187,6 @@ pub async fn handle_server_commands(
                 create_args.domain.as_deref(),
             )
             .await?;
-            ctx.config
-                .get_or_create_server_config(&server, &account.domain);
-            ctx.config.save()?;
             println!("Created server: {}", server.verbose());
         }
 
@@ -233,9 +227,6 @@ pub async fn handle_server_commands(
                 &new_member,
             )
             .await?;
-            ctx.config
-                .get_or_create_server_config(&server, &account.domain);
-            ctx.config.save()?;
             println!("Joined server: {}", server.verbose());
         }
 
@@ -263,10 +254,6 @@ pub async fn handle_server_commands(
             )
             .await?;
             println!("Deleted server: {server_id}");
-        }
-
-        ServerCommands::Default(default_args) => {
-            handle_default_server_commands(ctx, default_args).await?;
         }
     }
     Ok(())
