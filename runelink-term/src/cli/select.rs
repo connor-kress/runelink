@@ -87,15 +87,24 @@ where
                 }
                 // Up or 'k'
                 (KeyCode::Up, _) | (KeyCode::Char('k'), _) => {
-                    selected = if selected == 0 {
-                        items.len() - 1
-                    } else {
-                        selected - 1
-                    };
+                    selected = if selected == 0 { 0 } else { selected - 1 };
                 }
                 // Down or 'j'
                 (KeyCode::Down, _) | (KeyCode::Char('j'), _) => {
-                    selected = (selected + 1) % items.len();
+                    selected = if selected == items.len() - 1 {
+                        items.len() - 1
+                    } else {
+                        selected + 1
+                    };
+                }
+                (KeyCode::Char('g'), KeyModifiers::NONE)
+                | (KeyCode::Home, _) => {
+                    selected = 0;
+                }
+                (KeyCode::Char('g'), KeyModifiers::SHIFT)
+                | (KeyCode::Char('G'), _)
+                | (KeyCode::End, _) => {
+                    selected = items.len() - 1;
                 }
                 _ => {}
             }
