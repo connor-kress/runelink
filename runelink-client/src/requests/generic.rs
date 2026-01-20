@@ -1,11 +1,11 @@
-use log::info;
+use log::debug;
 use reqwest::Client;
 use serde::{Serialize, de::DeserializeOwned};
 
 use crate::error::{Error, Result};
 
 pub async fn fetch_text(client: &Client, url: &str) -> Result<String> {
-    info!("fetching text: {url}");
+    debug!("fetching text: {url}");
     let response = client.get(url).send().await?;
     let status = response.status();
     if !status.is_success() {
@@ -22,7 +22,7 @@ pub async fn fetch_json<T>(client: &Client, url: &str) -> Result<T>
 where
     T: DeserializeOwned,
 {
-    info!("fetching json: {url}");
+    debug!("fetching json: {url}");
     let response = client.get(url).send().await?;
     let status = response.status();
     if !status.is_success() {
@@ -44,7 +44,7 @@ where
     I: Serialize,
     O: DeserializeOwned,
 {
-    info!(
+    debug!(
         "posting json: {url}\n{}",
         serde_json::to_string_pretty(request_body).unwrap()
     );
@@ -69,7 +69,7 @@ pub async fn fetch_json_federated<T>(
 where
     T: DeserializeOwned,
 {
-    info!("fetching json (federation): {url}");
+    debug!("fetching json (federation): {url}");
     let response = client
         .get(url)
         .header("Authorization", format!("Bearer {token}"))
@@ -97,7 +97,7 @@ where
     I: Serialize,
     O: DeserializeOwned,
 {
-    info!(
+    debug!(
         "posting json (federation): {url}\n{}",
         serde_json::to_string_pretty(request_body).unwrap()
     );
@@ -124,7 +124,7 @@ pub async fn fetch_text_authed(
     url: &str,
     access_token: &str,
 ) -> Result<String> {
-    info!("fetching text (authenticated): {url}");
+    debug!("fetching text (authenticated): {url}");
     let response = client
         .get(url)
         .header("Authorization", format!("Bearer {access_token}"))
@@ -150,7 +150,7 @@ pub async fn fetch_json_authed<T>(
 where
     T: DeserializeOwned,
 {
-    info!("fetching json (authenticated): {url}");
+    debug!("fetching json (authenticated): {url}");
     let response = client
         .get(url)
         .header("Authorization", format!("Bearer {access_token}"))
@@ -178,7 +178,7 @@ where
     I: Serialize,
     O: DeserializeOwned,
 {
-    info!(
+    debug!(
         "posting json (authenticated): {url}\n{}",
         serde_json::to_string_pretty(request_body).unwrap()
     );
@@ -205,7 +205,7 @@ pub async fn delete_authed(
     url: &str,
     access_token: &str,
 ) -> Result<()> {
-    info!("deleting (authenticated): {url}");
+    debug!("deleting (authenticated): {url}");
     let response = client
         .delete(url)
         .header("Authorization", format!("Bearer {access_token}"))
@@ -227,7 +227,7 @@ pub async fn delete_federated(
     url: &str,
     token: &str,
 ) -> Result<()> {
-    info!("deleting (federation): {url}");
+    debug!("deleting (federation): {url}");
     let response = client
         .delete(url)
         .header("Authorization", format!("Bearer {token}"))

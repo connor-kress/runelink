@@ -31,6 +31,8 @@ pub enum ServerCommands {
     Create(ServerCreateArgs),
     /// Create a new server
     Join(ServerJoinArgs),
+    /// Delete a server
+    Delete(ServerDeleteArgs),
     /// Manage default server
     Default(DefaultServerArgs),
 }
@@ -71,6 +73,16 @@ pub struct ServerCreateArgs {
 #[derive(clap::Args, Debug)]
 pub struct ServerJoinArgs {
     /// The ID of the server
+    #[clap(long)]
+    pub server_id: Option<Uuid>,
+    /// The domain of the server
+    #[clap(long)]
+    pub domain: Option<String>,
+}
+
+#[derive(clap::Args, Debug)]
+pub struct ServerDeleteArgs {
+    /// The ID of the server to delete
     #[clap(long)]
     pub server_id: Option<Uuid>,
     /// The domain of the server
@@ -225,6 +237,32 @@ pub async fn handle_server_commands(
                 .get_or_create_server_config(&server, &account.domain);
             ctx.config.save()?;
             println!("Joined server: {}", server.verbose());
+        }
+
+        ServerCommands::Delete(delete_args) => {
+            let account = ctx.account.ok_or(CliError::MissingAccount)?;
+            let api_url = ctx.home_api_url()?;
+            let access_token = ctx.get_access_token().await?;
+            let server_id = if let Some(server_id) = delete_args.server_id {
+                server_id
+            } else {
+                let domain = delete_args
+                    .domain
+                    .as_deref()
+                    .unwrap_or(account.domain.as_str());
+                get_server_selection(ctx, ServerSelectionType::MemberOnly)
+                    .await?
+                    .id
+            };
+            requests::servers::delete(
+                ctx.client,
+                &api_url,
+                &access_token,
+                server_id,
+                delete_args.domain.as_deref(),
+            )
+            .await?;
+            println!("Deleted server: {server_id}");
         }
 
         ServerCommands::Default(default_args) => {

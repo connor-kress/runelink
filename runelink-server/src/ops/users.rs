@@ -37,17 +37,14 @@ pub async fn get_all(
         // Fetch from remote domain (public endpoint, no auth needed)
         let domain = target_domain.unwrap();
         let api_url = get_api_url(domain);
-        let users = requests::users::fetch_all(
-            &state.http_client,
-            &api_url,
-            Some(domain),
-        )
-        .await
-        .map_err(|e| {
-            ApiError::Internal(format!(
-                "Failed to fetch users from {domain}: {e}"
-            ))
-        })?;
+        let users =
+            requests::users::fetch_all(&state.http_client, &api_url, None)
+                .await
+                .map_err(|e| {
+                    ApiError::Internal(format!(
+                        "Failed to fetch users from {domain}: {e}"
+                    ))
+                })?;
         Ok(users)
     }
 }
@@ -74,7 +71,7 @@ pub async fn get_by_id(
             &state.http_client,
             &api_url,
             user_id,
-            target_domain,
+            None,
         )
         .await
         .map_err(|e| {

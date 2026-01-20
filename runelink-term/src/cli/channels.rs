@@ -3,7 +3,10 @@ use runelink_types::NewChannel;
 use uuid::Uuid;
 
 use crate::{
-    cli::select::{ServerSelectionType, get_server_selection},
+    cli::select::{
+        ServerSelectionType, get_channel_selection_with_inputs,
+        get_server_selection,
+    },
     error::CliError,
 };
 
@@ -27,6 +30,8 @@ pub enum ChannelCommands {
     Get(ChannelGetArgs),
     /// Create a new channel
     Create(ChannelCreateArgs),
+    /// Delete a channel
+    Delete(ChannelDeleteArgs),
     /// Manage default channels
     Default(DefaultChannelArgs),
 }
@@ -71,6 +76,19 @@ pub struct ChannelCreateArgs {
     /// The server ID
     #[clap(long)]
     pub server_id: Option<Uuid>,
+    /// The domain of the server
+    #[clap(long)]
+    pub domain: Option<String>,
+}
+
+#[derive(clap::Args, Debug)]
+pub struct ChannelDeleteArgs {
+    /// The ID of the server
+    #[clap(long)]
+    pub server_id: Option<Uuid>,
+    /// The ID of the channel to delete
+    #[clap(long)]
+    pub channel_id: Option<Uuid>,
     /// The domain of the server
     #[clap(long)]
     pub domain: Option<String>,
@@ -212,6 +230,43 @@ pub async fn handle_channel_commands(
                 ctx.config.save()?;
             }
             println!("Created channel: {}", channel.verbose());
+        }
+
+        ChannelCommands::Delete(delete_args) => {
+            let _account = ctx.account.ok_or(CliError::MissingAccount)?;
+            let api_url = ctx.home_api_url()?;
+            let access_token = ctx.get_access_token().await?;
+            let (server_id, channel_id, server_domain) =
+                match (delete_args.server_id, delete_args.channel_id) {
+                    (Some(server_id), Some(channel_id)) => {
+                        // Both IDs provided, use them directly
+                        (server_id, channel_id, None)
+                    }
+                    _ => {
+                        // Need to select server and/or channel
+                        let (server, channel) =
+                            get_channel_selection_with_inputs(
+                                ctx,
+                                delete_args.channel_id,
+                                delete_args.server_id,
+                            )
+                            .await?;
+                        (server.id, channel.id, Some(server.domain.clone()))
+                    }
+                };
+            let target_domain = server_domain
+                .as_deref()
+                .or_else(|| delete_args.domain.as_deref());
+            requests::channels::delete(
+                ctx.client,
+                &api_url,
+                &access_token,
+                server_id,
+                channel_id,
+                target_domain,
+            )
+            .await?;
+            println!("Deleted channel: {channel_id}");
         }
 
         ChannelCommands::Default(default_args) => {

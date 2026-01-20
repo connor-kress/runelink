@@ -23,6 +23,8 @@ pub enum MessageCommands {
     Get(MessageGetArgs),
     /// Send a message
     Send(MessageSendArgs),
+    /// Delete a message
+    Delete(MessageDeleteArgs),
 }
 
 #[derive(clap::Args, Debug)]
@@ -62,6 +64,22 @@ pub struct MessageSendArgs {
     /// The channel ID
     #[clap(long)]
     pub channel_id: Option<Uuid>,
+    /// The domain of the server
+    #[clap(long)]
+    pub domain: Option<String>,
+}
+
+#[derive(clap::Args, Debug)]
+pub struct MessageDeleteArgs {
+    /// The ID of the server
+    #[clap(long)]
+    pub server_id: Uuid,
+    /// The ID of the channel
+    #[clap(long)]
+    pub channel_id: Uuid,
+    /// The ID of the message to delete
+    #[clap(long)]
+    pub message_id: Uuid,
     /// The domain of the server
     #[clap(long)]
     pub domain: Option<String>,
@@ -152,6 +170,23 @@ pub async fn handle_message_commands(
             )
             .await?;
             println!("Sent message: {}", message.body);
+        }
+
+        MessageCommands::Delete(delete_args) => {
+            // TODO: Interactive message selection
+            let api_url = ctx.home_api_url()?;
+            let access_token = ctx.get_access_token().await?;
+            requests::messages::delete(
+                ctx.client,
+                &api_url,
+                &access_token,
+                delete_args.server_id,
+                delete_args.channel_id,
+                delete_args.message_id,
+                delete_args.domain.as_deref(),
+            )
+            .await?;
+            println!("Deleted message: {}", delete_args.message_id);
         }
     };
     Ok(())

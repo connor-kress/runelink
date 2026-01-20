@@ -10,6 +10,7 @@ use super::{
     config::{DefaultAccountArgs, handle_default_account_commands},
     context::CliContext,
     input::unwrap_or_prompt,
+    select::select_inline,
 };
 
 #[derive(clap::Args, Debug)]
@@ -30,6 +31,8 @@ pub enum AccountCommands {
     Logout(LogoutArgs),
     /// Show authentication status for an account
     Status(StatusArgs),
+    /// Delete an account (deletes the underlying user)
+    Delete(DeleteAccountArgs),
     /// Manage default account
     Default(DefaultAccountArgs),
 }
@@ -72,6 +75,13 @@ pub struct StatusArgs {
     /// The domain name of the account's host
     #[clap(long)]
     pub domain: Option<String>,
+}
+
+#[derive(clap::Args, Debug)]
+pub struct DeleteAccountArgs {
+    /// The ID of the user/account to delete.
+    #[clap(long)]
+    pub user_id: Option<Uuid>,
 }
 
 pub async fn handle_account_commands(
@@ -245,6 +255,62 @@ pub async fn handle_account_commands(
                 println!("Account: {}", account.verbose());
                 println!("  Authenticated: No");
             }
+        }
+
+        AccountCommands::Delete(delete_args) => {
+            if ctx.config.accounts.is_empty() {
+                return Err(CliError::InvalidArgument(
+                    "No accounts in local config.".into(),
+                ));
+            }
+
+            let (user_id, domain) = if let Some(user_id) = delete_args.user_id {
+                let account = ctx
+                    .config
+                    .accounts
+                    .iter()
+                    .find(|a| a.user_id == user_id)
+                    .ok_or_else(|| {
+                        CliError::InvalidArgument(
+                            "User ID not found in local config.".into(),
+                        )
+                    })?;
+                (account.user_id, account.domain.clone())
+            } else {
+                let account = select_inline(
+                    &ctx.config.accounts,
+                    "Select account to delete",
+                    crate::storage::AccountConfig::to_string,
+                )?
+                .ok_or(CliError::Cancellation)?;
+                println!();
+                (account.user_id, account.domain.clone())
+            };
+
+            // Derive API URL from the selected/matched account's domain
+            let api_url = get_api_url(&domain);
+            let access_token =
+                ctx.get_access_token_for(user_id, &api_url).await?;
+
+            // Delete the user on its home server
+            requests::users::delete(
+                ctx.client,
+                &api_url,
+                &access_token,
+                user_id,
+            )
+            .await?;
+
+            // Clean up local config/auth
+            ctx.auth_cache.remove(&user_id);
+            ctx.config.accounts.retain(|a| a.user_id != user_id);
+            if ctx.config.default_account == Some(user_id) {
+                ctx.config.default_account = None;
+            }
+            ctx.config.save()?;
+            ctx.auth_cache.save()?;
+
+            println!("Deleted account/user: {user_id}");
         }
 
         AccountCommands::Default(default_args) => {
