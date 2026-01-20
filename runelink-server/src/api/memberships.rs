@@ -9,6 +9,7 @@ use axum::{
     http::{HeaderMap, StatusCode},
     response::IntoResponse,
 };
+use log::info;
 use runelink_types::NewServerMembership;
 use serde::Deserialize;
 use uuid::Uuid;
@@ -24,6 +25,10 @@ pub async fn get_members_by_server(
     Path(server_id): Path<Uuid>,
     Query(params): Query<MembershipQueryParams>,
 ) -> Result<impl IntoResponse, ApiError> {
+    info!(
+        "GET /servers/{server_id}/users?target_domain={:?}",
+        params.target_domain
+    );
     let members = ops::memberships::get_members_by_server(
         &state,
         server_id,
@@ -39,6 +44,10 @@ pub async fn get_by_user_and_server(
     Path((server_id, user_id)): Path<(Uuid, Uuid)>,
     Query(params): Query<MembershipQueryParams>,
 ) -> Result<impl IntoResponse, ApiError> {
+    info!(
+        "GET /servers/{server_id}/users/{user_id}?target_domain={:?}",
+        params.target_domain
+    );
     let member = ops::memberships::get_member_by_user_and_server(
         &state,
         server_id,
@@ -56,6 +65,10 @@ pub async fn create(
     Path(server_id): Path<Uuid>,
     Json(new_membership): Json<NewServerMembership>,
 ) -> Result<impl IntoResponse, ApiError> {
+    info!(
+        "POST /servers/{server_id}/users\nnew_membership = {:#?}",
+        new_membership
+    );
     if server_id != new_membership.server_id {
         return Err(ApiError::BadRequest(
             "Server ID in path does not match server ID in membership".into(),
@@ -77,6 +90,7 @@ pub async fn get_by_user(
     State(state): State<AppState>,
     Path(user_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
+    info!("GET /users/{user_id}/servers");
     let memberships = ops::memberships::get_by_user(&state, user_id).await?;
     Ok((StatusCode::OK, Json(memberships)))
 }
@@ -92,6 +106,10 @@ pub mod federated {
         Path(server_id): Path<Uuid>,
         Json(new_membership): Json<NewServerMembership>,
     ) -> Result<impl IntoResponse, ApiError> {
+        info!(
+            "POST /federation/servers/{server_id}/users\nnew_membership = {:#?}",
+            new_membership
+        );
         if server_id != new_membership.server_id {
             return Err(ApiError::BadRequest(
                 "Server ID in path does not match server ID in membership"

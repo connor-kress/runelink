@@ -9,6 +9,7 @@ use axum::{
     http::{HeaderMap, StatusCode},
     response::IntoResponse,
 };
+use log::info;
 use runelink_types::NewChannel;
 use serde::Deserialize;
 use uuid::Uuid;
@@ -26,6 +27,10 @@ pub async fn create(
     Query(params): Query<ChannelQueryParams>,
     Json(new_channel): Json<NewChannel>,
 ) -> Result<impl IntoResponse, ApiError> {
+    info!(
+        "POST /servers/{server_id}/channels?target_domain={:?}\nnew_channel = {:#?}",
+        params.target_domain, new_channel,
+    );
     let session = authorize(
         &state,
         Principal::from_client_headers(&headers, &state)?,
@@ -49,6 +54,7 @@ pub async fn get_all(
     headers: HeaderMap,
     Query(params): Query<ChannelQueryParams>,
 ) -> Result<impl IntoResponse, ApiError> {
+    info!("GET /channels?target_domain={:?}", params.target_domain);
     let session = authorize(
         &state,
         Principal::from_client_headers(&headers, &state)?,
@@ -71,6 +77,10 @@ pub async fn get_by_server(
     Path(server_id): Path<Uuid>,
     Query(params): Query<ChannelQueryParams>,
 ) -> Result<impl IntoResponse, ApiError> {
+    info!(
+        "GET /servers/{server_id}/channels?target_domain={:?}",
+        params.target_domain
+    );
     let session = authorize(
         &state,
         Principal::from_client_headers(&headers, &state)?,
@@ -94,6 +104,10 @@ pub async fn get_by_id(
     Path((server_id, channel_id)): Path<(Uuid, Uuid)>,
     Query(params): Query<ChannelQueryParams>,
 ) -> Result<impl IntoResponse, ApiError> {
+    info!(
+        "GET /servers/{server_id}/channels/{channel_id}?target_domain={:?}",
+        params.target_domain
+    );
     let session = authorize(
         &state,
         Principal::from_client_headers(&headers, &state)?,
@@ -118,6 +132,10 @@ pub async fn delete(
     Path((server_id, channel_id)): Path<(Uuid, Uuid)>,
     Query(params): Query<ChannelQueryParams>,
 ) -> Result<impl IntoResponse, ApiError> {
+    info!(
+        "DELETE /servers/{server_id}/channels/{channel_id}?target_domain={:?}",
+        params.target_domain
+    );
     let session = authorize(
         &state,
         Principal::from_client_headers(&headers, &state)?,
@@ -146,6 +164,10 @@ pub mod federated {
         Path(server_id): Path<Uuid>,
         Json(new_channel): Json<NewChannel>,
     ) -> Result<impl IntoResponse, ApiError> {
+        info!(
+            "POST /federation/servers/{server_id}/channels\nnew_channel = {:#?}",
+            new_channel
+        );
         let session = authorize(
             &state,
             Principal::from_federation_headers(&headers, &state).await?,
@@ -168,6 +190,7 @@ pub mod federated {
         State(state): State<AppState>,
         headers: HeaderMap,
     ) -> Result<impl IntoResponse, ApiError> {
+        info!("GET /federation/channels");
         let session = authorize(
             &state,
             Principal::from_federation_headers(&headers, &state).await?,
@@ -184,6 +207,7 @@ pub mod federated {
         headers: HeaderMap,
         Path(server_id): Path<Uuid>,
     ) -> Result<impl IntoResponse, ApiError> {
+        info!("GET /federation/servers/{server_id}/channels");
         let session = authorize(
             &state,
             Principal::from_federation_headers(&headers, &state).await?,
@@ -202,6 +226,7 @@ pub mod federated {
         headers: HeaderMap,
         Path((server_id, channel_id)): Path<(Uuid, Uuid)>,
     ) -> Result<impl IntoResponse, ApiError> {
+        info!("GET /federation/servers/{server_id}/channels/{channel_id}");
         let session = authorize(
             &state,
             Principal::from_federation_headers(&headers, &state).await?,
@@ -221,6 +246,7 @@ pub mod federated {
         headers: HeaderMap,
         Path((server_id, channel_id)): Path<(Uuid, Uuid)>,
     ) -> Result<impl IntoResponse, ApiError> {
+        info!("DELETE /federation/servers/{server_id}/channels/{channel_id}");
         let session = authorize(
             &state,
             Principal::from_federation_headers(&headers, &state).await?,

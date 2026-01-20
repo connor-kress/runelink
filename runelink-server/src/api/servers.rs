@@ -9,6 +9,7 @@ use axum::{
     http::{HeaderMap, StatusCode},
     response::IntoResponse,
 };
+use log::info;
 use runelink_types::NewServer;
 use serde::Deserialize;
 use uuid::Uuid;
@@ -25,6 +26,10 @@ pub async fn create(
     Query(params): Query<ServerQueryParams>,
     Json(new_server): Json<NewServer>,
 ) -> Result<impl IntoResponse, ApiError> {
+    info!(
+        "POST /servers?target_domain={:?}\nnew_server = {:#?}",
+        params.target_domain, new_server
+    );
     let session = authorize(
         &state,
         Principal::from_client_headers(&headers, &state)?,
@@ -46,6 +51,7 @@ pub async fn get_all(
     State(state): State<AppState>,
     Query(params): Query<ServerQueryParams>,
 ) -> Result<impl IntoResponse, ApiError> {
+    info!("GET /servers?target_domain={:?}", params.target_domain);
     let servers =
         ops::servers::get_all(&state, params.target_domain.as_deref()).await?;
     Ok((StatusCode::OK, Json(servers)))
@@ -57,6 +63,10 @@ pub async fn get_by_id(
     Path(server_id): Path<Uuid>,
     Query(params): Query<ServerQueryParams>,
 ) -> Result<impl IntoResponse, ApiError> {
+    info!(
+        "GET /servers/{server_id}?target_domain={:?}",
+        params.target_domain
+    );
     let server = ops::servers::get_by_id(
         &state,
         server_id,
@@ -73,6 +83,10 @@ pub async fn get_with_channels(
     Path(server_id): Path<Uuid>,
     Query(params): Query<ServerQueryParams>,
 ) -> Result<impl IntoResponse, ApiError> {
+    info!(
+        "GET /servers/{server_id}/with_channels?target_domain={:?}",
+        params.target_domain
+    );
     let session = authorize(
         &state,
         Principal::from_client_headers(&headers, &state)?,
@@ -96,6 +110,10 @@ pub async fn delete(
     Path(server_id): Path<Uuid>,
     Query(params): Query<ServerQueryParams>,
 ) -> Result<impl IntoResponse, ApiError> {
+    info!(
+        "DELETE /servers/{server_id}?target_domain={:?}",
+        params.target_domain
+    );
     let session = authorize(
         &state,
         Principal::from_client_headers(&headers, &state)?,
@@ -122,6 +140,7 @@ pub mod federated {
         headers: HeaderMap,
         Json(new_server): Json<NewServer>,
     ) -> Result<impl IntoResponse, ApiError> {
+        info!("POST /federation/servers\nnew_server = {:#?}", new_server);
         let session = authorize(
             &state,
             Principal::from_federation_headers(&headers, &state).await?,
@@ -139,6 +158,7 @@ pub mod federated {
         headers: HeaderMap,
         Path(server_id): Path<Uuid>,
     ) -> Result<impl IntoResponse, ApiError> {
+        info!("GET /federation/servers/{server_id}/with_channels");
         let session = authorize(
             &state,
             Principal::from_federation_headers(&headers, &state).await?,
@@ -157,6 +177,7 @@ pub mod federated {
         headers: HeaderMap,
         Path(server_id): Path<Uuid>,
     ) -> Result<impl IntoResponse, ApiError> {
+        info!("DELETE /federation/servers/{server_id}");
         let session = authorize(
             &state,
             Principal::from_federation_headers(&headers, &state).await?,

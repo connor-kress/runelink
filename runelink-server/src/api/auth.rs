@@ -10,6 +10,7 @@ use axum::{
     routing::{get, post},
 };
 use jsonwebtoken::{Algorithm, Header};
+use log::info;
 use reqwest::StatusCode;
 use runelink_types::{
     ClientAccessClaims, NewUser, RefreshToken, SignupRequest, TokenRequest,
@@ -39,6 +40,7 @@ pub fn router() -> Router<AppState> {
 pub async fn discovery(
     State(state): State<AppState>,
 ) -> Json<serde_json::Value> {
+    info!("GET /.well-known/openid-configuration");
     let issuer = state.config.api_url();
     let jwks_uri = format!("{}/.well-known/jwks.json", issuer);
     let token_endpoint = format!("{}/auth/token", issuer);
@@ -57,6 +59,7 @@ pub async fn discovery(
 
 /// JWKS endpoint publishing public keys
 pub async fn jwks(State(state): State<AppState>) -> Json<serde_json::Value> {
+    info!("GET /.well-known/jwks.json");
     let keys = vec![state.key_manager.public_jwk.clone()];
     Json(json!({ "keys": keys }))
 }
@@ -65,6 +68,7 @@ pub async fn token(
     State(state): State<AppState>,
     Form(req): Form<TokenRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
+    info!("POST /auth/token?grant_type={}", req.grant_type);
     // TODO: check dynamic client IDs for validity
     let client_id = req.client_id.unwrap_or_else(|| "default".into());
     // TODO: check requested scopes for validity
@@ -184,6 +188,7 @@ pub async fn token(
 
 /// Protected endpoint returning user claims (stubbed for now)
 pub async fn userinfo() -> Json<serde_json::Value> {
+    info!("GET /auth/userinfo");
     // TODO: Implement userinfo endpoint with actual user data
     Json(json!({
         "error": "not_implemented",
@@ -193,6 +198,7 @@ pub async fn userinfo() -> Json<serde_json::Value> {
 
 /// Dynamic Client Registration endpoint (stubbed for now)
 pub async fn register_client() -> Json<serde_json::Value> {
+    info!("POST /auth/register");
     // TODO: Implement client registration, generating client_id
     Json(json!({
         "error": "not_implemented",
@@ -205,6 +211,7 @@ pub async fn signup(
     State(state): State<AppState>,
     Json(req): Json<SignupRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
+    info!("POST /auth/signup\nsignup_request = {:#?}", req);
     // Insert user
     let new_user = NewUser {
         name: req.name,

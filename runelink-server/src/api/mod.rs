@@ -5,6 +5,7 @@ use axum::{
     response::IntoResponse,
     routing::{delete, get, post},
 };
+use log::info;
 use serde::Deserialize;
 
 mod auth;
@@ -127,6 +128,7 @@ pub struct PingParams {
 }
 
 pub async fn ping(Query(params): Query<PingParams>) -> impl IntoResponse {
+    info!("GET /ping?id={:?}&msg={:?}", params.id, params.msg);
     let msg_part = match params.msg {
         Some(msg) => format!(": \"{msg}\""),
         None => "".to_string(),
