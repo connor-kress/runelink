@@ -30,6 +30,8 @@ pub enum ServerCommands {
     Create(ServerCreateArgs),
     /// Create a new server
     Join(ServerJoinArgs),
+    /// Leave a server
+    Leave(ServerLeaveArgs),
     /// Delete a server
     Delete(ServerDeleteArgs),
 }
@@ -70,6 +72,16 @@ pub struct ServerCreateArgs {
 #[derive(clap::Args, Debug)]
 pub struct ServerJoinArgs {
     /// The ID of the server
+    #[clap(long)]
+    pub server_id: Option<Uuid>,
+    /// The domain of the server
+    #[clap(long)]
+    pub domain: Option<String>,
+}
+
+#[derive(clap::Args, Debug)]
+pub struct ServerLeaveArgs {
+    /// The ID of the server to leave
     #[clap(long)]
     pub server_id: Option<Uuid>,
     /// The domain of the server
@@ -228,6 +240,38 @@ pub async fn handle_server_commands(
             )
             .await?;
             println!("Joined server: {}", server.verbose());
+        }
+
+        ServerCommands::Leave(leave_args) => {
+            let account = ctx.account.ok_or(CliError::MissingAccount)?;
+            let api_url = ctx.home_api_url()?;
+            let access_token = ctx.get_access_token().await?;
+            let server = if let Some(server_id) = leave_args.server_id {
+                requests::servers::fetch_by_id(
+                    ctx.client,
+                    &api_url,
+                    server_id,
+                    leave_args.domain.as_deref(),
+                )
+                .await?
+            } else {
+                let domain = leave_args
+                    .domain
+                    .as_deref()
+                    .unwrap_or(account.domain.as_str());
+                get_server_selection(ctx, ServerSelectionType::MemberOnly)
+                    .await?
+            };
+            requests::memberships::delete(
+                ctx.client,
+                &api_url,
+                &access_token,
+                server.id,
+                account.user_id,
+                leave_args.domain.as_deref(),
+            )
+            .await?;
+            println!("Left server: {}", server.verbose());
         }
 
         ServerCommands::Delete(delete_args) => {
