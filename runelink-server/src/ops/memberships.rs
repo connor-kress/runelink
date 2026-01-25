@@ -179,6 +179,78 @@ pub async fn get_by_user(
     Ok(memberships)
 }
 
+/// Delete a server membership.
+/// If target_domain is provided and not the local domain, proxies via federation.
+/// Otherwise, deletes locally.
+pub async fn delete(
+    state: &AppState,
+    session: &mut Session,
+    server_id: Uuid,
+    user_id: Uuid,
+    target_domain: Option<&str>,
+) -> Result<(), ApiError> {
+    // Verify the authenticated user matches the user_id in the path
+    let user_ref = session.user_ref.as_ref().ok_or_else(|| {
+        ApiError::AuthError("User reference required for leaving server".into())
+    })?;
+    if user_ref.id != user_id {
+        return Err(ApiError::BadRequest(
+            "User ID in path does not match authenticated user".into(),
+        ));
+    }
+
+    // Handle local case
+    if !state.config.is_remote_domain(target_domain) {
+        // Verify the membership exists
+        queries::memberships::get_local_member_by_user_and_server(
+            &state.db_pool,
+            server_id,
+            user_id,
+        )
+        .await?;
+        queries::memberships::delete_local(&state.db_pool, server_id, user_id)
+            .await?;
+        Ok(())
+    } else {
+        // Delete on remote domain using federation
+        let domain = target_domain.unwrap();
+        let api_url = get_api_url(domain);
+        let user_ref = session.user_ref.as_ref().ok_or_else(|| {
+            ApiError::Internal(
+                "User reference required for federated membership deletion"
+                    .to_string(),
+            )
+        })?;
+        let token = state.key_manager.issue_federation_jwt_delegated(
+            state.config.api_url(),
+            api_url.clone(),
+            user_ref.id,
+            user_ref.domain.clone(),
+        )?;
+        requests::memberships::federated::delete(
+            &state.http_client,
+            &api_url,
+            &token,
+            server_id,
+            user_id,
+        )
+        .await
+        .map_err(|e| {
+            ApiError::Internal(format!(
+                "Failed to leave server on {domain}: {e}"
+            ))
+        })?;
+        // Also delete from local cache if it exists
+        let _ = queries::memberships::delete_remote(
+            &state.db_pool,
+            server_id,
+            user_id,
+        )
+        .await;
+        Ok(())
+    }
+}
+
 /// Auth requirements for membership operations.
 pub mod auth {
     use super::*;
@@ -190,12 +262,29 @@ pub mod auth {
         }
     }
 
+    pub fn delete(server_id: Uuid, _user_id: Uuid) -> AuthSpec {
+        AuthSpec {
+            // TODO: they could also be the user themselves
+            requirements: vec![Requirement::ServerAdmin { server_id }],
+        }
+    }
+
     pub mod federated {
         use super::*;
 
         pub fn create() -> AuthSpec {
             AuthSpec {
                 requirements: vec![Requirement::Federation],
+            }
+        }
+
+        pub fn delete(server_id: Uuid, _user_id: Uuid) -> AuthSpec {
+            AuthSpec {
+                requirements: vec![
+                    // TODO: they could also be the user themselves
+                    Requirement::Federation,
+                    Requirement::ServerAdmin { server_id },
+                ],
             }
         }
     }

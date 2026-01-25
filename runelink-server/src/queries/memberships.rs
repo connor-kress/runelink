@@ -381,3 +381,47 @@ pub async fn get_remote_server_domains_for_user(
     .map_err(ApiError::from)?;
     Ok(rows.into_iter().map(|row| row.domain).collect())
 }
+
+/// Delete a local server membership.
+pub async fn delete_local(
+    pool: &DbPool,
+    server_id: Uuid,
+    user_id: Uuid,
+) -> Result<(), ApiError> {
+    let result = sqlx::query!(
+        r#"
+        DELETE FROM server_users
+        WHERE server_id = $1 AND user_id = $2
+        "#,
+        server_id,
+        user_id,
+    )
+    .execute(pool)
+    .await?;
+    if result.rows_affected() == 0 {
+        return Err(ApiError::NotFound);
+    }
+    Ok(())
+}
+
+/// Delete a remote server membership from the cache.
+pub async fn delete_remote(
+    pool: &DbPool,
+    server_id: Uuid,
+    user_id: Uuid,
+) -> Result<(), ApiError> {
+    let result = sqlx::query!(
+        r#"
+        DELETE FROM user_remote_server_memberships
+        WHERE remote_server_id = $1 AND user_id = $2
+        "#,
+        server_id,
+        user_id,
+    )
+    .execute(pool)
+    .await?;
+    if result.rows_affected() == 0 {
+        return Err(ApiError::NotFound);
+    }
+    Ok(())
+}

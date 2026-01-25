@@ -73,7 +73,8 @@ pub fn router() -> Router<AppState> {
         )
         .route(
             "/servers/{server_id}/users/{user_id}",
-            get(memberships::get_by_user_and_server),
+            get(memberships::get_by_user_and_server)
+                .delete(memberships::delete),
         )
         .route("/hosts", get(hosts::get_all))
         .route("/hosts/{domain}", get(hosts::get_by_domain))
@@ -85,6 +86,10 @@ pub fn federation_router() -> Router<AppState> {
         .route(
             "/servers/{server_id}/users",
             post(memberships::federated::create),
+        )
+        .route(
+            "/servers/{server_id}/users/{user_id}",
+            delete(memberships::federated::delete),
         )
         .route("/servers", post(servers::federated::create))
         .route("/servers/{server_id}", delete(servers::federated::delete))

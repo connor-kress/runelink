@@ -95,6 +95,34 @@ pub async fn get_by_user(
     Ok((StatusCode::OK, Json(memberships)))
 }
 
+/// DELETE /servers/{server_id}/users/{user_id}
+pub async fn delete(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path((server_id, user_id)): Path<(Uuid, Uuid)>,
+    Query(params): Query<MembershipQueryParams>,
+) -> Result<impl IntoResponse, ApiError> {
+    info!(
+        "DELETE /servers/{server_id}/users/{user_id}?target_domain={:?}",
+        params.target_domain
+    );
+    let mut session = authorize(
+        &state,
+        Principal::from_client_headers(&headers, &state)?,
+        ops::memberships::auth::delete(server_id, user_id),
+    )
+    .await?;
+    ops::memberships::delete(
+        &state,
+        &mut session,
+        server_id,
+        user_id,
+        params.target_domain.as_deref(),
+    )
+    .await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 /// Federation endpoints (server-to-server authentication required).
 pub mod federated {
     use super::*;
@@ -132,5 +160,29 @@ pub mod federated {
             ops::memberships::create(&state, &mut session, &new_membership)
                 .await?;
         Ok((StatusCode::CREATED, Json(membership)))
+    }
+
+    /// DELETE /federation/servers/{server_id}/users/{user_id}
+    pub async fn delete(
+        State(state): State<AppState>,
+        headers: HeaderMap,
+        Path((server_id, user_id)): Path<(Uuid, Uuid)>,
+    ) -> Result<impl IntoResponse, ApiError> {
+        info!("DELETE /federation/servers/{server_id}/users/{user_id}");
+        let mut session = authorize(
+            &state,
+            Principal::from_federation_headers(&headers, &state).await?,
+            ops::memberships::auth::federated::delete(server_id, user_id),
+        )
+        .await?;
+        ops::memberships::delete(
+            &state,
+            &mut session,
+            server_id,
+            user_id,
+            None,
+        )
+        .await?;
+        Ok(StatusCode::NO_CONTENT)
     }
 }
