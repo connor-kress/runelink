@@ -1,12 +1,12 @@
 use runelink_types::RefreshToken;
 
-use crate::{db::DbPool, error::ApiError};
+use crate::{db::DbPool, error::ApiResult};
 
 pub async fn insert_refresh(
     pool: &DbPool,
     rt: &RefreshToken,
-) -> Result<RefreshToken, ApiError> {
-    sqlx::query_as!(
+) -> ApiResult<RefreshToken> {
+    let refresh_token = sqlx::query_as!(
         RefreshToken,
         r#"
         INSERT INTO refresh_tokens (token, user_id, client_id, issued_at,
@@ -22,15 +22,15 @@ pub async fn insert_refresh(
         rt.revoked,
     )
     .fetch_one(pool)
-    .await
-    .map_err(ApiError::from)
+    .await?;
+    Ok(refresh_token)
 }
 
 pub async fn get_refresh(
     pool: &DbPool,
     token_str: &str,
-) -> Result<RefreshToken, ApiError> {
-    sqlx::query_as!(
+) -> ApiResult<RefreshToken> {
+    let refresh_token = sqlx::query_as!(
         RefreshToken,
         r#"
         SELECT token, user_id, client_id, issued_at, expires_at, revoked
@@ -40,15 +40,12 @@ pub async fn get_refresh(
         token_str,
     )
     .fetch_one(pool)
-    .await
-    .map_err(ApiError::from)
+    .await?;
+    Ok(refresh_token)
 }
 
 #[allow(dead_code)]
-pub async fn revoke_refresh(
-    pool: &DbPool,
-    token_str: &str,
-) -> Result<(), ApiError> {
+pub async fn revoke_refresh(pool: &DbPool, token_str: &str) -> ApiResult<()> {
     sqlx::query!(
         r#"
         UPDATE refresh_tokens
@@ -58,7 +55,6 @@ pub async fn revoke_refresh(
         token_str,
     )
     .execute(pool)
-    .await
-    .map(|_| ())
-    .map_err(ApiError::from)
+    .await?;
+    Ok(())
 }

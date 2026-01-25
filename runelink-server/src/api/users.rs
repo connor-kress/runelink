@@ -1,6 +1,6 @@
 use crate::{
     auth::{Principal, authorize},
-    error::ApiError,
+    error::ApiResult,
     ops,
     state::AppState,
 };
@@ -30,7 +30,7 @@ pub async fn create(
     State(state): State<AppState>,
     headers: HeaderMap,
     Json(new_user): Json<NewUser>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> ApiResult<impl IntoResponse> {
     info!("POST /users\nnew_user = {:#?}", new_user);
     let session = authorize(
         &state,
@@ -46,7 +46,7 @@ pub async fn create(
 pub async fn get_all(
     State(state): State<AppState>,
     Query(params): Query<UserQueryParams>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> ApiResult<impl IntoResponse> {
     info!("GET /users?target_domain={:?}", params.target_domain);
     let users =
         ops::users::get_all(&state, params.target_domain.as_deref()).await?;
@@ -58,7 +58,7 @@ pub async fn get_by_id(
     State(state): State<AppState>,
     Path(user_id): Path<Uuid>,
     Query(params): Query<UserQueryParams>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> ApiResult<impl IntoResponse> {
     info!(
         "GET /users/{user_id}?target_domain={:?}",
         params.target_domain
@@ -73,7 +73,7 @@ pub async fn get_by_id(
 pub async fn get_by_name_and_domain(
     State(state): State<AppState>,
     Query(params): Query<GetUserByNameDomainQuery>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> ApiResult<impl IntoResponse> {
     info!(
         "GET /users/find?name={}&domain={}",
         params.name, params.domain
@@ -89,7 +89,7 @@ pub async fn get_user_associated_domains(
     State(state): State<AppState>,
     Path(user_id): Path<Uuid>,
     Query(params): Query<UserQueryParams>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> ApiResult<impl IntoResponse> {
     info!(
         "GET /users/{user_id}/domains?target_domain={:?}",
         params.target_domain
@@ -108,7 +108,7 @@ pub async fn delete(
     State(state): State<AppState>,
     headers: HeaderMap,
     Path(user_id): Path<Uuid>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> ApiResult<impl IntoResponse> {
     info!("DELETE /users/{user_id}");
     let session = authorize(
         &state,
@@ -129,7 +129,7 @@ pub mod federated {
         State(state): State<AppState>,
         headers: HeaderMap,
         Path(user_id): Path<Uuid>,
-    ) -> Result<impl IntoResponse, ApiError> {
+    ) -> ApiResult<impl IntoResponse> {
         info!("DELETE /federation/users/{user_id}");
         let session = authorize(
             &state,

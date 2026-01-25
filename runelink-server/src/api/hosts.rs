@@ -1,4 +1,4 @@
-use crate::{error::ApiError, ops, state::AppState};
+use crate::{error::ApiResult, ops, state::AppState};
 use axum::{
     extract::{Json, Path, State},
     http::StatusCode,
@@ -9,7 +9,7 @@ use log::info;
 /// GET /hosts
 pub async fn get_all(
     State(state): State<AppState>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> ApiResult<impl IntoResponse> {
     info!("GET /hosts");
     let hosts = ops::hosts::get_all(&state).await?;
     Ok((StatusCode::OK, Json(hosts)))
@@ -19,7 +19,7 @@ pub async fn get_all(
 pub async fn get_by_domain(
     State(state): State<AppState>,
     Path(domain): Path<String>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> ApiResult<impl IntoResponse> {
     info!("GET /hosts/{domain}");
     let host = ops::hosts::get_by_domain(&state, &domain).await?;
     Ok((StatusCode::OK, Json(host)))

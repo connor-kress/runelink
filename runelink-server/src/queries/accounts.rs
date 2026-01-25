@@ -1,14 +1,14 @@
 use runelink_types::LocalAccount;
 use uuid::Uuid;
 
-use crate::{db::DbPool, error::ApiError};
+use crate::{db::DbPool, error::ApiResult};
 
 pub async fn insert(
     pool: &DbPool,
     user_id: Uuid,
     password_hash: &str,
-) -> Result<LocalAccount, ApiError> {
-    sqlx::query_as!(
+) -> ApiResult<LocalAccount> {
+    let local_account = sqlx::query_as!(
         LocalAccount,
         r#"
         INSERT INTO local_accounts (user_id, password_hash)
@@ -19,32 +19,28 @@ pub async fn insert(
         password_hash,
     )
     .fetch_one(pool)
-    .await
-    .map_err(ApiError::from)
+    .await?;
+    Ok(local_account)
 }
 
 pub async fn get_by_user(
     pool: &DbPool,
     user_id: Uuid,
-) -> Result<LocalAccount, ApiError> {
-    sqlx::query_as!(
+) -> ApiResult<LocalAccount> {
+    let local_account = sqlx::query_as!(
         LocalAccount,
         "SELECT * FROM local_accounts WHERE user_id = $1;",
         user_id,
     )
     .fetch_one(pool)
-    .await
-    .map_err(ApiError::from)
+    .await?;
+    Ok(local_account)
 }
 
 #[allow(dead_code)]
-pub async fn delete_by_user(
-    pool: &DbPool,
-    user_id: Uuid,
-) -> Result<(), ApiError> {
+pub async fn delete_by_user(pool: &DbPool, user_id: Uuid) -> ApiResult<()> {
     sqlx::query!("DELETE FROM local_accounts WHERE user_id = $1;", user_id)
         .execute(pool)
-        .await
-        .map_err(ApiError::from)?;
+        .await?;
     Ok(())
 }

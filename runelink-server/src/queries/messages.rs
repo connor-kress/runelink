@@ -4,7 +4,7 @@ use sqlx::types::Json;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::{db::DbPool, error::ApiError};
+use crate::{db::DbPool, error::ApiResult};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DbMessage {
@@ -35,7 +35,7 @@ pub async fn insert(
     pool: &DbPool,
     channel_id: Uuid,
     new_message: &NewMessage,
-) -> Result<Message, ApiError> {
+) -> ApiResult<Message> {
     let new_id: Uuid = sqlx::query_scalar!(
         r#"
         INSERT INTO messages (channel_id, author_id, body)
@@ -47,13 +47,12 @@ pub async fn insert(
         new_message.body,
     )
     .fetch_one(pool)
-    .await
-    .map_err(ApiError::from)?;
-
-    get_by_id(pool, new_id).await
+    .await?;
+    let message = get_by_id(pool, new_id).await?;
+    Ok(message)
 }
 
-pub async fn get_all(pool: &DbPool) -> Result<Vec<Message>, ApiError> {
+pub async fn get_all(pool: &DbPool) -> ApiResult<Vec<Message>> {
     let rows = sqlx::query_as!(
         DbMessage,
         r#"
@@ -71,13 +70,14 @@ pub async fn get_all(pool: &DbPool) -> Result<Vec<Message>, ApiError> {
     )
     .fetch_all(pool)
     .await?;
-    Ok(rows.into_iter().map(Message::from).collect())
+    let messages = rows.into_iter().map(Message::from).collect();
+    Ok(messages)
 }
 
 pub async fn get_by_server(
     pool: &DbPool,
     server_id: Uuid,
-) -> Result<Vec<Message>, ApiError> {
+) -> ApiResult<Vec<Message>> {
     let rows = sqlx::query_as!(
         DbMessage,
         r#"
@@ -98,13 +98,14 @@ pub async fn get_by_server(
     )
     .fetch_all(pool)
     .await?;
-    Ok(rows.into_iter().map(Message::from).collect())
+    let messages = rows.into_iter().map(Message::from).collect();
+    Ok(messages)
 }
 
 pub async fn get_by_channel(
     pool: &DbPool,
     channel_id: Uuid,
-) -> Result<Vec<Message>, ApiError> {
+) -> ApiResult<Vec<Message>> {
     let rows = sqlx::query_as!(
         DbMessage,
         r#"
@@ -124,14 +125,12 @@ pub async fn get_by_channel(
     )
     .fetch_all(pool)
     .await?;
-    Ok(rows.into_iter().map(Message::from).collect())
+    let messages = rows.into_iter().map(Message::from).collect();
+    Ok(messages)
 }
 
-pub async fn get_by_id(
-    pool: &DbPool,
-    msg_id: Uuid,
-) -> Result<Message, ApiError> {
-    sqlx::query_as!(
+pub async fn get_by_id(pool: &DbPool, msg_id: Uuid) -> ApiResult<Message> {
+    let db_message = sqlx::query_as!(
         DbMessage,
         r#"
         SELECT
@@ -148,15 +147,13 @@ pub async fn get_by_id(
         msg_id,
     )
     .fetch_one(pool)
-    .await
-    .map_err(ApiError::from)
-    .map(Message::from)
+    .await?;
+    Ok(db_message.into())
 }
 
-pub async fn delete(pool: &DbPool, message_id: Uuid) -> Result<(), ApiError> {
+pub async fn delete(pool: &DbPool, message_id: Uuid) -> ApiResult<()> {
     sqlx::query!("DELETE FROM messages WHERE id = $1;", message_id)
         .execute(pool)
-        .await
-        .map_err(ApiError::from)?;
+        .await?;
     Ok(())
 }

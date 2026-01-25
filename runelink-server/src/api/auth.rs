@@ -1,4 +1,8 @@
-use crate::{error::ApiError, queries, state::AppState};
+use crate::{
+    error::{ApiError, ApiResult},
+    queries,
+    state::AppState,
+};
 use argon2::{
     Argon2, PasswordHasher, PasswordVerifier,
     password_hash::{PasswordHash, SaltString, rand_core::OsRng},
@@ -67,7 +71,7 @@ pub async fn jwks(State(state): State<AppState>) -> Json<serde_json::Value> {
 pub async fn token(
     State(state): State<AppState>,
     Form(req): Form<TokenRequest>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> ApiResult<impl IntoResponse> {
     info!("POST /auth/token?grant_type={}", req.grant_type);
     // TODO: check dynamic client IDs for validity
     let client_id = req.client_id.unwrap_or_else(|| "default".into());
@@ -210,7 +214,7 @@ pub async fn register_client() -> Json<serde_json::Value> {
 pub async fn signup(
     State(state): State<AppState>,
     Json(req): Json<SignupRequest>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> ApiResult<impl IntoResponse> {
     info!("POST /auth/signup\nsignup_request = {:#?}", req);
     // Insert user
     let new_user = NewUser {

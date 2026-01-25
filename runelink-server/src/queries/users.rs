@@ -2,13 +2,10 @@ use runelink_types::{NewUser, User};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::{db::DbPool, error::ApiError};
+use crate::{db::DbPool, error::ApiResult};
 
-pub async fn insert(
-    pool: &DbPool,
-    new_user: &NewUser,
-) -> Result<User, ApiError> {
-    sqlx::query_as!(
+pub async fn insert(pool: &DbPool, new_user: &NewUser) -> ApiResult<User> {
+    let user = sqlx::query_as!(
         User,
         r#"
         INSERT INTO users (name, domain)
@@ -19,15 +16,15 @@ pub async fn insert(
         new_user.domain,
     )
     .fetch_one(pool)
-    .await
-    .map_err(ApiError::from)
+    .await?;
+    Ok(user)
 }
 
 pub async fn insert_remote(
     pool: &DbPool,
     remote_user: &User,
-) -> Result<User, ApiError> {
-    sqlx::query_as!(
+) -> ApiResult<User> {
+    let user = sqlx::query_as!(
         User,
         r#"
         INSERT INTO users (id, name, domain, created_at, updated_at, synced_at)
@@ -42,48 +39,45 @@ pub async fn insert_remote(
         OffsetDateTime::now_utc(),
     )
     .fetch_one(pool)
-    .await
-    .map_err(ApiError::from)
+    .await?;
+    Ok(user)
 }
 
-pub async fn get_all(pool: &DbPool) -> Result<Vec<User>, ApiError> {
-    sqlx::query_as!(User, "SELECT * FROM users;")
+pub async fn get_all(pool: &DbPool) -> ApiResult<Vec<User>> {
+    let users = sqlx::query_as!(User, "SELECT * FROM users;")
         .fetch_all(pool)
-        .await
-        .map_err(ApiError::from)
+        .await?;
+    Ok(users)
 }
 
-pub async fn get_by_id(pool: &DbPool, user_id: Uuid) -> Result<User, ApiError> {
-    sqlx::query_as!(User, "SELECT * FROM users WHERE id = $1;", user_id,)
-        .fetch_one(pool)
-        .await
-        .map_err(ApiError::from)
+pub async fn get_by_id(pool: &DbPool, user_id: Uuid) -> ApiResult<User> {
+    let user =
+        sqlx::query_as!(User, "SELECT * FROM users WHERE id = $1;", user_id,)
+            .fetch_one(pool)
+            .await?;
+    Ok(user)
 }
 
 pub async fn get_by_name_and_domain(
     pool: &DbPool,
     name: String,
     domain: String,
-) -> Result<User, ApiError> {
-    sqlx::query_as!(
+) -> ApiResult<User> {
+    let user = sqlx::query_as!(
         User,
         "SELECT * FROM users WHERE name = $1 AND domain = $2;",
         name,
         domain,
     )
     .fetch_one(pool)
-    .await
-    .map_err(ApiError::from)
+    .await?;
+    Ok(user)
 }
 
-pub async fn delete_by_id(
-    pool: &DbPool,
-    user_id: Uuid,
-) -> Result<(), ApiError> {
+pub async fn delete_by_id(pool: &DbPool, user_id: Uuid) -> ApiResult<()> {
     sqlx::query!("DELETE FROM users WHERE id = $1;", user_id)
         .execute(pool)
-        .await
-        .map_err(ApiError::from)?;
+        .await?;
     Ok(())
 }
 
@@ -91,14 +85,13 @@ pub async fn delete_by_id_and_domain(
     pool: &DbPool,
     user_id: Uuid,
     domain: &str,
-) -> Result<(), ApiError> {
+) -> ApiResult<()> {
     sqlx::query!(
         "DELETE FROM users WHERE id = $1 AND domain = $2;",
         user_id,
         domain
     )
     .execute(pool)
-    .await
-    .map_err(ApiError::from)?;
+    .await?;
     Ok(())
 }

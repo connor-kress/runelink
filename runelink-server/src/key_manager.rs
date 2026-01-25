@@ -12,7 +12,7 @@ use std::path::PathBuf;
 use time::Duration;
 use uuid::Uuid;
 
-use crate::error::ApiError;
+use crate::error::{ApiError, ApiResult};
 
 /// Handles JWT signing keys and JWKS publication
 #[allow(dead_code)]
@@ -36,7 +36,7 @@ impl std::fmt::Debug for KeyManager {
 
 impl KeyManager {
     /// Load keys if they exist under `path` or generate a new Ed25519 keypair
-    pub fn load_or_generate(path: PathBuf) -> Result<Self, ApiError> {
+    pub fn load_or_generate(path: PathBuf) -> ApiResult<Self> {
         // Stored formats:
         // - private: PKCS#8 DER
         // - public:  SPKI (SubjectPublicKeyInfo) DER
@@ -134,7 +134,7 @@ impl KeyManager {
         &self,
         issuer_server_id: String,
         audience_server_id: String,
-    ) -> Result<String, ApiError> {
+    ) -> ApiResult<String> {
         let lifetime = Duration::minutes(5); // Short-lived for s2s
         let claims = FederationClaims::new_server_only(
             issuer_server_id,
@@ -159,7 +159,7 @@ impl KeyManager {
         audience_server_id: String,
         user_id: Uuid,
         user_domain: String,
-    ) -> Result<String, ApiError> {
+    ) -> ApiResult<String> {
         let lifetime = Duration::minutes(5); // Short-lived for s2s
         let claims = FederationClaims::new_delegated(
             issuer_server_id,

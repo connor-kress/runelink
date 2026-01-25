@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use crate::{
     auth::{AuthSpec, Requirement, Session},
-    error::ApiError,
+    error::{ApiError, ApiResult},
     queries,
     state::AppState,
 };
@@ -19,7 +19,7 @@ pub async fn create(
     state: &AppState,
     session: &mut Session,
     new_membership: &NewServerMembership,
-) -> Result<FullServerMembership, ApiError> {
+) -> ApiResult<FullServerMembership> {
     // If this membership is for a remote server, proxy via federation and cache locally.
     if state
         .config
@@ -102,7 +102,7 @@ pub async fn get_members_by_server(
     state: &AppState,
     server_id: Uuid,
     target_domain: Option<&str>,
-) -> Result<Vec<ServerMember>, ApiError> {
+) -> ApiResult<Vec<ServerMember>> {
     // Handle local case
     if !state.config.is_remote_domain(target_domain) {
         let members = queries::memberships::get_members_by_server(
@@ -139,7 +139,7 @@ pub async fn get_member_by_user_and_server(
     server_id: Uuid,
     user_id: Uuid,
     target_domain: Option<&str>,
-) -> Result<ServerMember, ApiError> {
+) -> ApiResult<ServerMember> {
     // Handle local case
     if !state.config.is_remote_domain(target_domain) {
         let member = queries::memberships::get_local_member_by_user_and_server(
@@ -174,7 +174,7 @@ pub async fn get_member_by_user_and_server(
 pub async fn get_by_user(
     state: &AppState,
     user_id: Uuid,
-) -> Result<Vec<ServerMembership>, ApiError> {
+) -> ApiResult<Vec<ServerMembership>> {
     let memberships = queries::memberships::get_by_user(state, user_id).await?;
     Ok(memberships)
 }
@@ -188,7 +188,7 @@ pub async fn delete(
     server_id: Uuid,
     user_id: Uuid,
     target_domain: Option<&str>,
-) -> Result<(), ApiError> {
+) -> ApiResult<()> {
     // Verify the authenticated user matches the user_id in the path
     let user_ref = session.user_ref.as_ref().ok_or_else(|| {
         ApiError::AuthError("User reference required for leaving server".into())

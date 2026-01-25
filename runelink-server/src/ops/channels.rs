@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 use crate::{
     auth::{AuthSpec, Requirement, Session},
-    error::ApiError,
+    error::{ApiError, ApiResult},
     queries,
     state::AppState,
 };
@@ -18,7 +18,7 @@ pub async fn create(
     server_id: Uuid,
     new_channel: &NewChannel,
     target_domain: Option<&str>,
-) -> Result<Channel, ApiError> {
+) -> ApiResult<Channel> {
     // Handle local case
     if !state.config.is_remote_domain(target_domain) {
         let channel =
@@ -65,7 +65,7 @@ pub async fn get_all(
     state: &AppState,
     session: &Session,
     target_domain: Option<&str>,
-) -> Result<Vec<Channel>, ApiError> {
+) -> ApiResult<Vec<Channel>> {
     if !state.config.is_remote_domain(target_domain) {
         // Handle local case
         let channels = queries::channels::get_all(&state.db_pool).await?;
@@ -109,7 +109,7 @@ pub async fn get_by_server(
     session: &Session,
     server_id: Uuid,
     target_domain: Option<&str>,
-) -> Result<Vec<Channel>, ApiError> {
+) -> ApiResult<Vec<Channel>> {
     if !state.config.is_remote_domain(target_domain) {
         // Handle local case
         queries::channels::get_by_server(&state.db_pool, server_id).await
@@ -154,7 +154,7 @@ pub async fn get_by_id(
     server_id: Uuid,
     channel_id: Uuid,
     target_domain: Option<&str>,
-) -> Result<Channel, ApiError> {
+) -> ApiResult<Channel> {
     if !state.config.is_remote_domain(target_domain) {
         // Handle local case
         let channel =
@@ -202,7 +202,7 @@ pub async fn delete(
     server_id: Uuid,
     channel_id: Uuid,
     target_domain: Option<&str>,
-) -> Result<(), ApiError> {
+) -> ApiResult<()> {
     // Handle local case
     if !state.config.is_remote_domain(target_domain) {
         // Verify the channel belongs to the server

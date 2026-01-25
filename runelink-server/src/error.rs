@@ -1,12 +1,14 @@
 use axum::{
+    Json,
     http::StatusCode,
     response::{IntoResponse, Response},
-    Json,
 };
 use runelink_client::Error as ClientError;
 use serde::Serialize;
 use thiserror::Error;
 use tokio::task::JoinError;
+
+pub type ApiResult<T> = std::result::Result<T, ApiError>;
 
 #[derive(Error, Debug)]
 pub enum ApiError {

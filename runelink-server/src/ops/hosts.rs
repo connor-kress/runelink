@@ -2,19 +2,20 @@ use runelink_client::{requests::hosts, util::get_api_url};
 use runelink_types::Host;
 use uuid::Uuid;
 
-use crate::{error::ApiError, queries, state::AppState};
+use crate::{
+    error::{ApiError, ApiResult},
+    queries,
+    state::AppState,
+};
 
 /// List all hosts (public).
-pub async fn get_all(state: &AppState) -> Result<Vec<Host>, ApiError> {
+pub async fn get_all(state: &AppState) -> ApiResult<Vec<Host>> {
     let hosts = queries::hosts::get_all(&state.db_pool).await?;
     Ok(hosts)
 }
 
 /// Get a host by domain (public).
-pub async fn get_by_domain(
-    state: &AppState,
-    domain: &str,
-) -> Result<Host, ApiError> {
+pub async fn get_by_domain(state: &AppState, domain: &str) -> ApiResult<Host> {
     let host = queries::hosts::get_by_domain(&state.db_pool, domain).await?;
     Ok(host)
 }
@@ -26,7 +27,7 @@ pub async fn get_user_associated_domains(
     state: &AppState,
     user_id: Uuid,
     target_domain: Option<&str>,
-) -> Result<Vec<String>, ApiError> {
+) -> ApiResult<Vec<String>> {
     // Handle local case
     if !state.config.is_remote_domain(target_domain) {
         let domains = queries::hosts::get_user_associated_domains(

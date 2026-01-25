@@ -1,6 +1,6 @@
 use crate::{
     auth::{Principal, authorize},
-    error::ApiError,
+    error::{ApiError, ApiResult},
     ops,
     state::AppState,
 };
@@ -24,7 +24,7 @@ pub async fn get_members_by_server(
     State(state): State<AppState>,
     Path(server_id): Path<Uuid>,
     Query(params): Query<MembershipQueryParams>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> ApiResult<impl IntoResponse> {
     info!(
         "GET /servers/{server_id}/users?target_domain={:?}",
         params.target_domain
@@ -43,7 +43,7 @@ pub async fn get_by_user_and_server(
     State(state): State<AppState>,
     Path((server_id, user_id)): Path<(Uuid, Uuid)>,
     Query(params): Query<MembershipQueryParams>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> ApiResult<impl IntoResponse> {
     info!(
         "GET /servers/{server_id}/users/{user_id}?target_domain={:?}",
         params.target_domain
@@ -64,7 +64,7 @@ pub async fn create(
     headers: HeaderMap,
     Path(server_id): Path<Uuid>,
     Json(new_membership): Json<NewServerMembership>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> ApiResult<impl IntoResponse> {
     info!(
         "POST /servers/{server_id}/users\nnew_membership = {:#?}",
         new_membership
@@ -89,7 +89,7 @@ pub async fn create(
 pub async fn get_by_user(
     State(state): State<AppState>,
     Path(user_id): Path<Uuid>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> ApiResult<impl IntoResponse> {
     info!("GET /users/{user_id}/servers");
     let memberships = ops::memberships::get_by_user(&state, user_id).await?;
     Ok((StatusCode::OK, Json(memberships)))
@@ -101,7 +101,7 @@ pub async fn delete(
     headers: HeaderMap,
     Path((server_id, user_id)): Path<(Uuid, Uuid)>,
     Query(params): Query<MembershipQueryParams>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> ApiResult<impl IntoResponse> {
     info!(
         "DELETE /servers/{server_id}/users/{user_id}?target_domain={:?}",
         params.target_domain
@@ -133,7 +133,7 @@ pub mod federated {
         headers: HeaderMap,
         Path(server_id): Path<Uuid>,
         Json(new_membership): Json<NewServerMembership>,
-    ) -> Result<impl IntoResponse, ApiError> {
+    ) -> ApiResult<impl IntoResponse> {
         info!(
             "POST /federation/servers/{server_id}/users\nnew_membership = {:#?}",
             new_membership
@@ -167,7 +167,7 @@ pub mod federated {
         State(state): State<AppState>,
         headers: HeaderMap,
         Path((server_id, user_id)): Path<(Uuid, Uuid)>,
-    ) -> Result<impl IntoResponse, ApiError> {
+    ) -> ApiResult<impl IntoResponse> {
         info!("DELETE /federation/servers/{server_id}/users/{user_id}");
         let mut session = authorize(
             &state,

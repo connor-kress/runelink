@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use crate::{
     auth::{AuthSpec, Requirement, Session},
-    error::ApiError,
+    error::{ApiError, ApiResult},
     queries,
     state::AppState,
 };
@@ -19,7 +19,7 @@ pub async fn create(
     session: &Session,
     new_server: &NewServer,
     target_domain: Option<&str>,
-) -> Result<Server, ApiError> {
+) -> ApiResult<Server> {
     // Handle local case
     if !state.config.is_remote_domain(target_domain) {
         let server = queries::servers::insert(state, new_server).await?;
@@ -78,7 +78,7 @@ pub async fn create(
 pub async fn get_all(
     state: &AppState,
     target_domain: Option<&str>,
-) -> Result<Vec<Server>, ApiError> {
+) -> ApiResult<Vec<Server>> {
     if !state.config.is_remote_domain(target_domain) {
         // Handle local case
         // TODO: add visibility specification for servers
@@ -109,7 +109,7 @@ pub async fn get_by_id(
     state: &AppState,
     server_id: Uuid,
     target_domain: Option<&str>,
-) -> Result<Server, ApiError> {
+) -> ApiResult<Server> {
     if !state.config.is_remote_domain(target_domain) {
         // Handle local case
         // TODO: separate public and private server objects?
@@ -143,7 +143,7 @@ pub async fn get_with_channels(
     session: &Session,
     server_id: Uuid,
     target_domain: Option<&str>,
-) -> Result<ServerWithChannels, ApiError> {
+) -> ApiResult<ServerWithChannels> {
     if !state.config.is_remote_domain(target_domain) {
         // Handle local case
         let (server, channels) = tokio::join!(
@@ -195,7 +195,7 @@ pub async fn delete(
     session: &Session,
     server_id: Uuid,
     target_domain: Option<&str>,
-) -> Result<(), ApiError> {
+) -> ApiResult<()> {
     // Handle local case
     if !state.config.is_remote_domain(target_domain) {
         queries::servers::delete(state, server_id).await?;

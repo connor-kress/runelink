@@ -8,7 +8,10 @@ use runelink_types::{FederationClaims, PublicJwk};
 use serde::Deserialize;
 use time::{Duration, OffsetDateTime};
 
-use crate::{error::ApiError, state::AppState};
+use crate::{
+    error::{ApiError, ApiResult},
+    state::AppState,
+};
 use runelink_client::util::get_api_url;
 
 #[derive(Debug, Clone)]
@@ -34,7 +37,7 @@ struct IssOnly {
     iss: String,
 }
 
-fn parse_iss_unverified(token: &str) -> Result<String, ApiError> {
+fn parse_iss_unverified(token: &str) -> ApiResult<String> {
     // We need `iss` to locate the JWKS before we can verify the signature.
     let parts: Vec<&str> = token.split('.').collect();
     if parts.len() != 3 {
@@ -49,10 +52,7 @@ fn parse_iss_unverified(token: &str) -> Result<String, ApiError> {
     Ok(parsed.iss)
 }
 
-async fn fetch_jwks(
-    state: &AppState,
-    iss: &str,
-) -> Result<CachedJwks, ApiError> {
+async fn fetch_jwks(state: &AppState, iss: &str) -> ApiResult<CachedJwks> {
     let url = jwks_url_for_iss(iss);
     let response =
         state.http_client.get(url).send().await.map_err(|e| {
@@ -90,10 +90,7 @@ async fn fetch_jwks(
     })
 }
 
-async fn get_cached_jwks(
-    state: &AppState,
-    iss: &str,
-) -> Result<CachedJwks, ApiError> {
+async fn get_cached_jwks(state: &AppState, iss: &str) -> ApiResult<CachedJwks> {
     let iss_key = iss.trim_end_matches('/');
     // Simple time-based cache. This will be expanded later with better
     // negative caching and rotation support.
@@ -118,7 +115,7 @@ async fn get_cached_jwks(
 fn select_public_key_bytes<'a>(
     cached: &'a CachedJwks,
     kid: Option<&str>,
-) -> Result<&'a [u8], ApiError> {
+) -> ApiResult<&'a [u8]> {
     if let Some(kid) = kid {
         return cached
             .keys_by_kid
@@ -148,9 +145,10 @@ pub async fn decode_federation_jwt(
     state: &AppState,
     token: &str,
     expected_audience: &str,
-) -> Result<FederationClaims, ApiError> {
-    let header = jsonwebtoken::decode_header(token)
-        .map_err(|e| ApiError::AuthError(format!("invalid JWT header: {e}")))?;
+) -> ApiResult<FederationClaims> {
+    let header = jsonwebtoken::decode_header(token).map_err(|e| {
+        ApiError::AuthError(format!("invalid JWT header: {e}"))
+    })?;
     let iss = parse_iss_unverified(token)?;
 
     let cached = get_cached_jwks(state, &iss).await?;

@@ -2,7 +2,7 @@
 
 use crate::{
     bearer_auth::{ClientAuth, FederationAuth},
-    error::ApiError,
+    error::{ApiError, ApiResult},
     queries,
     state::AppState,
 };
@@ -20,7 +20,7 @@ impl Principal {
     pub fn from_client_headers(
         headers: &HeaderMap,
         state: &AppState,
-    ) -> Result<Self, ApiError> {
+    ) -> ApiResult<Self> {
         let auth = ClientAuth::from_headers(headers, state)?;
         Ok(Self::Client(auth))
     }
@@ -28,7 +28,7 @@ impl Principal {
     pub async fn from_federation_headers(
         headers: &HeaderMap,
         state: &AppState,
-    ) -> Result<Self, ApiError> {
+    ) -> ApiResult<Self> {
         let auth = FederationAuth::from_headers(headers, state).await?;
         Ok(Self::Federation(auth))
     }
@@ -75,7 +75,7 @@ impl Session {
     pub async fn lookup_user(
         &mut self,
         state: &AppState,
-    ) -> Result<Option<User>, ApiError> {
+    ) -> ApiResult<Option<User>> {
         // If already cached, return the cached result
         if let Some(cached) = &self.cached_user {
             return Ok(cached.clone());
@@ -99,10 +99,7 @@ impl Session {
 
     /// Require that a delegated user exists locally.
     /// Returns an error if the user reference is missing or the user is not in the DB.
-    pub async fn require_user(
-        &mut self,
-        state: &AppState,
-    ) -> Result<User, ApiError> {
+    pub async fn require_user(&mut self, state: &AppState) -> ApiResult<User> {
         // Clone the user reference before calling lookup_user (which needs &mut self)
         let user_ref = self.user_ref.clone().ok_or_else(|| {
             ApiError::AuthError("No delegated user in session".into())
@@ -127,7 +124,7 @@ pub async fn authorize(
     state: &AppState,
     principal: Principal,
     spec: AuthSpec,
-) -> Result<Session, ApiError> {
+) -> ApiResult<Session> {
     // Extract user identity from the principal (no DB lookups yet)
     let (user_ref, federation_claims) = match &principal {
         Principal::Client(auth) => {

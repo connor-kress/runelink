@@ -3,7 +3,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::{
-    config::ServerConfig, db::DbPool, error::ApiError, state::AppState,
+    config::ServerConfig, db::DbPool, error::ApiResult, state::AppState,
 };
 
 #[derive(sqlx::FromRow, Debug)]
@@ -32,7 +32,7 @@ impl LocalServerRow {
 pub async fn insert(
     state: &AppState,
     new_server: &NewServer,
-) -> Result<Server, ApiError> {
+) -> ApiResult<Server> {
     let row = sqlx::query_as!(
         LocalServerRow,
         r#"
@@ -48,10 +48,7 @@ pub async fn insert(
     Ok(row.into_server(&state.config))
 }
 
-pub async fn upsert_remote(
-    pool: &DbPool,
-    server: &Server,
-) -> Result<(), ApiError> {
+pub async fn upsert_remote(pool: &DbPool, server: &Server) -> ApiResult<()> {
     sqlx::query!(
         r#"
         INSERT INTO cached_remote_servers (
@@ -78,10 +75,7 @@ pub async fn upsert_remote(
     .await?;
     Ok(())
 }
-pub async fn get_by_id(
-    state: &AppState,
-    server_id: Uuid,
-) -> Result<Server, ApiError> {
+pub async fn get_by_id(state: &AppState, server_id: Uuid) -> ApiResult<Server> {
     let row = sqlx::query_as!(
         LocalServerRow,
         "SELECT * FROM servers WHERE id = $1;",
@@ -92,7 +86,7 @@ pub async fn get_by_id(
     Ok(row.into_server(&state.config))
 }
 
-pub async fn get_all(state: &AppState) -> Result<Vec<Server>, ApiError> {
+pub async fn get_all(state: &AppState) -> ApiResult<Vec<Server>> {
     let rows = sqlx::query_as!(LocalServerRow, "SELECT * FROM servers",)
         .fetch_all(state.db_pool.as_ref())
         .await?;
@@ -103,7 +97,7 @@ pub async fn get_all(state: &AppState) -> Result<Vec<Server>, ApiError> {
     Ok(servers)
 }
 
-pub async fn delete(state: &AppState, server_id: Uuid) -> Result<(), ApiError> {
+pub async fn delete(state: &AppState, server_id: Uuid) -> ApiResult<()> {
     sqlx::query!("DELETE FROM servers WHERE id = $1;", server_id)
         .execute(state.db_pool.as_ref())
         .await?;

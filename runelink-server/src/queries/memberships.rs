@@ -8,7 +8,10 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::{
-    config::ServerConfig, db::DbPool, error::ApiError, state::AppState,
+    config::ServerConfig,
+    db::DbPool,
+    error::{ApiError, ApiResult},
+    state::AppState,
 };
 
 /// An intermediate type needed because of sqlx limitations
@@ -55,7 +58,7 @@ impl ServerMembershipRow {
         self,
         user_id: Uuid,
         config: &ServerConfig,
-    ) -> Result<ServerMembership, ApiError> {
+    ) -> ApiResult<ServerMembership> {
         let server_domain = self
             .server_domain_from_db
             .unwrap_or_else(|| config.local_domain());
@@ -83,7 +86,7 @@ impl ServerMembershipRow {
 pub async fn insert_local(
     pool: &DbPool,
     new_membership: &NewServerMembership,
-) -> Result<ServerMember, ApiError> {
+) -> ApiResult<ServerMember> {
     sqlx::query!(
         r#"
         INSERT INTO server_users (server_id, user_id, role)
@@ -106,7 +109,7 @@ pub async fn insert_local(
 pub async fn insert_remote(
     pool: &DbPool,
     membership: &ServerMembership,
-) -> Result<ServerMembership, ApiError> {
+) -> ApiResult<ServerMembership> {
     // create (or no-op if already exists)
     sqlx::query!(
         r#"
@@ -170,7 +173,7 @@ pub async fn get_local_member_by_user_and_server(
     pool: &DbPool,
     server_id: Uuid,
     user_id: Uuid,
-) -> Result<ServerMember, ApiError> {
+) -> ApiResult<ServerMember> {
     sqlx::query_as!(
         ServerMemberRow,
         r#"
@@ -197,7 +200,7 @@ pub async fn get_remote_member_by_user_and_server(
     pool: &DbPool,
     server_id: Uuid,
     user_id: Uuid,
-) -> Result<ServerMember, ApiError> {
+) -> ApiResult<ServerMember> {
     sqlx::query_as!(
         ServerMemberRow,
         r#"
@@ -224,7 +227,7 @@ pub async fn get_member_by_user_and_server(
     pool: &DbPool,
     server_id: Uuid,
     user_id: Uuid,
-) -> Result<ServerMember, ApiError> {
+) -> ApiResult<ServerMember> {
     // TODO: This could be optimized to check both in one query
     // Try local membership first
     match get_local_member_by_user_and_server(pool, server_id, user_id).await {
@@ -239,7 +242,7 @@ pub async fn get_member_by_user_and_server(
 pub async fn get_members_by_server(
     pool: &DbPool,
     server_id: Uuid,
-) -> Result<Vec<ServerMember>, ApiError> {
+) -> ApiResult<Vec<ServerMember>> {
     sqlx::query_as!(
         ServerMemberRow,
         r#"
@@ -266,7 +269,7 @@ pub async fn get_local_by_user_and_server(
     state: &AppState,
     server_id: Uuid,
     user_id: Uuid,
-) -> Result<ServerMembership, ApiError> {
+) -> ApiResult<ServerMembership> {
     let row = sqlx::query!(
         r#"
         SELECT
@@ -310,7 +313,7 @@ pub async fn get_local_by_user_and_server(
 pub async fn get_by_user(
     state: &AppState,
     user_id: Uuid,
-) -> Result<Vec<ServerMembership>, ApiError> {
+) -> ApiResult<Vec<ServerMembership>> {
     let rows = sqlx::query_as!(
         ServerMembershipRow,
         r#"
@@ -365,7 +368,7 @@ pub async fn get_by_user(
 pub async fn get_remote_server_domains_for_user(
     pool: &DbPool,
     user_id: Uuid,
-) -> Result<Vec<String>, ApiError> {
+) -> ApiResult<Vec<String>> {
     let rows = sqlx::query!(
         r#"
         SELECT DISTINCT crs.domain
@@ -377,8 +380,7 @@ pub async fn get_remote_server_domains_for_user(
         user_id,
     )
     .fetch_all(pool)
-    .await
-    .map_err(ApiError::from)?;
+    .await?;
     Ok(rows.into_iter().map(|row| row.domain).collect())
 }
 
@@ -387,7 +389,7 @@ pub async fn delete_local(
     pool: &DbPool,
     server_id: Uuid,
     user_id: Uuid,
-) -> Result<(), ApiError> {
+) -> ApiResult<()> {
     let result = sqlx::query!(
         r#"
         DELETE FROM server_users
@@ -409,7 +411,7 @@ pub async fn delete_remote(
     pool: &DbPool,
     server_id: Uuid,
     user_id: Uuid,
-) -> Result<(), ApiError> {
+) -> ApiResult<()> {
     let result = sqlx::query!(
         r#"
         DELETE FROM user_remote_server_memberships

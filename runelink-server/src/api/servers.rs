@@ -1,6 +1,6 @@
 use crate::{
     auth::{Principal, authorize},
-    error::ApiError,
+    error::ApiResult,
     ops,
     state::AppState,
 };
@@ -25,7 +25,7 @@ pub async fn create(
     headers: HeaderMap,
     Query(params): Query<ServerQueryParams>,
     Json(new_server): Json<NewServer>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> ApiResult<impl IntoResponse> {
     info!(
         "POST /servers?target_domain={:?}\nnew_server = {:#?}",
         params.target_domain, new_server
@@ -50,7 +50,7 @@ pub async fn create(
 pub async fn get_all(
     State(state): State<AppState>,
     Query(params): Query<ServerQueryParams>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> ApiResult<impl IntoResponse> {
     info!("GET /servers?target_domain={:?}", params.target_domain);
     let servers =
         ops::servers::get_all(&state, params.target_domain.as_deref()).await?;
@@ -62,7 +62,7 @@ pub async fn get_by_id(
     State(state): State<AppState>,
     Path(server_id): Path<Uuid>,
     Query(params): Query<ServerQueryParams>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> ApiResult<impl IntoResponse> {
     info!(
         "GET /servers/{server_id}?target_domain={:?}",
         params.target_domain
@@ -82,7 +82,7 @@ pub async fn get_with_channels(
     headers: HeaderMap,
     Path(server_id): Path<Uuid>,
     Query(params): Query<ServerQueryParams>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> ApiResult<impl IntoResponse> {
     info!(
         "GET /servers/{server_id}/with_channels?target_domain={:?}",
         params.target_domain
@@ -109,7 +109,7 @@ pub async fn delete(
     headers: HeaderMap,
     Path(server_id): Path<Uuid>,
     Query(params): Query<ServerQueryParams>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> ApiResult<impl IntoResponse> {
     info!(
         "DELETE /servers/{server_id}?target_domain={:?}",
         params.target_domain
@@ -139,7 +139,7 @@ pub mod federated {
         State(state): State<AppState>,
         headers: HeaderMap,
         Json(new_server): Json<NewServer>,
-    ) -> Result<impl IntoResponse, ApiError> {
+    ) -> ApiResult<impl IntoResponse> {
         info!("POST /federation/servers\nnew_server = {:#?}", new_server);
         let session = authorize(
             &state,
@@ -157,7 +157,7 @@ pub mod federated {
         State(state): State<AppState>,
         headers: HeaderMap,
         Path(server_id): Path<Uuid>,
-    ) -> Result<impl IntoResponse, ApiError> {
+    ) -> ApiResult<impl IntoResponse> {
         info!("GET /federation/servers/{server_id}/with_channels");
         let session = authorize(
             &state,
@@ -176,7 +176,7 @@ pub mod federated {
         State(state): State<AppState>,
         headers: HeaderMap,
         Path(server_id): Path<Uuid>,
-    ) -> Result<impl IntoResponse, ApiError> {
+    ) -> ApiResult<impl IntoResponse> {
         info!("DELETE /federation/servers/{server_id}");
         let session = authorize(
             &state,

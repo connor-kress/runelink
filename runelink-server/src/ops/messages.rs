@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 use crate::{
     auth::{AuthSpec, Requirement, Session},
-    error::ApiError,
+    error::{ApiError, ApiResult},
     queries,
     state::AppState,
 };
@@ -19,7 +19,7 @@ pub async fn create(
     channel_id: Uuid,
     new_message: &NewMessage,
     target_domain: Option<&str>,
-) -> Result<Message, ApiError> {
+) -> ApiResult<Message> {
     // Handle local case
     if !state.config.is_remote_domain(target_domain) {
         let channel =
@@ -74,7 +74,7 @@ pub async fn get_all(
     state: &AppState,
     session: &Session,
     target_domain: Option<&str>,
-) -> Result<Vec<Message>, ApiError> {
+) -> ApiResult<Vec<Message>> {
     // Handle local case
     if !state.config.is_remote_domain(target_domain) {
         let messages = queries::messages::get_all(&state.db_pool).await?;
@@ -118,7 +118,7 @@ pub async fn get_by_server(
     session: &Session,
     server_id: Uuid,
     target_domain: Option<&str>,
-) -> Result<Vec<Message>, ApiError> {
+) -> ApiResult<Vec<Message>> {
     // Handle local case
     if !state.config.is_remote_domain(target_domain) {
         let messages =
@@ -165,7 +165,7 @@ pub async fn get_by_channel(
     server_id: Uuid,
     channel_id: Uuid,
     target_domain: Option<&str>,
-) -> Result<Vec<Message>, ApiError> {
+) -> ApiResult<Vec<Message>> {
     // Handle local case
     if !state.config.is_remote_domain(target_domain) {
         let messages =
@@ -215,7 +215,7 @@ pub async fn get_by_id(
     channel_id: Uuid,
     message_id: Uuid,
     target_domain: Option<&str>,
-) -> Result<Message, ApiError> {
+) -> ApiResult<Message> {
     // Handle local case
     if !state.config.is_remote_domain(target_domain) {
         let message =
@@ -277,7 +277,7 @@ pub async fn delete(
     channel_id: Uuid,
     message_id: Uuid,
     target_domain: Option<&str>,
-) -> Result<(), ApiError> {
+) -> ApiResult<()> {
     // Handle local case
     if !state.config.is_remote_domain(target_domain) {
         // Verify the message belongs to the channel and server

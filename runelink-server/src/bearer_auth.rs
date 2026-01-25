@@ -1,10 +1,14 @@
-use crate::{error::ApiError, jwks_resolver, state::AppState};
+use crate::{
+    error::{ApiError, ApiResult},
+    jwks_resolver,
+    state::AppState,
+};
 use axum::http::HeaderMap;
 use axum::http::header;
 use jsonwebtoken::{Algorithm, Validation};
 use runelink_types::{ClientAccessClaims, FederationClaims};
 
-fn extract_bearer_token(headers: &HeaderMap) -> Result<String, ApiError> {
+fn extract_bearer_token(headers: &HeaderMap) -> ApiResult<String> {
     let auth_header = headers
         .get(header::AUTHORIZATION)
         .and_then(|h| h.to_str().ok())
@@ -29,7 +33,7 @@ impl ClientAuth {
     pub fn from_headers(
         headers: &HeaderMap,
         state: &AppState,
-    ) -> Result<Self, ApiError> {
+    ) -> ApiResult<Self> {
         let token = extract_bearer_token(headers)?;
         let server_id = state.config.api_url();
         let mut validation = Validation::new(Algorithm::EdDSA);
@@ -60,7 +64,7 @@ impl FederationAuth {
     pub async fn from_headers(
         headers: &HeaderMap,
         state: &AppState,
-    ) -> Result<Self, ApiError> {
+    ) -> ApiResult<Self> {
         let token = extract_bearer_token(headers)?;
         let expected_audience = state.config.api_url();
         let claims = jwks_resolver::decode_federation_jwt(
