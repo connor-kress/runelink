@@ -36,17 +36,11 @@ pub struct UserRef {
     pub domain: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct NewUser {
     pub name: String,
     pub domain: String,
     pub role: UserRole,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct SignupRequest {
-    pub name: String,
-    pub password: String,
 }
 
 impl User {

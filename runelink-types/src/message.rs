@@ -5,7 +5,7 @@ use std::fmt;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Message {
     pub id: Uuid,
     pub channel_id: Uuid,
@@ -17,7 +17,7 @@ pub struct Message {
     pub updated_at: OffsetDateTime,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct NewMessage {
     pub author_id: Uuid,
     pub body: String,

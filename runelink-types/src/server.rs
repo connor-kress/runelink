@@ -6,7 +6,7 @@ use std::fmt;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
 pub struct Server {
     pub id: Uuid,
@@ -19,13 +19,13 @@ pub struct Server {
     pub updated_at: OffsetDateTime,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct NewServer {
     pub title: String,
     pub description: Option<String>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ServerWithChannels {
     pub server: Server,
     pub channels: Vec<Channel>,
@@ -43,7 +43,7 @@ pub enum ServerRole {
     Admin,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ServerMembership {
     pub server: Server,
     pub user_id: Uuid,
@@ -56,7 +56,7 @@ pub struct ServerMembership {
     pub synced_at: Option<OffsetDateTime>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct FullServerMembership {
     pub server: Server,
     pub user: User,
@@ -69,7 +69,7 @@ pub struct FullServerMembership {
     pub synced_at: Option<OffsetDateTime>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ServerMember {
     pub user: User,
     pub role: ServerRole,
@@ -79,7 +79,7 @@ pub struct ServerMember {
     pub updated_at: OffsetDateTime,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct NewServerMembership {
     pub user_id: Uuid,
     pub user_domain: String,

@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use crate::UserRef;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
 pub struct LocalAccount {
     pub user_id: Uuid,
@@ -17,7 +17,13 @@ pub struct LocalAccount {
     pub updated_at: OffsetDateTime,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SignupRequest {
+    pub name: String,
+    pub password: String,
+}
+
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
 pub struct RefreshToken {
     pub token: String,
@@ -30,7 +36,7 @@ pub struct RefreshToken {
     pub revoked: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TokenRequest {
     pub grant_type: String,
     pub username: Option<String>, // password grant
@@ -40,7 +46,7 @@ pub struct TokenRequest {
     pub client_id: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TokenResponse {
     pub access_token: String,
     pub token_type: String, // always "Bearer"
@@ -67,7 +73,7 @@ impl RefreshToken {
 }
 
 /// A single public JSON Web Key (JWK)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PublicJwk {
     /// JWK key type (e.g. "OKP" for Ed25519, "RSA" for RSA)
     pub kty: String,
@@ -99,7 +105,7 @@ impl PublicJwk {
 
 /// JWT claims used for client access tokens (valid only on the issuing Home
 /// Server).
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ClientAccessClaims {
     /// Token issuer (canonical ServerId; currently `ServerConfig::api_url_with_port()`)
     pub iss: String,
@@ -143,7 +149,7 @@ impl ClientAccessClaims {
 /// This token authenticates the **calling server** (`iss` and `sub`).
 /// It may optionally include a delegated user identity (`user_id`, `user_domain`)
 /// for operations performed "on behalf of" a user.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct FederationClaims {
     /// Calling server (canonical ServerId / base URL)
     pub iss: String,
@@ -195,5 +201,65 @@ impl FederationClaims {
             iat: now,
             user_ref: Some(UserRef::new(user_id, user_domain)),
         }
+    }
+}
+
+impl std::fmt::Debug for LocalAccount {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LocalAccount")
+            .field("user_id", &self.user_id)
+            .field("password_hash", &"[REDACTED]")
+            .field("created_at", &self.created_at)
+            .field("updated_at", &self.updated_at)
+            .finish()
+    }
+}
+
+impl std::fmt::Debug for SignupRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SignupRequest")
+            .field("name", &self.name)
+            .field("password", &"[REDACTED]")
+            .finish()
+    }
+}
+
+impl std::fmt::Debug for RefreshToken {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RefreshToken")
+            .field("token", &"[REDACTED]")
+            .field("user_id", &self.user_id)
+            .field("client_id", &self.client_id)
+            .field("issued_at", &self.issued_at)
+            .field("expires_at", &self.expires_at)
+            .field("revoked", &self.revoked)
+            .finish()
+    }
+}
+
+impl std::fmt::Debug for TokenRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let password = self.password.as_ref().map(|_| "[REDACTED]");
+        let refresh_token = self.refresh_token.as_ref().map(|_| "[REDACTED]");
+        f.debug_struct("TokenRequest")
+            .field("grant_type", &self.grant_type)
+            .field("username", &self.username)
+            .field("password", &password)
+            .field("refresh_token", &refresh_token)
+            .field("scope", &self.scope)
+            .field("client_id", &self.client_id)
+            .finish()
+    }
+}
+
+impl std::fmt::Debug for TokenResponse {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TokenResponse")
+            .field("access_token", &"[REDACTED]")
+            .field("token_type", &self.token_type)
+            .field("expires_in", &self.expires_in)
+            .field("refresh_token", &"[REDACTED]")
+            .field("scope", &self.scope)
+            .finish()
     }
 }

@@ -3,7 +3,7 @@ use std::fmt;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
 pub struct Channel {
     pub id: Uuid,
@@ -16,7 +16,7 @@ pub struct Channel {
     pub updated_at: OffsetDateTime,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct NewChannel {
     pub title: String,
     pub description: Option<String>,
