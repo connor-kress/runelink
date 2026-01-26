@@ -255,18 +255,19 @@ pub async fn delete(
 pub mod auth {
     use super::*;
     use crate::auth::Requirement as Req;
+    use crate::{and, or};
 
     pub fn create(_server_id: Uuid) -> Req {
         // TODO: make this admin only and create an invite system
         // Servers should also be public or private
-        Req::And(vec![Req::Client])
+        Req::Client
     }
 
     pub fn delete(server_id: Uuid, user_id: Uuid) -> Req {
-        Req::And(vec![
+        and!(
             Req::Client,
-            Req::Or(vec![Req::User(user_id), Req::ServerAdmin { server_id }]),
-        ])
+            or!(Req::User(user_id), Req::ServerAdmin { server_id }),
+        )
     }
 
     pub mod federated {
@@ -274,17 +275,14 @@ pub mod auth {
 
         pub fn create(_server_id: Uuid) -> Req {
             // TODO: see above
-            Req::And(vec![Req::Federation])
+            Req::Federation
         }
 
         pub fn delete(server_id: Uuid, user_id: Uuid) -> Req {
-            Req::And(vec![
+            and!(
                 Req::Federation,
-                Req::Or(vec![
-                    Req::User(user_id),
-                    Req::ServerAdmin { server_id },
-                ]),
-            ])
+                or!(Req::User(user_id), Req::ServerAdmin { server_id }),
+            )
         }
     }
 }

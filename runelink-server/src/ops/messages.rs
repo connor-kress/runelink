@@ -336,25 +336,26 @@ pub async fn delete(
 pub mod auth {
     use super::*;
     use crate::auth::Requirement as Req;
+    use crate::{and, or};
 
     pub fn create(server_id: Uuid) -> Req {
-        Req::And(vec![Req::Client, Req::ServerMember { server_id }])
+        and!(Req::Client, Req::ServerMember { server_id })
     }
 
     pub fn get_all() -> Req {
-        Req::And(vec![Req::Client, Req::HostAdmin])
+        and!(Req::Client, Req::HostAdmin)
     }
 
     pub fn get_by_server(server_id: Uuid) -> Req {
-        Req::And(vec![Req::Client, Req::ServerMember { server_id }])
+        and!(Req::Client, Req::ServerMember { server_id })
     }
 
     pub fn get_by_channel(server_id: Uuid) -> Req {
-        Req::And(vec![Req::Client, Req::ServerMember { server_id }])
+        and!(Req::Client, Req::ServerMember { server_id })
     }
 
     pub fn get_by_id(server_id: Uuid) -> Req {
-        Req::And(vec![Req::Client, Req::ServerMember { server_id }])
+        and!(Req::Client, Req::ServerMember { server_id })
     }
 
     async fn delete_base(
@@ -365,10 +366,7 @@ pub mod auth {
         let message =
             queries::messages::get_by_id(&state.db_pool, message_id).await?;
         if let Some(author) = message.author {
-            Ok(Req::Or(vec![
-                Req::User(author.id),
-                Req::ServerAdmin { server_id },
-            ]))
+            Ok(or!(Req::User(author.id), Req::ServerAdmin { server_id }))
         } else {
             Ok(Req::ServerAdmin { server_id })
         }
@@ -380,30 +378,30 @@ pub mod auth {
         message_id: Uuid,
     ) -> ApiResult<Req> {
         let base = delete_base(state, server_id, message_id).await?;
-        Ok(Req::And(vec![Req::Client, base]))
+        Ok(and!(Req::Client, base))
     }
 
     pub mod federated {
         use super::*;
 
         pub fn create(server_id: Uuid) -> Req {
-            Req::And(vec![Req::Federation, Req::ServerMember { server_id }])
+            and!(Req::Federation, Req::ServerMember { server_id })
         }
 
         pub fn get_all() -> Req {
-            Req::And(vec![Req::Federation, Req::HostAdmin])
+            and!(Req::Federation, Req::HostAdmin)
         }
 
         pub fn get_by_server(server_id: Uuid) -> Req {
-            Req::And(vec![Req::Federation, Req::ServerMember { server_id }])
+            and!(Req::Federation, Req::ServerMember { server_id })
         }
 
         pub fn get_by_channel(server_id: Uuid) -> Req {
-            Req::And(vec![Req::Federation, Req::ServerMember { server_id }])
+            and!(Req::Federation, Req::ServerMember { server_id })
         }
 
         pub fn get_by_id(server_id: Uuid) -> Req {
-            Req::And(vec![Req::Federation, Req::ServerMember { server_id }])
+            and!(Req::Federation, Req::ServerMember { server_id })
         }
 
         pub async fn delete(
@@ -412,7 +410,7 @@ pub mod auth {
             message_id: Uuid,
         ) -> ApiResult<Req> {
             let base = delete_base(state, server_id, message_id).await?;
-            Ok(Req::And(vec![Req::Federation, base]))
+            Ok(and!(Req::Federation, base))
         }
     }
 }

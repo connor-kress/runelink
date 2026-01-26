@@ -12,6 +12,30 @@ use runelink_types::{
 };
 use uuid::Uuid;
 
+/// Macro to construct an `And` requirement.
+/// Example: `and!(Requirement::Client, Requirement::User(user_id))`
+#[macro_export]
+macro_rules! and {
+    () => {
+        crate::auth::Requirement::And(vec![])
+    };
+    ( $( $req:expr ),+ $(,)? ) => {
+        crate::auth::Requirement::And(vec![ $( $req ),+ ])
+    };
+}
+
+/// Macro to construct an `Or` requirement.
+/// Example: `or!(Requirement::Client, Requirement::Federation)`
+#[macro_export]
+macro_rules! or {
+    () => {
+        crate::auth::Requirement::Or(vec![])
+    };
+    ( $( $req:expr ),+ $(,)? ) => {
+        crate::auth::Requirement::Or(vec![ $( $req ),+ ])
+    };
+}
+
 #[derive(Clone, Debug)]
 pub enum Principal {
     Client(ClientAuth),

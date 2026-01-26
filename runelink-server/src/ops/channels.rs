@@ -251,49 +251,50 @@ pub async fn delete(
 /// Auth requirements for channel operations.
 pub mod auth {
     use super::*;
+    use crate::and;
     use crate::auth::Requirement as Req;
 
     pub fn create(server_id: Uuid) -> Req {
-        Req::And(vec![Req::Client, Req::ServerAdmin { server_id }])
+        and!(Req::Client, Req::ServerAdmin { server_id })
     }
 
     pub fn get_all() -> Req {
-        Req::And(vec![Req::Client, Req::HostAdmin])
+        and!(Req::Client, Req::HostAdmin)
     }
 
     pub fn get_by_server(server_id: Uuid) -> Req {
-        Req::And(vec![Req::Client, Req::ServerMember { server_id }])
+        and!(Req::Client, Req::ServerMember { server_id })
     }
 
     pub fn get_by_id(server_id: Uuid) -> Req {
-        Req::And(vec![Req::Client, Req::ServerMember { server_id }])
+        and!(Req::Client, Req::ServerMember { server_id })
     }
 
     pub fn delete(server_id: Uuid) -> Req {
-        Req::And(vec![Req::Client, Req::ServerAdmin { server_id }])
+        and!(Req::Client, Req::ServerAdmin { server_id })
     }
 
     pub mod federated {
         use super::*;
 
         pub fn create(server_id: Uuid) -> Req {
-            Req::And(vec![Req::Federation, Req::ServerAdmin { server_id }])
+            and!(Req::Federation, Req::ServerAdmin { server_id })
         }
 
         pub fn get_all() -> Req {
-            Req::And(vec![Req::Federation, Req::HostAdmin])
+            and!(Req::Federation, Req::HostAdmin)
         }
 
         pub fn get_by_server(server_id: Uuid) -> Req {
-            Req::And(vec![Req::Federation, Req::ServerMember { server_id }])
+            and!(Req::Federation, Req::ServerMember { server_id })
         }
 
         pub fn get_by_id(server_id: Uuid) -> Req {
-            Req::And(vec![Req::Federation, Req::ServerMember { server_id }])
+            and!(Req::Federation, Req::ServerMember { server_id })
         }
 
         pub fn delete(server_id: Uuid) -> Req {
-            Req::And(vec![Req::Federation, Req::ServerAdmin { server_id }])
+            and!(Req::Federation, Req::ServerAdmin { server_id })
         }
     }
 }
