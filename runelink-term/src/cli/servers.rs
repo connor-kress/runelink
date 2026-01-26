@@ -268,7 +268,7 @@ pub async fn handle_server_commands(
                 &access_token,
                 server.id,
                 account.user_id,
-                leave_args.domain.as_deref(),
+                Some(server.domain.as_str()),
             )
             .await?;
             println!("Left server: {}", server.verbose());

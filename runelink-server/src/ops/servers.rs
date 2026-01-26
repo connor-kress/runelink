@@ -238,7 +238,8 @@ pub mod auth {
     use crate::auth::Requirement as Req;
 
     pub fn create() -> Req {
-        Req::And(vec![Req::Client, Req::HostAdmin])
+        // TODO: add rate limiting or something
+        Req::And(vec![Req::Client])
     }
 
     pub fn get_with_channels(server_id: Uuid) -> Req {
