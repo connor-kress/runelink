@@ -7,7 +7,9 @@ use crate::{
     state::AppState,
 };
 use axum::http::HeaderMap;
-use runelink_types::{FederationClaims, ServerRole, User, UserRef};
+use runelink_types::{
+    FederationClaims, ServerMembership, ServerRole, User, UserRef,
+};
 use uuid::Uuid;
 
 #[derive(Clone, Debug)]
@@ -38,19 +40,149 @@ impl Principal {
 pub enum Requirement {
     /// Must be authenticated with a client token.
     Client,
-    /// Must be authenticated with a federation token (server-level auth, no user delegation required).
+    /// Must be authenticated with a federation token.
     Federation,
+    /// Must be a user with the referenced ID.
+    User(Uuid),
     /// Must be a host admin.
     HostAdmin,
     /// Must be a member of the referenced server.
     ServerMember { server_id: Uuid },
     /// Must be an admin of the referenced server.
     ServerAdmin { server_id: Uuid },
+    /// Must satisfy all sub-requirements.
+    And(Vec<Requirement>),
+    /// Must satisfy at least one sub-requirement.
+    Or(Vec<Requirement>),
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct AuthSpec {
-    pub requirements: Vec<Requirement>,
+impl Requirement {
+    async fn check(
+        &self,
+        ctx: &mut AuthContext<'_>,
+    ) -> ApiResult<Option<String>> {
+        match self {
+            Requirement::Client => {
+                if !matches!(ctx.principal, Principal::Client(_)) {
+                    return Ok(Some("Client auth required".into()));
+                }
+            }
+
+            Requirement::Federation => {
+                if !matches!(ctx.principal, Principal::Federation(_)) {
+                    return Ok(Some("Federation auth required".into()));
+                }
+            }
+
+            Requirement::User(user_id) => {
+                let user = ctx.get_user().await?;
+                if user.is_none() || user.unwrap().id != *user_id {
+                    return Ok(Some("Invalid user".into()));
+                }
+            }
+
+            Requirement::HostAdmin => {
+                // TODO: add user roles
+                return Ok(Some("Host admin only".into()));
+            }
+
+            Requirement::ServerMember { server_id } => {
+                let membership = ctx.get_membership(*server_id).await?;
+                if membership.is_none() {
+                    return Ok(Some("Server member only".into()));
+                }
+            }
+
+            Requirement::ServerAdmin { server_id } => {
+                let membership = ctx.get_membership(*server_id).await?;
+                if membership.is_none()
+                    || membership.unwrap().role != ServerRole::Admin
+                {
+                    return Ok(Some("Server admin only".into()));
+                }
+            }
+
+            Requirement::And(reqs) => {
+                for req in reqs {
+                    if let Some(error) = Box::pin(req.check(ctx)).await? {
+                        return Ok(Some(error));
+                    }
+                }
+            }
+
+            Requirement::Or(reqs) => {
+                if reqs.is_empty() {
+                    return Ok(Some("No requirements".into()));
+                }
+                let mut errors = Vec::<String>::new();
+                let mut found = false;
+                for req in reqs {
+                    if let Some(error) = Box::pin(req.check(ctx)).await? {
+                        errors.push(error);
+                    } else {
+                        found = true;
+                    }
+                }
+                if !found {
+                    let combined_error = if errors.len() == 1 {
+                        errors.first().unwrap().clone()
+                    } else {
+                        errors
+                            .iter()
+                            .map(|e| format!("({e})"))
+                            .collect::<Vec<String>>()
+                            .join(" and ")
+                    };
+                    return Ok(Some(combined_error));
+                }
+            }
+        }
+        Ok(None)
+    }
+}
+
+#[derive(Clone, Debug)]
+struct AuthContext<'a> {
+    state: &'a AppState,
+    principal: Principal,
+    user_ref: Option<UserRef>,
+    user: Option<User>,
+    memberships: Option<Vec<ServerMembership>>,
+}
+
+impl<'a> AuthContext<'a> {
+    async fn get_user(&mut self) -> ApiResult<Option<&User>> {
+        if self.user.is_none() {
+            let Some(user_ref) = self.user_ref.as_ref() else {
+                return Ok(None);
+            };
+            let user =
+                queries::users::get_by_id(&self.state.db_pool, user_ref.id)
+                    .await?;
+            self.user = Some(user);
+        }
+        Ok(self.user.as_ref())
+    }
+
+    async fn get_membership(
+        &mut self,
+        server_id: Uuid,
+    ) -> ApiResult<Option<&ServerMembership>> {
+        if self.memberships.is_none() {
+            let Some(user_ref) = self.user_ref.as_ref() else {
+                return Ok(None);
+            };
+            let memberships =
+                queries::memberships::get_by_user(self.state, user_ref.id)
+                    .await?;
+            self.memberships = Some(memberships);
+        }
+        Ok(self.memberships.as_ref().and_then(|memberships| {
+            memberships
+                .iter()
+                .find(|membership| membership.server.id == server_id)
+        }))
+    }
 }
 
 /// Session represents the authenticated context for a request.
@@ -109,13 +241,6 @@ impl Session {
         })?;
         Ok(user)
     }
-
-    /// Check if this session represents a host admin.
-    /// TODO: Replace with real role-based logic when implemented.
-    pub fn is_host_admin(&self) -> bool {
-        // For now, only client-authenticated sessions can be admins
-        matches!(self.principal, Principal::Client(_))
-    }
 }
 
 /// Authorization engine (shared). Operation code defines an `AuthSpec` once,
@@ -123,7 +248,7 @@ impl Session {
 pub async fn authorize(
     state: &AppState,
     principal: Principal,
-    spec: AuthSpec,
+    req: Requirement,
 ) -> ApiResult<Session> {
     // Extract user identity from the principal (no DB lookups yet)
     let (user_ref, federation_claims) = match &principal {
@@ -142,82 +267,32 @@ pub async fn authorize(
             (auth.claims.user_ref.clone(), Some(auth.claims.clone()))
         }
     };
-    let mut session = Session {
-        principal: principal.clone(),
+    let mut ctx = AuthContext {
+        state,
+        principal,
         user_ref,
-        federation: federation_claims,
-        cached_user: None,
+        user: None,
+        memberships: None,
     };
-
-    // Validate requirements
-    for req in &spec.requirements {
-        match req {
-            Requirement::Client => {
-                if !matches!(principal, Principal::Client(_)) {
-                    return Err(ApiError::AuthError(
-                        "Client auth required".into(),
-                    ));
-                }
-            }
-
-            Requirement::Federation => {
-                if !matches!(principal, Principal::Federation(_)) {
-                    return Err(ApiError::AuthError(
-                        "Federation auth required".into(),
-                    ));
-                }
-            }
-
-            Requirement::HostAdmin => {
-                if !session.is_host_admin() {
-                    return Err(ApiError::AuthError("Admin only".into()));
-                }
-            }
-
-            Requirement::ServerMember { server_id } => {
-                // This requires a user_id to check membership
-                let user_ref = session.user_ref.clone().ok_or_else(|| {
-                    ApiError::AuthError(
-                        "User reference required for membership check".into(),
-                    )
-                })?;
-                let member =
-                    queries::memberships::get_member_by_user_and_server(
-                        &state.db_pool,
-                        *server_id,
-                        user_ref.id,
-                    )
-                    .await
-                    .map_err(|_| {
-                        ApiError::AuthError("Not a server member".into())
-                    })?;
-                session.cached_user = Some(Some(member.user));
-            }
-
-            Requirement::ServerAdmin { server_id } => {
-                // This requires a user_id to check admin role
-                let user_ref = session.user_ref.clone().ok_or_else(|| {
-                    ApiError::AuthError(
-                        "User reference required for admin check".into(),
-                    )
-                })?;
-                let member =
-                    queries::memberships::get_member_by_user_and_server(
-                        &state.db_pool,
-                        *server_id,
-                        user_ref.id,
-                    )
-                    .await
-                    .map_err(|_| {
-                        ApiError::AuthError("Not a server admin".into())
-                    })?;
-                if member.role != ServerRole::Admin {
-                    return Err(ApiError::AuthError("Admin only".into()));
-                }
-                session.cached_user = Some(Some(member.user));
-            }
-        }
+    if let Some(error) = req.check(&mut ctx).await? {
+        return Err(ApiError::AuthError(error));
     }
-
+    let cached_user = if ctx.user_ref.is_some() {
+        if let Some(user) = ctx.user {
+            Some(Some(user))
+        } else {
+            // Not looked up yet
+            None
+        }
+    } else {
+        // Not delegated
+        Some(None)
+    };
+    let session = Session {
+        principal: ctx.principal,
+        user_ref: ctx.user_ref,
+        federation: federation_claims,
+        cached_user,
+    };
     Ok(session)
 }

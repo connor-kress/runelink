@@ -4,7 +4,7 @@ use runelink_types::{NewUser, User};
 use uuid::Uuid;
 
 use crate::{
-    auth::{AuthSpec, Requirement, Session},
+    auth::Session,
     error::{ApiError, ApiResult},
     queries,
     state::AppState,
@@ -224,27 +224,21 @@ pub async fn delete_remote_user_record(
 
 /// Auth requirements for user operations.
 pub mod auth {
-    use super::*;
+    use crate::auth::Requirement as Req;
 
-    pub fn create() -> AuthSpec {
-        AuthSpec {
-            requirements: vec![Requirement::HostAdmin],
-        }
+    pub fn create() -> Req {
+        Req::And(vec![Req::Client, Req::HostAdmin])
     }
 
-    pub fn delete() -> AuthSpec {
-        AuthSpec {
-            requirements: vec![Requirement::HostAdmin],
-        }
+    pub fn delete() -> Req {
+        Req::And(vec![Req::Client, Req::HostAdmin])
     }
 
     pub mod federated {
         use super::*;
 
-        pub fn delete() -> AuthSpec {
-            AuthSpec {
-                requirements: vec![Requirement::Federation],
-            }
+        pub fn delete() -> Req {
+            Req::And(vec![Req::Federation])
         }
     }
 }

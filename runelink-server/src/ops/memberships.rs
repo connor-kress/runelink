@@ -5,7 +5,7 @@ use runelink_types::{
 use uuid::Uuid;
 
 use crate::{
-    auth::{AuthSpec, Requirement, Session},
+    auth::Session,
     error::{ApiError, ApiResult},
     queries,
     state::AppState,
@@ -254,38 +254,37 @@ pub async fn delete(
 /// Auth requirements for membership operations.
 pub mod auth {
     use super::*;
+    use crate::auth::Requirement as Req;
 
-    pub fn create() -> AuthSpec {
-        AuthSpec {
-            // TODO: make this admin only and create an invite system
-            requirements: vec![],
-        }
+    pub fn create(_server_id: Uuid) -> Req {
+        // TODO: make this admin only and create an invite system
+        // Servers should also be public or private
+        Req::And(vec![Req::Client])
     }
 
-    pub fn delete(server_id: Uuid, _user_id: Uuid) -> AuthSpec {
-        AuthSpec {
-            // TODO: they could also be the user themselves
-            requirements: vec![Requirement::ServerAdmin { server_id }],
-        }
+    pub fn delete(server_id: Uuid, user_id: Uuid) -> Req {
+        Req::And(vec![
+            Req::Client,
+            Req::Or(vec![Req::User(user_id), Req::ServerAdmin { server_id }]),
+        ])
     }
 
     pub mod federated {
         use super::*;
 
-        pub fn create() -> AuthSpec {
-            AuthSpec {
-                requirements: vec![Requirement::Federation],
-            }
+        pub fn create(_server_id: Uuid) -> Req {
+            // TODO: see above
+            Req::And(vec![Req::Federation])
         }
 
-        pub fn delete(server_id: Uuid, _user_id: Uuid) -> AuthSpec {
-            AuthSpec {
-                requirements: vec![
-                    // TODO: they could also be the user themselves
-                    Requirement::Federation,
-                    Requirement::ServerAdmin { server_id },
-                ],
-            }
+        pub fn delete(server_id: Uuid, user_id: Uuid) -> Req {
+            Req::And(vec![
+                Req::Federation,
+                Req::Or(vec![
+                    Req::User(user_id),
+                    Req::ServerAdmin { server_id },
+                ]),
+            ])
         }
     }
 }

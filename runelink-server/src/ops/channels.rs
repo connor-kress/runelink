@@ -3,7 +3,7 @@ use runelink_types::{Channel, NewChannel};
 use uuid::Uuid;
 
 use crate::{
-    auth::{AuthSpec, Requirement, Session},
+    auth::Session,
     error::{ApiError, ApiResult},
     queries,
     state::AppState,
@@ -251,83 +251,49 @@ pub async fn delete(
 /// Auth requirements for channel operations.
 pub mod auth {
     use super::*;
+    use crate::auth::Requirement as Req;
 
-    pub fn create(server_id: Uuid) -> AuthSpec {
-        AuthSpec {
-            requirements: vec![Requirement::ServerAdmin { server_id }],
-        }
+    pub fn create(server_id: Uuid) -> Req {
+        Req::And(vec![Req::Client, Req::ServerAdmin { server_id }])
     }
 
-    pub fn get_all() -> AuthSpec {
-        AuthSpec {
-            requirements: vec![Requirement::HostAdmin],
-        }
+    pub fn get_all() -> Req {
+        Req::And(vec![Req::Client, Req::HostAdmin])
     }
 
-    pub fn get_by_server(server_id: Uuid) -> AuthSpec {
-        AuthSpec {
-            requirements: vec![Requirement::ServerMember { server_id }],
-        }
+    pub fn get_by_server(server_id: Uuid) -> Req {
+        Req::And(vec![Req::Client, Req::ServerMember { server_id }])
     }
 
-    pub fn get_by_id(server_id: Uuid) -> AuthSpec {
-        AuthSpec {
-            requirements: vec![Requirement::ServerMember { server_id }],
-        }
+    pub fn get_by_id(server_id: Uuid) -> Req {
+        Req::And(vec![Req::Client, Req::ServerMember { server_id }])
     }
 
-    pub fn delete(server_id: Uuid) -> AuthSpec {
-        AuthSpec {
-            requirements: vec![Requirement::ServerAdmin { server_id }],
-        }
+    pub fn delete(server_id: Uuid) -> Req {
+        Req::And(vec![Req::Client, Req::ServerAdmin { server_id }])
     }
 
     pub mod federated {
         use super::*;
 
-        pub fn create(server_id: Uuid) -> AuthSpec {
-            AuthSpec {
-                requirements: vec![
-                    Requirement::Federation,
-                    Requirement::ServerAdmin { server_id },
-                ],
-            }
+        pub fn create(server_id: Uuid) -> Req {
+            Req::And(vec![Req::Federation, Req::ServerAdmin { server_id }])
         }
 
-        pub fn get_all() -> AuthSpec {
-            AuthSpec {
-                requirements: vec![
-                    Requirement::Federation,
-                    Requirement::HostAdmin,
-                ],
-            }
+        pub fn get_all() -> Req {
+            Req::And(vec![Req::Federation, Req::HostAdmin])
         }
 
-        pub fn get_by_server(server_id: Uuid) -> AuthSpec {
-            AuthSpec {
-                requirements: vec![
-                    Requirement::Federation,
-                    Requirement::ServerMember { server_id },
-                ],
-            }
+        pub fn get_by_server(server_id: Uuid) -> Req {
+            Req::And(vec![Req::Federation, Req::ServerMember { server_id }])
         }
 
-        pub fn get_by_id(server_id: Uuid) -> AuthSpec {
-            AuthSpec {
-                requirements: vec![
-                    Requirement::Federation,
-                    Requirement::ServerMember { server_id },
-                ],
-            }
+        pub fn get_by_id(server_id: Uuid) -> Req {
+            Req::And(vec![Req::Federation, Req::ServerMember { server_id }])
         }
 
-        pub fn delete(server_id: Uuid) -> AuthSpec {
-            AuthSpec {
-                requirements: vec![
-                    Requirement::Federation,
-                    Requirement::ServerAdmin { server_id },
-                ],
-            }
+        pub fn delete(server_id: Uuid) -> Req {
+            Req::And(vec![Req::Federation, Req::ServerAdmin { server_id }])
         }
     }
 }

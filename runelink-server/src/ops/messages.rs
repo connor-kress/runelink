@@ -3,7 +3,7 @@ use runelink_types::{Message, NewMessage};
 use uuid::Uuid;
 
 use crate::{
-    auth::{AuthSpec, Requirement, Session},
+    auth::Session,
     error::{ApiError, ApiResult},
     queries,
     state::AppState,
@@ -335,100 +335,84 @@ pub async fn delete(
 /// Auth requirements for message operations.
 pub mod auth {
     use super::*;
+    use crate::auth::Requirement as Req;
 
-    pub fn create(server_id: Uuid) -> AuthSpec {
-        AuthSpec {
-            requirements: vec![Requirement::ServerMember { server_id }],
+    pub fn create(server_id: Uuid) -> Req {
+        Req::And(vec![Req::Client, Req::ServerMember { server_id }])
+    }
+
+    pub fn get_all() -> Req {
+        Req::And(vec![Req::Client, Req::HostAdmin])
+    }
+
+    pub fn get_by_server(server_id: Uuid) -> Req {
+        Req::And(vec![Req::Client, Req::ServerMember { server_id }])
+    }
+
+    pub fn get_by_channel(server_id: Uuid) -> Req {
+        Req::And(vec![Req::Client, Req::ServerMember { server_id }])
+    }
+
+    pub fn get_by_id(server_id: Uuid) -> Req {
+        Req::And(vec![Req::Client, Req::ServerMember { server_id }])
+    }
+
+    async fn delete_base(
+        state: &AppState,
+        server_id: Uuid,
+        message_id: Uuid,
+    ) -> ApiResult<Req> {
+        let message =
+            queries::messages::get_by_id(&state.db_pool, message_id).await?;
+        if let Some(author) = message.author {
+            Ok(Req::Or(vec![
+                Req::User(author.id),
+                Req::ServerAdmin { server_id },
+            ]))
+        } else {
+            Ok(Req::ServerAdmin { server_id })
         }
     }
 
-    pub fn get_all() -> AuthSpec {
-        AuthSpec {
-            requirements: vec![Requirement::HostAdmin],
-        }
-    }
-
-    pub fn get_by_server(server_id: Uuid) -> AuthSpec {
-        AuthSpec {
-            requirements: vec![Requirement::ServerMember { server_id }],
-        }
-    }
-
-    pub fn get_by_channel(server_id: Uuid) -> AuthSpec {
-        AuthSpec {
-            requirements: vec![Requirement::ServerMember { server_id }],
-        }
-    }
-
-    pub fn get_by_id(server_id: Uuid) -> AuthSpec {
-        AuthSpec {
-            requirements: vec![Requirement::ServerMember { server_id }],
-        }
-    }
-
-    pub fn delete(server_id: Uuid) -> AuthSpec {
-        AuthSpec {
-            // TODO: or if they are the message owner
-            requirements: vec![Requirement::ServerAdmin { server_id }],
-        }
+    pub async fn delete(
+        state: &AppState,
+        server_id: Uuid,
+        message_id: Uuid,
+    ) -> ApiResult<Req> {
+        let base = delete_base(state, server_id, message_id).await?;
+        Ok(Req::And(vec![Req::Client, base]))
     }
 
     pub mod federated {
         use super::*;
 
-        pub fn create(server_id: Uuid) -> AuthSpec {
-            AuthSpec {
-                requirements: vec![
-                    Requirement::Federation,
-                    Requirement::ServerMember { server_id },
-                ],
-            }
+        pub fn create(server_id: Uuid) -> Req {
+            Req::And(vec![Req::Federation, Req::ServerMember { server_id }])
         }
 
-        pub fn get_all() -> AuthSpec {
-            AuthSpec {
-                requirements: vec![
-                    Requirement::Federation,
-                    Requirement::HostAdmin,
-                ],
-            }
+        pub fn get_all() -> Req {
+            Req::And(vec![Req::Federation, Req::HostAdmin])
         }
 
-        pub fn get_by_server(server_id: Uuid) -> AuthSpec {
-            AuthSpec {
-                requirements: vec![
-                    Requirement::Federation,
-                    Requirement::ServerMember { server_id },
-                ],
-            }
+        pub fn get_by_server(server_id: Uuid) -> Req {
+            Req::And(vec![Req::Federation, Req::ServerMember { server_id }])
         }
 
-        pub fn get_by_channel(server_id: Uuid) -> AuthSpec {
-            AuthSpec {
-                requirements: vec![
-                    Requirement::Federation,
-                    Requirement::ServerMember { server_id },
-                ],
-            }
+        pub fn get_by_channel(server_id: Uuid) -> Req {
+            Req::And(vec![Req::Federation, Req::ServerMember { server_id }])
         }
 
-        pub fn get_by_id(server_id: Uuid) -> AuthSpec {
-            AuthSpec {
-                requirements: vec![
-                    Requirement::Federation,
-                    Requirement::ServerMember { server_id },
-                ],
-            }
+        pub fn get_by_id(server_id: Uuid) -> Req {
+            Req::And(vec![Req::Federation, Req::ServerMember { server_id }])
         }
 
-        pub fn delete(server_id: Uuid) -> AuthSpec {
-            AuthSpec {
-                // TODO: or if they are the message owner
-                requirements: vec![
-                    Requirement::Federation,
-                    Requirement::ServerAdmin { server_id },
-                ],
-            }
+        pub async fn delete(
+            state: &AppState,
+            server_id: Uuid,
+            message_id: Uuid,
+        ) -> ApiResult<Req> {
+            let base = delete_base(state, server_id, message_id).await?;
+            Ok(Req::And(vec![Req::Federation, base]))
         }
     }
 }

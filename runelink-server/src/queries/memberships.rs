@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use runelink_types::{
     NewServerMembership, Server, ServerMember, ServerMembership, ServerRole,
     User,

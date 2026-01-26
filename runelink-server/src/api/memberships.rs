@@ -77,7 +77,7 @@ pub async fn create(
     let mut session = authorize(
         &state,
         Principal::from_client_headers(&headers, &state)?,
-        ops::memberships::auth::create(),
+        ops::memberships::auth::create(server_id),
     )
     .await?;
     let membership =
@@ -153,7 +153,7 @@ pub mod federated {
         let mut session = authorize(
             &state,
             Principal::from_federation_headers(&headers, &state).await?,
-            ops::memberships::auth::federated::create(),
+            ops::memberships::auth::federated::create(server_id),
         )
         .await?;
         let membership =

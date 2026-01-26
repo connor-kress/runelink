@@ -169,7 +169,7 @@ pub async fn delete(
     let session = authorize(
         &state,
         Principal::from_client_headers(&headers, &state)?,
-        ops::messages::auth::delete(server_id),
+        ops::messages::auth::delete(&state, server_id, message_id).await?,
     )
     .await?;
     ops::messages::delete(
@@ -308,7 +308,10 @@ pub mod federated {
         let session = authorize(
             &state,
             Principal::from_federation_headers(&headers, &state).await?,
-            ops::messages::auth::federated::delete(server_id),
+            ops::messages::auth::federated::delete(
+                &state, server_id, message_id,
+            )
+            .await?,
         )
         .await?;
         ops::messages::delete(
