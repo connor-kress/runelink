@@ -1,5 +1,10 @@
 .PHONY: check check-server build build-server test help
 
+# Ensure commands work even when rustup has no default toolchain set.
+# Users can override, e.g. `make check-server TOOLCHAIN=nightly`.
+TOOLCHAIN ?= stable
+CARGO ?= cargo
+
 help:
 	@echo "Available targets:"
 	@echo "  check        - Run cargo check on all crates"
@@ -9,16 +14,16 @@ help:
 	@echo "  test         - Run tests"
 
 check:
-	cargo check
+	$(CARGO) +$(TOOLCHAIN) check
 
 check-server:
-	cargo check -p runelink-server
+	$(CARGO) +$(TOOLCHAIN) check -p runelink-server
 
 build:
-	cargo build
+	$(CARGO) +$(TOOLCHAIN) build
 
 build-server:
-	cargo build -p runelink-server
+	$(CARGO) +$(TOOLCHAIN) build -p runelink-server
 
 test:
-	cargo test
+	$(CARGO) +$(TOOLCHAIN) test
