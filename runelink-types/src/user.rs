@@ -3,12 +3,25 @@ use std::fmt;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+#[cfg_attr(feature = "sqlx", derive(sqlx::Type))]
+#[cfg_attr(
+    feature = "sqlx",
+    sqlx(type_name = "user_role", rename_all = "lowercase")
+)]
+pub enum UserRole {
+    User,
+    Admin,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
 pub struct User {
     pub id: Uuid,
     pub name: String,
     pub domain: String,
+    pub role: UserRole,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339")]
@@ -27,6 +40,7 @@ pub struct UserRef {
 pub struct NewUser {
     pub name: String,
     pub domain: String,
+    pub role: UserRole,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

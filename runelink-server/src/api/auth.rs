@@ -18,7 +18,7 @@ use log::info;
 use reqwest::StatusCode;
 use runelink_types::{
     ClientAccessClaims, NewUser, RefreshToken, SignupRequest, TokenRequest,
-    TokenResponse,
+    TokenResponse, UserRole,
 };
 use serde_json::json;
 use time::{Duration, OffsetDateTime};
@@ -220,6 +220,7 @@ pub async fn signup(
     let new_user = NewUser {
         name: req.name,
         domain: state.config.local_domain(),
+        role: UserRole::User,
     };
     let user = queries::users::insert(&state.db_pool, &new_user).await?;
 
