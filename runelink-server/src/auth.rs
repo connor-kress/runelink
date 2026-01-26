@@ -8,7 +8,7 @@ use crate::{
 };
 use axum::http::HeaderMap;
 use runelink_types::{
-    FederationClaims, ServerMembership, ServerRole, User, UserRef,
+    FederationClaims, ServerMembership, ServerRole, User, UserRef, UserRole,
 };
 use uuid::Uuid;
 
@@ -71,9 +71,13 @@ pub enum Requirement {
     /// Must be a host admin.
     HostAdmin,
     /// Must be a member of the referenced server.
-    ServerMember { server_id: Uuid },
+    ServerMember(Uuid),
     /// Must be an admin of the referenced server.
-    ServerAdmin { server_id: Uuid },
+    ServerAdmin(Uuid),
+    /// A requirement that will always be satisfied.
+    Always,
+    /// A requirement that will never be satisfied.
+    Never,
     /// Must satisfy all sub-requirements.
     And(Vec<Requirement>),
     /// Must satisfy at least one sub-requirement.
@@ -81,6 +85,18 @@ pub enum Requirement {
 }
 
 impl Requirement {
+    pub fn or_admin(self) -> Self {
+        or!(Requirement::HostAdmin, self)
+    }
+
+    pub fn client_only(self) -> Self {
+        and!(Requirement::Client, self)
+    }
+
+    pub fn federated_only(self) -> Self {
+        and!(Requirement::Federation, self)
+    }
+
     async fn check(
         &self,
         ctx: &mut AuthContext<'_>,
@@ -106,24 +122,34 @@ impl Requirement {
             }
 
             Requirement::HostAdmin => {
-                // TODO: add user roles
-                return Ok(Some("Host admin only".into()));
+                let user = ctx.get_user().await?;
+                if user.is_none() || user.unwrap().role != UserRole::Admin {
+                    return Ok(Some("Host admin only".into()));
+                }
             }
 
-            Requirement::ServerMember { server_id } => {
+            Requirement::ServerMember(server_id) => {
                 let membership = ctx.get_membership(*server_id).await?;
                 if membership.is_none() {
                     return Ok(Some("Server member only".into()));
                 }
             }
 
-            Requirement::ServerAdmin { server_id } => {
+            Requirement::ServerAdmin(server_id) => {
                 let membership = ctx.get_membership(*server_id).await?;
                 if membership.is_none()
                     || membership.unwrap().role != ServerRole::Admin
                 {
                     return Ok(Some("Server admin only".into()));
                 }
+            }
+
+            Requirement::Always => {
+                return Ok(None);
+            }
+
+            Requirement::Never => {
+                return Ok(Some("Requirement can not be satisfied".into()));
             }
 
             Requirement::And(reqs) => {

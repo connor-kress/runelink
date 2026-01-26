@@ -235,35 +235,35 @@ pub async fn delete(
 /// Auth requirements for server operations.
 pub mod auth {
     use super::*;
-    use crate::and;
     use crate::auth::Requirement as Req;
 
     pub fn create() -> Req {
         // TODO: add rate limiting or something
-        and!(Req::Client)
+        Req::Always.or_admin().client_only()
     }
 
     pub fn get_with_channels(server_id: Uuid) -> Req {
-        and!(Req::Client, Req::ServerMember { server_id })
+        Req::ServerMember(server_id).or_admin().client_only()
     }
 
     pub fn delete(server_id: Uuid) -> Req {
-        and!(Req::Client, Req::ServerAdmin { server_id })
+        Req::ServerAdmin(server_id).or_admin().client_only()
     }
 
     pub mod federated {
         use super::*;
 
         pub fn create() -> Req {
-            and!(Req::Federation, Req::HostAdmin)
+            // TODO: see above
+            Req::Always.federated_only()
         }
 
         pub fn get_with_channels(server_id: Uuid) -> Req {
-            and!(Req::Federation, Req::ServerMember { server_id })
+            Req::ServerMember(server_id).federated_only()
         }
 
         pub fn delete(server_id: Uuid) -> Req {
-            and!(Req::Federation, Req::ServerAdmin { server_id })
+            Req::ServerAdmin(server_id).federated_only()
         }
     }
 }

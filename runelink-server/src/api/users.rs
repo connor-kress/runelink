@@ -113,7 +113,7 @@ pub async fn delete(
     let session = authorize(
         &state,
         Principal::from_client_headers(&headers, &state)?,
-        ops::users::auth::delete(),
+        ops::users::auth::delete(user_id),
     )
     .await?;
     ops::users::delete_home_user(&state, &session, user_id).await?;
@@ -134,7 +134,7 @@ pub mod federated {
         let session = authorize(
             &state,
             Principal::from_federation_headers(&headers, &state).await?,
-            ops::users::auth::federated::delete(),
+            ops::users::auth::federated::delete(user_id),
         )
         .await?;
         ops::users::delete_remote_user_record(&state, &session, user_id)

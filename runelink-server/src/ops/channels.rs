@@ -251,50 +251,49 @@ pub async fn delete(
 /// Auth requirements for channel operations.
 pub mod auth {
     use super::*;
-    use crate::and;
     use crate::auth::Requirement as Req;
 
     pub fn create(server_id: Uuid) -> Req {
-        and!(Req::Client, Req::ServerAdmin { server_id })
+        Req::ServerAdmin(server_id).or_admin().client_only()
     }
 
     pub fn get_all() -> Req {
-        and!(Req::Client, Req::HostAdmin)
+        Req::HostAdmin.client_only()
     }
 
     pub fn get_by_server(server_id: Uuid) -> Req {
-        and!(Req::Client, Req::ServerMember { server_id })
+        Req::ServerMember(server_id).or_admin().client_only()
     }
 
     pub fn get_by_id(server_id: Uuid) -> Req {
-        and!(Req::Client, Req::ServerMember { server_id })
+        Req::ServerMember(server_id).or_admin().client_only()
     }
 
     pub fn delete(server_id: Uuid) -> Req {
-        and!(Req::Client, Req::ServerAdmin { server_id })
+        Req::ServerAdmin(server_id).or_admin().client_only()
     }
 
     pub mod federated {
         use super::*;
 
         pub fn create(server_id: Uuid) -> Req {
-            and!(Req::Federation, Req::ServerAdmin { server_id })
+            Req::ServerAdmin(server_id).federated_only()
         }
 
         pub fn get_all() -> Req {
-            and!(Req::Federation, Req::HostAdmin)
+            Req::Never.federated_only()
         }
 
         pub fn get_by_server(server_id: Uuid) -> Req {
-            and!(Req::Federation, Req::ServerMember { server_id })
+            Req::ServerMember(server_id).federated_only()
         }
 
         pub fn get_by_id(server_id: Uuid) -> Req {
-            and!(Req::Federation, Req::ServerMember { server_id })
+            Req::ServerMember(server_id).federated_only()
         }
 
         pub fn delete(server_id: Uuid) -> Req {
-            and!(Req::Federation, Req::ServerAdmin { server_id })
+            Req::ServerAdmin(server_id).federated_only()
         }
     }
 }

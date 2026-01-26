@@ -336,26 +336,26 @@ pub async fn delete(
 pub mod auth {
     use super::*;
     use crate::auth::Requirement as Req;
-    use crate::{and, or};
+    use crate::or;
 
     pub fn create(server_id: Uuid) -> Req {
-        and!(Req::Client, Req::ServerMember { server_id })
+        Req::ServerMember(server_id).or_admin().client_only()
     }
 
     pub fn get_all() -> Req {
-        and!(Req::Client, Req::HostAdmin)
+        Req::HostAdmin.client_only()
     }
 
     pub fn get_by_server(server_id: Uuid) -> Req {
-        and!(Req::Client, Req::ServerMember { server_id })
+        Req::ServerMember(server_id).or_admin().client_only()
     }
 
     pub fn get_by_channel(server_id: Uuid) -> Req {
-        and!(Req::Client, Req::ServerMember { server_id })
+        Req::ServerMember(server_id).or_admin().client_only()
     }
 
     pub fn get_by_id(server_id: Uuid) -> Req {
-        and!(Req::Client, Req::ServerMember { server_id })
+        Req::ServerMember(server_id).or_admin().client_only()
     }
 
     async fn delete_base(
@@ -366,9 +366,9 @@ pub mod auth {
         let message =
             queries::messages::get_by_id(&state.db_pool, message_id).await?;
         if let Some(author) = message.author {
-            Ok(or!(Req::User(author.id), Req::ServerAdmin { server_id }))
+            Ok(or!(Req::User(author.id), Req::ServerAdmin(server_id)))
         } else {
-            Ok(Req::ServerAdmin { server_id })
+            Ok(Req::ServerAdmin(server_id))
         }
     }
 
@@ -378,30 +378,30 @@ pub mod auth {
         message_id: Uuid,
     ) -> ApiResult<Req> {
         let base = delete_base(state, server_id, message_id).await?;
-        Ok(and!(Req::Client, base))
+        Ok(base.or_admin().client_only())
     }
 
     pub mod federated {
         use super::*;
 
         pub fn create(server_id: Uuid) -> Req {
-            and!(Req::Federation, Req::ServerMember { server_id })
+            Req::ServerMember(server_id).federated_only()
         }
 
         pub fn get_all() -> Req {
-            and!(Req::Federation, Req::HostAdmin)
+            Req::Never.federated_only()
         }
 
         pub fn get_by_server(server_id: Uuid) -> Req {
-            and!(Req::Federation, Req::ServerMember { server_id })
+            Req::ServerMember(server_id).federated_only()
         }
 
         pub fn get_by_channel(server_id: Uuid) -> Req {
-            and!(Req::Federation, Req::ServerMember { server_id })
+            Req::ServerMember(server_id).federated_only()
         }
 
         pub fn get_by_id(server_id: Uuid) -> Req {
-            and!(Req::Federation, Req::ServerMember { server_id })
+            Req::ServerMember(server_id).federated_only()
         }
 
         pub async fn delete(
@@ -409,8 +409,9 @@ pub mod auth {
             server_id: Uuid,
             message_id: Uuid,
         ) -> ApiResult<Req> {
+            // TODO: Check if the author is from the same domain as the server
             let base = delete_base(state, server_id, message_id).await?;
-            Ok(and!(Req::Federation, base))
+            Ok(base.federated_only())
         }
     }
 }

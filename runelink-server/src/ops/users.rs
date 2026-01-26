@@ -224,22 +224,24 @@ pub async fn delete_remote_user_record(
 
 /// Auth requirements for user operations.
 pub mod auth {
-    use crate::and;
+    use super::*;
     use crate::auth::Requirement as Req;
 
     pub fn create() -> Req {
-        and!(Req::Client, Req::HostAdmin)
+        Req::Client
     }
 
-    pub fn delete() -> Req {
-        and!(Req::Client, Req::HostAdmin)
+    pub fn delete(user_id: Uuid) -> Req {
+        Req::User(user_id).or_admin().client_only()
     }
 
     pub mod federated {
         use super::*;
 
-        pub fn delete() -> Req {
-            Req::Federation
+        pub fn delete(_user_id: Uuid) -> Req {
+            // TODO: add a requirement for the federated domain and then
+            // make sure the user domain is equal to the federated domain
+            Req::Always.federated_only()
         }
     }
 }
