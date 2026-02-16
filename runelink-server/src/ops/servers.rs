@@ -1,6 +1,7 @@
 use runelink_client::{requests, util::get_api_url};
 use runelink_types::{
-    NewServer, NewServerMembership, Server, ServerRole, ServerWithChannels,
+    NewServer, NewServerMembership, Server, ServerMembership, ServerRole,
+    ServerWithChannels,
 };
 use uuid::Uuid;
 
@@ -68,6 +69,18 @@ pub async fn create(
                 "Failed to create server on {domain}: {e}"
             ))
         })?;
+        // Cache the remote server and creator's admin membership on the home server.
+        queries::servers::upsert_remote(&state.db_pool, &server).await?;
+        let remote_membership = ServerMembership {
+            server: server.clone(),
+            user_id: user_ref.id,
+            role: ServerRole::Admin,
+            joined_at: server.created_at,
+            updated_at: server.updated_at,
+            synced_at: Some(server.created_at),
+        };
+        queries::memberships::insert_remote(&state.db_pool, &remote_membership)
+            .await?;
         Ok(server)
     }
 }
