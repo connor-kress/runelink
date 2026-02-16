@@ -7,6 +7,7 @@ use crate::{
     state::AppState,
 };
 use axum::http::HeaderMap;
+use runelink_client::util::get_api_url;
 use runelink_types::{
     FederationClaims, ServerMembership, ServerRole, User, UserRef, UserRole,
 };
@@ -66,6 +67,8 @@ pub enum Requirement {
     Client,
     /// Must be authenticated with a federation token.
     Federation,
+    /// Must be a delegated federated user with the referenced ID.
+    FederatedUser(Uuid),
     /// Must be a user with the referenced ID.
     User(Uuid),
     /// Must be a host admin.
@@ -111,6 +114,34 @@ impl Requirement {
             Requirement::Federation => {
                 if !matches!(ctx.principal, Principal::Federation(_)) {
                     return Ok(Some("Federation auth required".into()));
+                }
+            }
+
+            Requirement::FederatedUser(user_id) => {
+                let (claims, user_ref) = match &ctx.principal {
+                    Principal::Federation(auth) => {
+                        (&auth.claims, auth.claims.user_ref.as_ref())
+                    }
+                    _ => return Ok(Some("Federation auth required".into())),
+                };
+                let Some(user_ref) = user_ref else {
+                    return Ok(Some(
+                        "Federated delegated user required".into(),
+                    ));
+                };
+                // Delegated user must belong to the issuing server.
+                // TODO: we don't actually verify that the user_id matches
+                // the provided domain, but we will be removing user UUIDs
+                // entirely soon anyways.
+                let expected_iss = get_api_url(&user_ref.domain);
+                if claims.iss != expected_iss {
+                    return Ok(Some(
+                        "Federation issuer does not match delegated user domain"
+                            .into(),
+                    ));
+                }
+                if user_ref.id != *user_id {
+                    return Ok(Some("Invalid delegated federated user".into()));
                 }
             }
 

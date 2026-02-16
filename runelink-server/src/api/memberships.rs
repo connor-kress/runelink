@@ -153,7 +153,10 @@ pub mod federated {
         let mut session = authorize(
             &state,
             Principal::from_federation_headers(&headers, &state).await?,
-            ops::memberships::auth::federated::create(server_id),
+            ops::memberships::auth::federated::create(
+                server_id,
+                new_membership.user_id,
+            ),
         )
         .await?;
         let membership =

@@ -272,14 +272,12 @@ pub mod auth {
     pub mod federated {
         use super::*;
 
-        pub fn create(_server_id: Uuid) -> Req {
-            // TODO: see above plus verify the server domain
-            Req::Always.federated_only()
+        pub fn create(_server_id: Uuid, user_id: Uuid) -> Req {
+            Req::FederatedUser(user_id).federated_only()
         }
 
-        pub fn delete(_server_id: Uuid, _user_id: Uuid) -> Req {
-            // TODO: Check if the user is from the same domain as the server
-            Req::Always.federated_only()
+        pub fn delete(_server_id: Uuid, user_id: Uuid) -> Req {
+            Req::FederatedUser(user_id).federated_only()
         }
     }
 }
