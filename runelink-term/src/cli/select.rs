@@ -142,12 +142,11 @@ pub async fn get_server_selection(
     let servers = match selection_type {
         ServerSelectionType::All { domain } => {
             // Use target_domain if it's different from account domain
-            let target_domain =
-                if Some(domain) != ctx.account.map(|ac| ac.domain.as_str()) {
-                    Some(domain)
-                } else {
-                    None
-                };
+            let target_domain = if account.user_ref.domain != domain {
+                Some(domain)
+            } else {
+                None
+            };
             requests::servers::fetch_all(ctx.client, &api_url, target_domain)
                 .await?
         }
@@ -156,19 +155,20 @@ pub async fn get_server_selection(
             requests::servers::fetch_by_user(
                 ctx.client,
                 &api_url,
-                account.user_id,
+                account.user_ref.clone(),
             )
             .await?
         }
 
         ServerSelectionType::NonMemberOnly { domain } => {
             // Fetch all servers from the specified domain
-            let target_domain =
-                if Some(domain) != ctx.account.map(|ac| ac.domain.as_str()) {
-                    Some(domain)
-                } else {
-                    None
-                };
+            let target_domain = if Some(domain)
+                != ctx.account.map(|ac| ac.user_ref.domain.as_str())
+            {
+                Some(domain)
+            } else {
+                None
+            };
             let (all_servers_result, member_servers_result) = tokio::join!(
                 requests::servers::fetch_all(
                     ctx.client,
@@ -178,7 +178,7 @@ pub async fn get_server_selection(
                 requests::servers::fetch_by_user(
                     ctx.client,
                     &api_url,
-                    account.user_id
+                    account.user_ref.clone(),
                 )
             );
             let all_servers = all_servers_result?;

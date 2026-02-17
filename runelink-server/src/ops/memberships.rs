@@ -1,6 +1,7 @@
 use runelink_client::{requests, util::get_api_url};
 use runelink_types::{
     FullServerMembership, NewServerMembership, ServerMember, ServerMembership,
+    UserRef,
 };
 use uuid::Uuid;
 
@@ -11,10 +12,7 @@ use crate::{
     state::AppState,
 };
 
-/// Create a new membership for a user in a server (handles both local and remote users).
-///
-/// For remote users, this function will fetch and cache the user profile from their
-/// home server if they don't already exist locally.
+/// Create a new membership for a user in a server.
 pub async fn create(
     state: &AppState,
     session: &mut Session,
@@ -26,7 +24,8 @@ pub async fn create(
         .is_remote_domain(Some(&new_membership.server_domain))
     {
         // Home Server should only create memberships for its own users.
-        if new_membership.user_domain != state.config.local_domain() {
+        let user_domain = new_membership.user_ref.domain.clone();
+        if state.config.is_remote_domain(Some(&user_domain)) {
             return Err(ApiError::BadRequest(
                 "User domain in membership does not match local domain".into(),
             ));
@@ -35,8 +34,7 @@ pub async fn create(
         let token = state.key_manager.issue_federation_jwt_delegated(
             state.config.api_url(),
             server_api_url.clone(),
-            new_membership.user_id,
-            new_membership.user_domain.clone(),
+            new_membership.user_ref.clone(),
         )?;
         let membership = requests::memberships::federated::create(
             &state.http_client,
@@ -59,18 +57,17 @@ pub async fn create(
     }
 
     // Ensure remote user exists locally before creating membership
-    if new_membership.user_domain != state.config.local_domain() {
+    if new_membership.user_ref.domain != state.config.local_domain() {
         let user = session.lookup_user(state).await?;
         if user.is_none() {
-            let api_url = get_api_url(&new_membership.user_domain);
-            let user = requests::users::fetch_by_id(
+            let api_url = get_api_url(&new_membership.user_ref.domain);
+            let user = requests::users::fetch_by_ref(
                 &state.http_client,
                 &api_url,
-                new_membership.user_id,
-                None,
+                new_membership.user_ref.clone(),
             )
             .await?;
-            queries::users::insert_remote(&state.db_pool, &user).await?;
+            queries::users::upsert_remote(&state.db_pool, &user).await?;
         }
     }
 
@@ -81,7 +78,7 @@ pub async fn create(
     let membership = queries::memberships::get_local_by_user_and_server(
         state,
         new_membership.server_id,
-        new_membership.user_id,
+        new_membership.user_ref.clone(),
     )
     .await?;
     let full_membership = FullServerMembership {
@@ -96,8 +93,6 @@ pub async fn create(
 }
 
 /// Get all members of a server (public).
-/// If target_domain is provided and not the local domain, fetches from that remote domain.
-/// Otherwise, returns local members.
 pub async fn get_members_by_server(
     state: &AppState,
     server_id: Uuid,
@@ -132,12 +127,10 @@ pub async fn get_members_by_server(
 }
 
 /// Get a specific server member (public).
-/// If target_domain is provided and not the local domain, fetches from that remote domain.
-/// Otherwise, returns local member.
 pub async fn get_member_by_user_and_server(
     state: &AppState,
     server_id: Uuid,
-    user_id: Uuid,
+    user_ref: UserRef,
     target_domain: Option<&str>,
 ) -> ApiResult<ServerMember> {
     // Handle local case
@@ -145,7 +138,7 @@ pub async fn get_member_by_user_and_server(
         let member = queries::memberships::get_local_member_by_user_and_server(
             &state.db_pool,
             server_id,
-            user_id,
+            user_ref,
         )
         .await?;
         Ok(member)
@@ -157,7 +150,7 @@ pub async fn get_member_by_user_and_server(
             &state.http_client,
             &api_url,
             server_id,
-            user_id,
+            user_ref,
             None,
         )
         .await
@@ -173,29 +166,27 @@ pub async fn get_member_by_user_and_server(
 /// Get all server memberships for a user (public).
 pub async fn get_by_user(
     state: &AppState,
-    user_id: Uuid,
+    user_ref: UserRef,
 ) -> ApiResult<Vec<ServerMembership>> {
-    let memberships = queries::memberships::get_by_user(state, user_id).await?;
+    let memberships =
+        queries::memberships::get_by_user(state, user_ref).await?;
     Ok(memberships)
 }
 
 /// Delete a server membership.
-/// If target_domain is provided and not the local domain, proxies via federation.
-/// Otherwise, deletes locally.
 pub async fn delete(
     state: &AppState,
     session: &mut Session,
     server_id: Uuid,
-    user_id: Uuid,
+    user_ref: UserRef,
     target_domain: Option<&str>,
 ) -> ApiResult<()> {
-    // Verify the authenticated user matches the user_id in the path
-    let user_ref = session.user_ref.as_ref().ok_or_else(|| {
+    let session_user_ref = session.user_ref.clone().ok_or_else(|| {
         ApiError::AuthError("User reference required for leaving server".into())
     })?;
-    if user_ref.id != user_id {
+    if session_user_ref != user_ref {
         return Err(ApiError::BadRequest(
-            "User ID in path does not match authenticated user".into(),
+            "User identity in path does not match authenticated user".into(),
         ));
     }
 
@@ -205,34 +196,27 @@ pub async fn delete(
         queries::memberships::get_local_member_by_user_and_server(
             &state.db_pool,
             server_id,
-            user_id,
+            user_ref.clone(),
         )
         .await?;
-        queries::memberships::delete_local(&state.db_pool, server_id, user_id)
+        queries::memberships::delete_local(&state.db_pool, server_id, user_ref)
             .await?;
         Ok(())
     } else {
         // Delete on remote domain using federation
         let domain = target_domain.unwrap();
         let api_url = get_api_url(domain);
-        let user_ref = session.user_ref.as_ref().ok_or_else(|| {
-            ApiError::Internal(
-                "User reference required for federated membership deletion"
-                    .to_string(),
-            )
-        })?;
         let token = state.key_manager.issue_federation_jwt_delegated(
             state.config.api_url(),
             api_url.clone(),
-            user_ref.id,
-            user_ref.domain.clone(),
+            user_ref.clone(),
         )?;
         requests::memberships::federated::delete(
             &state.http_client,
             &api_url,
             &token,
             server_id,
-            user_id,
+            user_ref.clone(),
         )
         .await
         .map_err(|e| {
@@ -244,7 +228,7 @@ pub async fn delete(
         let _ = queries::memberships::delete_remote(
             &state.db_pool,
             server_id,
-            user_id,
+            user_ref,
         )
         .await;
         Ok(())
@@ -263,8 +247,8 @@ pub mod auth {
         Req::Always.or_admin().client_only()
     }
 
-    pub fn delete(server_id: Uuid, user_id: Uuid) -> Req {
-        or!(Req::User(user_id), Req::ServerAdmin(server_id))
+    pub fn delete(server_id: Uuid, user_ref: UserRef) -> Req {
+        or!(Req::User(user_ref), Req::ServerAdmin(server_id))
             .or_admin()
             .client_only()
     }
@@ -272,12 +256,12 @@ pub mod auth {
     pub mod federated {
         use super::*;
 
-        pub fn create(_server_id: Uuid, user_id: Uuid) -> Req {
-            Req::FederatedUser(user_id).federated_only()
+        pub fn create(_server_id: Uuid, user_ref: UserRef) -> Req {
+            Req::FederatedUser(user_ref).federated_only()
         }
 
-        pub fn delete(_server_id: Uuid, user_id: Uuid) -> Req {
-            Req::FederatedUser(user_id).federated_only()
+        pub fn delete(_server_id: Uuid, user_ref: UserRef) -> Req {
+            Req::FederatedUser(user_ref).federated_only()
         }
     }
 }

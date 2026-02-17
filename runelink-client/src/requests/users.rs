@@ -1,7 +1,6 @@
 use log::info;
 use reqwest::Client;
-use runelink_types::{NewUser, User};
-use uuid::Uuid;
+use runelink_types::{NewUser, User, UserRef};
 
 use crate::error::Result;
 
@@ -32,27 +31,16 @@ pub async fn fetch_all(
     fetch_json::<Vec<User>>(client, &url).await
 }
 
-pub async fn fetch_by_id(
+pub async fn fetch_by_ref(
     client: &Client,
     api_url: &str,
-    user_id: Uuid,
-    target_domain: Option<&str>,
+    user: UserRef,
 ) -> Result<User> {
-    let mut url = format!("{api_url}/users/{user_id}");
-    if let Some(domain) = target_domain {
-        url = format!("{url}?target_domain={domain}");
-    }
-    info!("fetching user: {url}");
-    fetch_json::<User>(client, &url).await
-}
-
-pub async fn fetch_by_name_and_domain(
-    client: &Client,
-    api_url: &str,
-    name: String,
-    domain: String,
-) -> Result<User> {
-    let url = format!("{api_url}/users/find?name={name}&domain={domain}");
+    let url = format!(
+        "{api_url}/users/{domain}/{name}",
+        domain = user.domain,
+        name = user.name
+    );
     info!("fetching user: {url}");
     fetch_json::<User>(client, &url).await
 }
@@ -61,9 +49,13 @@ pub async fn delete(
     client: &Client,
     api_url: &str,
     access_token: &str,
-    user_id: Uuid,
+    user: UserRef,
 ) -> Result<()> {
-    let url = format!("{api_url}/users/{user_id}");
+    let url = format!(
+        "{api_url}/users/{domain}/{name}",
+        domain = user.domain,
+        name = user.name
+    );
     info!("deleting user: {url}");
     delete_authed(client, &url, access_token).await
 }
@@ -72,14 +64,18 @@ pub async fn delete(
 pub mod federated {
     use super::*;
 
-    /// DELETE /federation/users/{user_id}
+    /// DELETE /federation/users/{domain}/{name}
     pub async fn delete(
         client: &Client,
         api_url: &str,
         token: &str,
-        user_id: Uuid,
+        user: UserRef,
     ) -> Result<()> {
-        let url = format!("{api_url}/federation/users/{user_id}");
+        let url = format!(
+            "{api_url}/federation/users/{domain}/{name}",
+            domain = user.domain,
+            name = user.name
+        );
         info!("deleting user (federation): {url}");
         delete_federated(client, &url, token).await
     }

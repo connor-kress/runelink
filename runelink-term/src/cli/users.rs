@@ -1,4 +1,5 @@
 use runelink_client::requests;
+use runelink_types::UserRef;
 use uuid::Uuid;
 
 use crate::error::CliError;
@@ -23,10 +24,10 @@ pub enum UserCommands {
 pub struct UserGetArgs {
     /// The domain of the user
     #[clap(long)]
-    pub domain: Option<String>,
+    pub domain: String,
     /// The ID of the user to fetch
     #[clap(long)]
-    pub user_id: Uuid,
+    pub name: String,
 }
 
 #[derive(clap::Args, Debug)]
@@ -66,20 +67,18 @@ pub async fn handle_user_commands(
                 .await?;
             }
             for user in users {
-                println!("{}", user.verbose());
+                println!("{user}");
             }
         }
 
         UserCommands::Get(get_args) => {
+            let user_ref =
+                UserRef::new(get_args.name.clone(), get_args.domain.clone());
             let api_url = ctx.home_api_url()?;
-            let user = requests::users::fetch_by_id(
-                ctx.client,
-                &api_url,
-                get_args.user_id,
-                get_args.domain.as_deref(),
-            )
-            .await?;
-            println!("{}", user.verbose());
+            let user =
+                requests::users::fetch_by_ref(ctx.client, &api_url, user_ref)
+                    .await?;
+            println!("{user}");
         }
     }
     Ok(())

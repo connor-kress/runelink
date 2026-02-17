@@ -200,7 +200,7 @@ pub async fn handle_channel_commands(
                 title,
                 description: desc,
             };
-            let target_domain = if server.domain != account.domain {
+            let target_domain = if server.domain != account.user_ref.domain {
                 Some(server.domain.as_str())
             } else {
                 None

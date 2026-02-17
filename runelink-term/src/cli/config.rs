@@ -1,6 +1,7 @@
-use crate::{error::CliError, storage::AccountConfig};
-
 use super::{context::CliContext, select::select_inline};
+use crate::error::CliError;
+use crate::storage::AccountConfig;
+use runelink_types::UserRef;
 
 #[derive(clap::Args, Debug)]
 pub struct ConfigArgs {
@@ -60,7 +61,7 @@ pub async fn handle_default_account_commands(
     match &default_args.command {
         DefaultAccountCommands::Get => {
             if let Some(account) = ctx.config.get_default_account() {
-                println!("{}", account.verbose());
+                println!("{account}");
             } else {
                 println!("No default host set.");
             }
@@ -70,11 +71,10 @@ pub async fn handle_default_account_commands(
             let account = if let (Some(name), Some(domain)) =
                 (&set_args.name, &set_args.domain)
             {
-                ctx.config
-                    .get_account_config_by_name(name, domain)
-                    .ok_or_else(|| {
-                        CliError::InvalidArgument("Account not found.".into())
-                    })?
+                let user_ref = UserRef::new(name.clone(), domain.clone());
+                ctx.config.get_account_config(user_ref).ok_or_else(|| {
+                    CliError::InvalidArgument("Account not found.".into())
+                })?
             } else {
                 let tmp = select_inline(
                     &ctx.config.accounts,
@@ -86,9 +86,9 @@ pub async fn handle_default_account_commands(
                 tmp
             }
             .clone();
-            ctx.config.default_account = Some(account.user_id);
+            ctx.config.default_account = Some(account.user_ref.clone());
             ctx.config.save()?;
-            println!("Set default account: {}", account.verbose());
+            println!("Set default account: {account}");
         }
     }
     Ok(())

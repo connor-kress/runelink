@@ -128,7 +128,7 @@ pub async fn handle_server_commands(
                 let memberships = requests::memberships::fetch_by_user(
                     ctx.client,
                     &api_url,
-                    account.user_id,
+                    account.user_ref.clone(),
                 )
                 .await?;
                 if memberships.is_empty() {
@@ -218,7 +218,7 @@ pub async fn handle_server_commands(
                 let domain = join_args
                     .domain
                     .as_deref()
-                    .unwrap_or(account.domain.as_str());
+                    .unwrap_or(account.user_ref.domain.as_str());
                 get_server_selection(
                     ctx,
                     ServerSelectionType::NonMemberOnly { domain },
@@ -226,8 +226,7 @@ pub async fn handle_server_commands(
                 .await?
             };
             let new_member = NewServerMembership {
-                user_id: account.user_id,
-                user_domain: account.domain.clone(),
+                user_ref: account.user_ref.clone(),
                 server_id: server.id,
                 server_domain: server.domain.clone(),
                 role: ServerRole::Member,
@@ -258,7 +257,7 @@ pub async fn handle_server_commands(
                 let domain = leave_args
                     .domain
                     .as_deref()
-                    .unwrap_or(account.domain.as_str());
+                    .unwrap_or(account.user_ref.domain.as_str());
                 get_server_selection(ctx, ServerSelectionType::MemberOnly)
                     .await?
             };
@@ -267,7 +266,7 @@ pub async fn handle_server_commands(
                 &api_url,
                 &access_token,
                 server.id,
-                account.user_id,
+                account.user_ref.clone(),
                 Some(server.domain.as_str()),
             )
             .await?;
@@ -284,7 +283,7 @@ pub async fn handle_server_commands(
                 let domain = delete_args
                     .domain
                     .as_deref()
-                    .unwrap_or(account.domain.as_str());
+                    .unwrap_or(account.user_ref.domain.as_str());
                 get_server_selection(ctx, ServerSelectionType::MemberOnly)
                     .await?
                     .id

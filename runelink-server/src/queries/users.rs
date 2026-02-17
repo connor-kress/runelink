@@ -1,6 +1,5 @@
-use runelink_types::{NewUser, User, UserRole};
+use runelink_types::{NewUser, User, UserRef, UserRole};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use crate::{db::DbPool, error::ApiResult};
 
@@ -11,7 +10,6 @@ pub async fn insert(pool: &DbPool, new_user: &NewUser) -> ApiResult<User> {
         INSERT INTO users (name, domain, role)
         VALUES ($1, $2, $3)
         RETURNING
-            id,
             name,
             domain,
             role AS "role: UserRole",
@@ -28,17 +26,20 @@ pub async fn insert(pool: &DbPool, new_user: &NewUser) -> ApiResult<User> {
     Ok(user)
 }
 
-pub async fn insert_remote(
+pub async fn upsert_remote(
     pool: &DbPool,
     remote_user: &User,
 ) -> ApiResult<User> {
     let user = sqlx::query_as!(
         User,
         r#"
-        INSERT INTO users (id, name, domain, role, created_at, updated_at, synced_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        INSERT INTO users (name, domain, role, created_at, updated_at, synced_at)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        ON CONFLICT (name, domain) DO UPDATE SET
+            role = EXCLUDED.role,
+            updated_at = EXCLUDED.updated_at,
+            synced_at = EXCLUDED.synced_at
         RETURNING
-            id,
             name,
             domain,
             role AS "role: UserRole",
@@ -46,7 +47,6 @@ pub async fn insert_remote(
             updated_at,
             synced_at;
         "#,
-        remote_user.id,
         remote_user.name,
         remote_user.domain,
         UserRole::User as UserRole,
@@ -64,7 +64,6 @@ pub async fn get_all(pool: &DbPool) -> ApiResult<Vec<User>> {
         User,
         r#"
         SELECT
-            id,
             name,
             domain,
             role AS "role: UserRole",
@@ -79,38 +78,11 @@ pub async fn get_all(pool: &DbPool) -> ApiResult<Vec<User>> {
     Ok(users)
 }
 
-pub async fn get_by_id(pool: &DbPool, user_id: Uuid) -> ApiResult<User> {
+pub async fn get_by_ref(pool: &DbPool, user_ref: UserRef) -> ApiResult<User> {
     let user = sqlx::query_as!(
         User,
         r#"
         SELECT
-            id,
-            name,
-            domain,
-            role AS "role: UserRole",
-            created_at,
-            updated_at,
-            synced_at
-        FROM users
-        WHERE id = $1;
-        "#,
-        user_id,
-    )
-    .fetch_one(pool)
-    .await?;
-    Ok(user)
-}
-
-pub async fn get_by_name_and_domain(
-    pool: &DbPool,
-    name: String,
-    domain: String,
-) -> ApiResult<User> {
-    let user = sqlx::query_as!(
-        User,
-        r#"
-        SELECT
-            id,
             name,
             domain,
             role AS "role: UserRole",
@@ -120,30 +92,19 @@ pub async fn get_by_name_and_domain(
         FROM users
         WHERE name = $1 AND domain = $2;
         "#,
-        name,
-        domain,
+        user_ref.name,
+        user_ref.domain,
     )
     .fetch_one(pool)
     .await?;
     Ok(user)
 }
 
-pub async fn delete_by_id(pool: &DbPool, user_id: Uuid) -> ApiResult<()> {
-    sqlx::query!("DELETE FROM users WHERE id = $1;", user_id)
-        .execute(pool)
-        .await?;
-    Ok(())
-}
-
-pub async fn delete_by_id_and_domain(
-    pool: &DbPool,
-    user_id: Uuid,
-    domain: &str,
-) -> ApiResult<()> {
+pub async fn delete(pool: &DbPool, user_ref: UserRef) -> ApiResult<()> {
     sqlx::query!(
-        "DELETE FROM users WHERE id = $1 AND domain = $2;",
-        user_id,
-        domain
+        "DELETE FROM users WHERE name = $1 AND domain = $2;",
+        user_ref.name,
+        user_ref.domain
     )
     .execute(pool)
     .await?;

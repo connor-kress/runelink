@@ -6,11 +6,10 @@ use ed25519_dalek::{
 };
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header};
 use rand::rngs::OsRng;
-use runelink_types::{FederationClaims, auth::PublicJwk};
+use runelink_types::{FederationClaims, UserRef, auth::PublicJwk};
 use std::fs;
 use std::path::PathBuf;
 use time::Duration;
-use uuid::Uuid;
 
 use crate::error::{ApiError, ApiResult};
 
@@ -157,15 +156,13 @@ impl KeyManager {
         &self,
         issuer_server_id: String,
         audience_server_id: String,
-        user_id: Uuid,
-        user_domain: String,
+        user_ref: UserRef,
     ) -> ApiResult<String> {
         let lifetime = Duration::minutes(5); // Short-lived for s2s
         let claims = FederationClaims::new_delegated(
             issuer_server_id,
             audience_server_id,
-            user_id,
-            user_domain,
+            user_ref,
             lifetime,
         );
 

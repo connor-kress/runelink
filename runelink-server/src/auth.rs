@@ -14,7 +14,7 @@ use runelink_types::{
 use uuid::Uuid;
 
 /// Macro to construct an `And` requirement.
-/// Example: `and!(Requirement::Client, Requirement::User(user_id))`
+/// Example: `and!(Requirement::Client, Requirement::User(user_ref))`
 #[macro_export]
 macro_rules! and {
     () => {
@@ -67,10 +67,10 @@ pub enum Requirement {
     Client,
     /// Must be authenticated with a federation token.
     Federation,
-    /// Must be a delegated federated user with the referenced ID.
-    FederatedUser(Uuid),
-    /// Must be a user with the referenced ID.
-    User(Uuid),
+    /// Must be a delegated federated user with the referenced identity.
+    FederatedUser(UserRef),
+    /// Must be a user with the referenced identity.
+    User(UserRef),
     /// Must be a host admin.
     HostAdmin,
     /// Must be a member of the referenced server.
@@ -117,7 +117,7 @@ impl Requirement {
                 }
             }
 
-            Requirement::FederatedUser(user_id) => {
+            Requirement::FederatedUser(expected) => {
                 let (claims, user_ref) = match &ctx.principal {
                     Principal::Federation(auth) => {
                         (&auth.claims, auth.claims.user_ref.as_ref())
@@ -129,25 +129,25 @@ impl Requirement {
                         "Federated delegated user required".into(),
                     ));
                 };
-                // Delegated user must belong to the issuing server.
-                // TODO: we don't actually verify that the user_id matches
-                // the provided domain, but we will be removing user UUIDs
-                // entirely soon anyways.
-                let expected_iss = get_api_url(&user_ref.domain);
+                let expected_iss = get_api_url(&expected.domain);
                 if claims.iss != expected_iss {
                     return Ok(Some(
                         "Federation issuer does not match delegated user domain"
                             .into(),
                     ));
                 }
-                if user_ref.id != *user_id {
+                if user_ref.name != expected.name
+                    || user_ref.domain != expected.domain
+                {
                     return Ok(Some("Invalid delegated federated user".into()));
                 }
             }
 
-            Requirement::User(user_id) => {
+            Requirement::User(expected) => {
                 let user = ctx.get_user().await?;
-                if user.is_none() || user.unwrap().id != *user_id {
+                if user.is_none()
+                    || user.as_ref().unwrap().as_ref() != *expected
+                {
                     return Ok(Some("Invalid user".into()));
                 }
             }
@@ -237,9 +237,11 @@ impl<'a> AuthContext<'a> {
             let Some(user_ref) = self.user_ref.as_ref() else {
                 return Ok(None);
             };
-            let user =
-                queries::users::get_by_id(&self.state.db_pool, user_ref.id)
-                    .await?;
+            let user = queries::users::get_by_ref(
+                &self.state.db_pool,
+                user_ref.clone(),
+            )
+            .await?;
             self.user = Some(user);
         }
         Ok(self.user.as_ref())
@@ -254,7 +256,7 @@ impl<'a> AuthContext<'a> {
                 return Ok(None);
             };
             let memberships =
-                queries::memberships::get_by_user(self.state, user_ref.id)
+                queries::memberships::get_by_user(self.state, user_ref.clone())
                     .await?;
             self.memberships = Some(memberships);
         }
@@ -298,9 +300,8 @@ impl Session {
             self.cached_user = Some(None);
             return Ok(None);
         };
-        // Perform DB lookup
         let user_result =
-            queries::users::get_by_id(&state.db_pool, user_ref.id).await;
+            queries::users::get_by_ref(&state.db_pool, user_ref.clone()).await;
         let user = match user_result {
             Ok(user) => Some(user),
             Err(ApiError::NotFound) => None,
@@ -313,7 +314,6 @@ impl Session {
     /// Require that a delegated user exists locally.
     /// Returns an error if the user reference is missing or the user is not in the DB.
     pub async fn require_user(&mut self, state: &AppState) -> ApiResult<User> {
-        // Clone the user reference before calling lookup_user (which needs &mut self)
         let user_ref = self.user_ref.clone().ok_or_else(|| {
             ApiError::AuthError("No delegated user in session".into())
         })?;
@@ -324,8 +324,7 @@ impl Session {
     }
 }
 
-/// Authorization engine (shared). Operation code defines an `AuthSpec` once,
-/// and transport adapters supply a `Principal` based on their auth mechanism.
+/// Authorization engine (shared).
 pub async fn authorize(
     state: &AppState,
     principal: Principal,
@@ -334,17 +333,15 @@ pub async fn authorize(
     // Extract user identity from the principal (no DB lookups yet)
     let (user_ref, federation_claims) = match &principal {
         Principal::Client(auth) => {
-            // Client auth always has a local user
-            (
-                Some(UserRef::new(
-                    auth.claims.sub,
-                    state.config.local_domain(),
-                )),
-                None,
-            )
+            let user_ref = UserRef::parse_subject(&auth.claims.sub)
+                .ok_or_else(|| {
+                    ApiError::AuthError(
+                        "Invalid token subject (expected name@domain)".into(),
+                    )
+                })?;
+            (Some(user_ref), None)
         }
         Principal::Federation(auth) => {
-            // Federation auth may have delegated user fields
             (auth.claims.user_ref.clone(), Some(auth.claims.clone()))
         }
     };

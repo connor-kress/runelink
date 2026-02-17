@@ -10,7 +10,7 @@ use axum::{
     response::IntoResponse,
 };
 use log::info;
-use runelink_types::NewServerMembership;
+use runelink_types::{NewServerMembership, UserRef};
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -38,20 +38,20 @@ pub async fn get_members_by_server(
     Ok((StatusCode::OK, Json(members)))
 }
 
-/// GET /servers/{server_id}/users/{user_id}
+/// GET /servers/{server_id}/users/{domain}/{name}
 pub async fn get_by_user_and_server(
     State(state): State<AppState>,
-    Path((server_id, user_id)): Path<(Uuid, Uuid)>,
+    Path((server_id, domain, name)): Path<(Uuid, String, String)>,
     Query(params): Query<MembershipQueryParams>,
 ) -> ApiResult<impl IntoResponse> {
     info!(
-        "GET /servers/{server_id}/users/{user_id}?target_domain={:?}",
+        "GET /servers/{server_id}/users/{domain}/{name}?target_domain={:?}",
         params.target_domain
     );
     let member = ops::memberships::get_member_by_user_and_server(
         &state,
         server_id,
-        user_id,
+        UserRef::new(name, domain),
         params.target_domain.as_deref(),
     )
     .await?;
@@ -85,38 +85,40 @@ pub async fn create(
     Ok((StatusCode::CREATED, Json(membership)))
 }
 
-/// GET /users/{user_id}/memberships
+/// GET /users/{domain}/{name}/memberships
 pub async fn get_by_user(
     State(state): State<AppState>,
-    Path(user_id): Path<Uuid>,
+    Path((domain, name)): Path<(String, String)>,
 ) -> ApiResult<impl IntoResponse> {
-    info!("GET /users/{user_id}/servers");
-    let memberships = ops::memberships::get_by_user(&state, user_id).await?;
+    info!("GET /users/{domain}/{name}/servers");
+    let user_ref = UserRef::new(name, domain);
+    let memberships = ops::memberships::get_by_user(&state, user_ref).await?;
     Ok((StatusCode::OK, Json(memberships)))
 }
 
-/// DELETE /servers/{server_id}/users/{user_id}
+/// DELETE /servers/{server_id}/users/{domain}/{name}
 pub async fn delete(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Path((server_id, user_id)): Path<(Uuid, Uuid)>,
+    Path((server_id, domain, name)): Path<(Uuid, String, String)>,
     Query(params): Query<MembershipQueryParams>,
 ) -> ApiResult<impl IntoResponse> {
     info!(
-        "DELETE /servers/{server_id}/users/{user_id}?target_domain={:?}",
+        "DELETE /servers/{server_id}/users/{domain}/{name}?target_domain={:?}",
         params.target_domain
     );
+    let user_ref = UserRef::new(name, domain);
     let mut session = authorize(
         &state,
         Principal::from_client_headers(&headers, &state)?,
-        ops::memberships::auth::delete(server_id, user_id),
+        ops::memberships::auth::delete(server_id, user_ref.clone()),
     )
     .await?;
     ops::memberships::delete(
         &state,
         &mut session,
         server_id,
-        user_id,
+        user_ref,
         params.target_domain.as_deref(),
     )
     .await?;
@@ -144,7 +146,10 @@ pub mod federated {
                     .into(),
             ));
         }
-        if new_membership.user_domain == state.config.local_domain() {
+        if !state
+            .config
+            .is_remote_domain(Some(&new_membership.user_ref.domain))
+        {
             return Err(ApiError::BadRequest(
                 "User domain in membership should not match local domain"
                     .into(),
@@ -155,7 +160,7 @@ pub mod federated {
             Principal::from_federation_headers(&headers, &state).await?,
             ops::memberships::auth::federated::create(
                 server_id,
-                new_membership.user_id,
+                new_membership.user_ref.clone(),
             ),
         )
         .await?;
@@ -165,24 +170,28 @@ pub mod federated {
         Ok((StatusCode::CREATED, Json(membership)))
     }
 
-    /// DELETE /federation/servers/{server_id}/users/{user_id}
+    /// DELETE /federation/servers/{server_id}/users/{domain}/{name}
     pub async fn delete(
         State(state): State<AppState>,
         headers: HeaderMap,
-        Path((server_id, user_id)): Path<(Uuid, Uuid)>,
+        Path((server_id, domain, name)): Path<(Uuid, String, String)>,
     ) -> ApiResult<impl IntoResponse> {
-        info!("DELETE /federation/servers/{server_id}/users/{user_id}");
+        info!("DELETE /federation/servers/{server_id}/users/{domain}/{name}");
+        let user_ref = UserRef::new(name, domain);
         let mut session = authorize(
             &state,
             Principal::from_federation_headers(&headers, &state).await?,
-            ops::memberships::auth::federated::delete(server_id, user_id),
+            ops::memberships::auth::federated::delete(
+                server_id,
+                user_ref.clone(),
+            ),
         )
         .await?;
         ops::memberships::delete(
             &state,
             &mut session,
             server_id,
-            user_id,
+            user_ref,
             None,
         )
         .await?;

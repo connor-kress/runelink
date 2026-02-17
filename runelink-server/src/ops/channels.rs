@@ -29,7 +29,7 @@ pub async fn create(
         // Create on remote domain using federation
         let domain = target_domain.unwrap();
         let api_url = get_api_url(domain);
-        let user_ref = session.user_ref.as_ref().ok_or_else(|| {
+        let user_ref = session.user_ref.clone().ok_or_else(|| {
             ApiError::Internal(
                 "User reference required for federated channel creation"
                     .to_string(),
@@ -38,8 +38,7 @@ pub async fn create(
         let token = state.key_manager.issue_federation_jwt_delegated(
             state.config.api_url(),
             api_url.clone(),
-            user_ref.id,
-            user_ref.domain.clone(),
+            user_ref.clone(),
         )?;
         let channel = requests::channels::federated::create(
             &state.http_client,
@@ -74,7 +73,7 @@ pub async fn get_all(
         // Fetch from remote domain using federation
         let domain = target_domain.unwrap();
         let api_url = get_api_url(domain);
-        let user_ref = session.user_ref.as_ref().ok_or_else(|| {
+        let user_ref = session.user_ref.clone().ok_or_else(|| {
             ApiError::Internal(
                 "User reference required for federated channel fetching"
                     .to_string(),
@@ -83,8 +82,7 @@ pub async fn get_all(
         let token = state.key_manager.issue_federation_jwt_delegated(
             state.config.api_url(),
             api_url.clone(),
-            user_ref.id,
-            user_ref.domain.clone(),
+            user_ref,
         )?;
         let channels = requests::channels::federated::fetch_all(
             &state.http_client,
@@ -117,7 +115,7 @@ pub async fn get_by_server(
         // Fetch from remote domain using federation
         let domain = target_domain.unwrap();
         let api_url = get_api_url(domain);
-        let user_ref = session.user_ref.as_ref().ok_or_else(|| {
+        let user_ref = session.user_ref.clone().ok_or_else(|| {
             ApiError::Internal(
                 "User reference required for federated channel fetching"
                     .to_string(),
@@ -126,8 +124,7 @@ pub async fn get_by_server(
         let token = state.key_manager.issue_federation_jwt_delegated(
             state.config.api_url(),
             api_url.clone(),
-            user_ref.id,
-            user_ref.domain.clone(),
+            user_ref,
         )?;
         let channels = requests::channels::federated::fetch_by_server(
             &state.http_client,
@@ -164,7 +161,7 @@ pub async fn get_by_id(
         // Fetch from remote domain using federation
         let domain = target_domain.unwrap();
         let api_url = get_api_url(domain);
-        let user_ref = session.user_ref.as_ref().ok_or_else(|| {
+        let user_ref = session.user_ref.clone().ok_or_else(|| {
             ApiError::Internal(
                 "User reference required for federated channel fetching"
                     .to_string(),
@@ -173,8 +170,7 @@ pub async fn get_by_id(
         let token = state.key_manager.issue_federation_jwt_delegated(
             state.config.api_url(),
             api_url.clone(),
-            user_ref.id,
-            user_ref.domain.clone(),
+            user_ref,
         )?;
         let channel = requests::channels::federated::fetch_by_id(
             &state.http_client,
@@ -219,7 +215,7 @@ pub async fn delete(
         // Delete on remote domain using federation
         let domain = target_domain.unwrap();
         let api_url = get_api_url(domain);
-        let user_ref = session.user_ref.as_ref().ok_or_else(|| {
+        let user_ref = session.user_ref.clone().ok_or_else(|| {
             ApiError::Internal(
                 "User reference required for federated channel deletion"
                     .to_string(),
@@ -228,8 +224,7 @@ pub async fn delete(
         let token = state.key_manager.issue_federation_jwt_delegated(
             state.config.api_url(),
             api_url.clone(),
-            user_ref.id,
-            user_ref.domain.clone(),
+            user_ref,
         )?;
         requests::channels::federated::delete(
             &state.http_client,

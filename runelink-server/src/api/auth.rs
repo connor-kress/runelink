@@ -18,7 +18,7 @@ use log::info;
 use reqwest::StatusCode;
 use runelink_types::{
     ClientAccessClaims, NewUser, RefreshToken, SignupRequest, TokenRequest,
-    TokenResponse, UserRole,
+    TokenResponse, UserRef, UserRole,
 };
 use serde_json::json;
 use time::{Duration, OffsetDateTime};
@@ -90,16 +90,19 @@ pub async fn token(
                 .ok_or(ApiError::BadRequest("missing password".into()))?;
 
             // Get user
-            let user = queries::users::get_by_name_and_domain(
+            let user = queries::users::get_by_ref(
                 &state.db_pool,
-                username,
-                state.config.local_domain(),
+                UserRef::new(username, state.config.local_domain()),
             )
             .await?;
 
             // Verify password hash
-            let account =
-                queries::accounts::get_by_user(&state.db_pool, user.id).await?;
+            let user_ref = user.as_ref();
+            let account = queries::accounts::get_by_user(
+                &state.db_pool,
+                user_ref.clone(),
+            )
+            .await?;
             let parsed_hash = PasswordHash::new(&account.password_hash)
                 .map_err(|_| {
                     ApiError::AuthError("invalid password hash".into())
@@ -113,7 +116,7 @@ pub async fn token(
             // Create client access JWT (valid only on this server)
             let lifetime = Duration::hours(1);
             let claims = ClientAccessClaims::new(
-                user.id,
+                &user_ref,
                 client_id.clone(),
                 state.config.api_url(),
                 scope,
@@ -127,7 +130,7 @@ pub async fn token(
             .map_err(|e| ApiError::Internal(format!("jwt error: {e}")))?;
 
             // Create refresh token
-            let rt = RefreshToken::new(user.id, client_id, Duration::days(30));
+            let rt = RefreshToken::new(user_ref, client_id, Duration::days(30));
             queries::tokens::insert_refresh(&state.db_pool, &rt).await?;
 
             Ok((
@@ -159,9 +162,11 @@ pub async fn token(
             }
 
             // Create new client access JWT
+            let user_ref =
+                UserRef::new(rt.user_name.clone(), rt.user_domain.clone());
             let lifetime = Duration::hours(1);
             let claims = ClientAccessClaims::new(
-                rt.user_id,
+                &user_ref,
                 client_id,
                 state.config.api_url(),
                 scope,
@@ -232,9 +237,12 @@ pub async fn signup(
         .to_string();
 
     // Insert local account
-    let _account =
-        queries::accounts::insert(&state.db_pool, user.id, &password_hash)
-            .await?;
+    let _ = queries::accounts::insert(
+        &state.db_pool,
+        user.as_ref(),
+        &password_hash,
+    )
+    .await?;
 
     Ok((StatusCode::CREATED, Json(user)))
 }

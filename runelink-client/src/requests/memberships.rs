@@ -1,7 +1,7 @@
 use log::info;
 use reqwest::Client;
 use runelink_types::{
-    FullServerMembership, NewServerMembership, ServerMembership,
+    FullServerMembership, NewServerMembership, ServerMembership, UserRef,
 };
 use uuid::Uuid;
 
@@ -15,9 +15,13 @@ use super::{
 pub async fn fetch_by_user(
     client: &Client,
     api_url: &str,
-    user_id: Uuid,
+    user: UserRef,
 ) -> Result<Vec<ServerMembership>> {
-    let url = format!("{api_url}/users/{user_id}/servers");
+    let url = format!(
+        "{api_url}/users/{domain}/{name}/servers",
+        domain = user.domain,
+        name = user.name
+    );
     info!("fetching memberships by user: {url}");
     fetch_json::<Vec<ServerMembership>>(client, &url).await
 }
@@ -40,12 +44,16 @@ pub async fn fetch_member_by_user_and_server(
     client: &Client,
     api_url: &str,
     server_id: Uuid,
-    user_id: Uuid,
+    user: UserRef,
     target_domain: Option<&str>,
 ) -> Result<runelink_types::ServerMember> {
-    let mut url = format!("{api_url}/servers/{server_id}/users/{user_id}");
-    if let Some(domain) = target_domain {
-        url = format!("{url}?target_domain={domain}");
+    let mut url = format!(
+        "{api_url}/servers/{server_id}/users/{domain}/{name}",
+        domain = user.domain,
+        name = user.name
+    );
+    if let Some(d) = target_domain {
+        url = format!("{url}?target_domain={d}");
     }
     info!("fetching member by user and server: {url}");
     fetch_json::<runelink_types::ServerMember>(client, &url).await
@@ -76,12 +84,16 @@ pub async fn delete(
     api_url: &str,
     access_token: &str,
     server_id: Uuid,
-    user_id: Uuid,
+    user: UserRef,
     target_domain: Option<&str>,
 ) -> Result<()> {
-    let mut url = format!("{api_url}/servers/{server_id}/users/{user_id}");
-    if let Some(domain) = target_domain {
-        url = format!("{url}?target_domain={domain}");
+    let mut url = format!(
+        "{api_url}/servers/{server_id}/users/{domain}/{name}",
+        domain = user.domain,
+        name = user.name
+    );
+    if let Some(d) = target_domain {
+        url = format!("{url}?target_domain={d}");
     }
     info!("deleting server membership: {url}");
     delete_authed(client, &url, access_token).await
@@ -92,8 +104,6 @@ pub mod federated {
     use super::*;
 
     /// Create a remote membership via federation.
-    ///
-    /// POST /federation/servers/{server_id}/users
     pub async fn create(
         client: &Client,
         api_url: &str,
@@ -115,17 +125,18 @@ pub mod federated {
     }
 
     /// Delete a remote server membership via federation.
-    ///
-    /// DELETE /federation/servers/{server_id}/users/{user_id}
     pub async fn delete(
         client: &Client,
         api_url: &str,
         token: &str,
         server_id: Uuid,
-        user_id: Uuid,
+        user: UserRef,
     ) -> Result<()> {
-        let url =
-            format!("{api_url}/federation/servers/{server_id}/users/{user_id}");
+        let url = format!(
+            "{api_url}/federation/servers/{server_id}/users/{domain}/{name}",
+            domain = user.domain,
+            name = user.name
+        );
         info!("deleting server membership (federation): {url}");
         delete_federated(client, &url, token).await
     }

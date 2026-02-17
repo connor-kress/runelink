@@ -3,6 +3,7 @@ use clap_complete::Shell;
 use context::CliContext;
 use log::LevelFilter;
 use reqwest::Client;
+use runelink_types::UserRef;
 
 use crate::{error::CliError, storage::AppConfig, storage_auth::AuthCache};
 
@@ -78,11 +79,11 @@ pub async fn handle_cli(
     init_logging(cli.verbose);
     let account_owned = match (&cli.name, &cli.domain) {
         (Some(name), Some(domain)) => {
-            config.get_account_config_by_name(name, domain)
+            let user_ref = UserRef::new(name.clone(), domain.clone());
+            config.get_account_config(user_ref).cloned()
         }
-        _ => config.get_default_account(),
-    }
-    .cloned();
+        _ => config.get_default_account().cloned(),
+    };
     let mut ctx_owned = CliContext {
         client,
         config,

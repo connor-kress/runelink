@@ -32,8 +32,7 @@ pub async fn create(
             )
         })?;
         let new_membership = NewServerMembership {
-            user_id: user_ref.id,
-            user_domain: user_ref.domain,
+            user_ref,
             server_id: server.id,
             server_domain: server.domain.clone(),
             role: ServerRole::Admin,
@@ -45,7 +44,7 @@ pub async fn create(
         // Create on remote domain using federation
         let domain = target_domain.unwrap();
         let api_url = get_api_url(domain);
-        let user_ref = session.user_ref.as_ref().ok_or_else(|| {
+        let user_ref = session.user_ref.clone().ok_or_else(|| {
             ApiError::Internal(
                 "User reference required for federated server creation"
                     .to_string(),
@@ -54,8 +53,7 @@ pub async fn create(
         let token = state.key_manager.issue_federation_jwt_delegated(
             state.config.api_url(),
             api_url.clone(),
-            user_ref.id,
-            user_ref.domain.clone(),
+            user_ref.clone(),
         )?;
         let server = requests::servers::federated::create(
             &state.http_client,
@@ -73,7 +71,7 @@ pub async fn create(
         queries::servers::upsert_remote(&state.db_pool, &server).await?;
         let remote_membership = ServerMembership {
             server: server.clone(),
-            user_id: user_ref.id,
+            user_ref,
             role: ServerRole::Admin,
             joined_at: server.created_at,
             updated_at: server.updated_at,
@@ -171,7 +169,7 @@ pub async fn get_with_channels(
         // Fetch from remote domain using federation
         let domain = target_domain.unwrap();
         let api_url = get_api_url(domain);
-        let user_ref = session.user_ref.as_ref().ok_or_else(|| {
+        let user_ref = session.user_ref.clone().ok_or_else(|| {
             ApiError::Internal(
                 "User reference required for federated server fetching"
                     .to_string(),
@@ -180,8 +178,7 @@ pub async fn get_with_channels(
         let token = state.key_manager.issue_federation_jwt_delegated(
             state.config.api_url(),
             api_url.clone(),
-            user_ref.id,
-            user_ref.domain.clone(),
+            user_ref,
         )?;
         let server_with_channels =
             requests::servers::federated::fetch_with_channels(
@@ -217,7 +214,7 @@ pub async fn delete(
         // Delete on remote domain using federation
         let domain = target_domain.unwrap();
         let api_url = get_api_url(domain);
-        let user_ref = session.user_ref.as_ref().ok_or_else(|| {
+        let user_ref = session.user_ref.clone().ok_or_else(|| {
             ApiError::Internal(
                 "User reference required for federated server deletion"
                     .to_string(),
@@ -226,8 +223,7 @@ pub async fn delete(
         let token = state.key_manager.issue_federation_jwt_delegated(
             state.config.api_url(),
             api_url.clone(),
-            user_ref.id,
-            user_ref.domain.clone(),
+            user_ref,
         )?;
         requests::servers::federated::delete(
             &state.http_client,

@@ -1,6 +1,6 @@
 use log::info;
 use reqwest::Client;
-use runelink_types::{NewServer, Server, ServerWithChannels};
+use runelink_types::{NewServer, Server, ServerWithChannels, UserRef};
 use uuid::Uuid;
 
 use crate::{error::Result, requests};
@@ -55,10 +55,10 @@ pub async fn fetch_by_id(
 pub async fn fetch_by_user(
     client: &Client,
     api_url: &str,
-    user_id: Uuid,
+    user_ref: UserRef,
 ) -> Result<Vec<Server>> {
     let servers =
-        requests::memberships::fetch_by_user(client, api_url, user_id)
+        requests::memberships::fetch_by_user(client, api_url, user_ref)
             .await?
             .into_iter()
             .map(|m| m.server)

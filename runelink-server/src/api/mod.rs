@@ -26,16 +26,18 @@ pub fn router() -> Router<AppState> {
         // API routes
         .route("/ping", get(ping))
         .route("/users", get(users::get_all).post(users::create))
-        .route("/users/find", get(users::get_by_name_and_domain))
         .route(
-            "/users/{user_id}",
-            get(users::get_by_id).delete(users::delete),
+            "/users/{domain}/{name}",
+            get(users::get_by_ref).delete(users::delete),
         )
         .route(
-            "/users/{user_id}/domains",
+            "/users/{domain}/{name}/domains",
             get(users::get_user_associated_domains),
         )
-        .route("/users/{user_id}/servers", get(memberships::get_by_user))
+        .route(
+            "/users/{domain}/{name}/servers",
+            get(memberships::get_by_user),
+        )
         .route("/messages", get(messages::get_all))
         .route(
             "/servers/{server_id}/channels/{channel_id}/messages/{message_id}",
@@ -72,7 +74,7 @@ pub fn router() -> Router<AppState> {
             get(memberships::get_members_by_server).post(memberships::create),
         )
         .route(
-            "/servers/{server_id}/users/{user_id}",
+            "/servers/{server_id}/users/{domain}/{name}",
             get(memberships::get_by_user_and_server)
                 .delete(memberships::delete),
         )
@@ -88,7 +90,7 @@ pub fn federation_router() -> Router<AppState> {
             post(memberships::federated::create),
         )
         .route(
-            "/servers/{server_id}/users/{user_id}",
+            "/servers/{server_id}/users/{domain}/{name}",
             delete(memberships::federated::delete),
         )
         .route("/servers", post(servers::federated::create))
@@ -123,7 +125,7 @@ pub fn federation_router() -> Router<AppState> {
             get(messages::federated::get_by_id)
                 .delete(messages::federated::delete),
         )
-        .route("/users/{user_id}", delete(users::federated::delete))
+        .route("/users/{domain}/{name}", delete(users::federated::delete))
 }
 
 #[derive(Deserialize, Debug)]

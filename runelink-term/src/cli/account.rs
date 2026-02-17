@@ -1,9 +1,10 @@
 use runelink_client::{requests, util::get_api_url};
-use runelink_types::SignupRequest;
+use runelink_types::{SignupRequest, UserRef};
 use uuid::Uuid;
 
 use crate::{
-    cli::input::read_input, error::CliError, storage_auth::AccountAuth, util,
+    cli::input::read_input, error::CliError, storage::AccountConfig,
+    storage_auth::AccountAuth, util,
 };
 
 use super::{
@@ -79,9 +80,10 @@ pub struct StatusArgs {
 
 #[derive(clap::Args, Debug)]
 pub struct DeleteAccountArgs {
-    /// The ID of the user/account to delete.
     #[clap(long)]
-    pub user_id: Option<Uuid>,
+    pub name: Option<String>,
+    #[clap(long)]
+    pub domain: Option<String>,
 }
 
 pub async fn handle_account_commands(
@@ -96,11 +98,11 @@ pub async fn handle_account_commands(
             }
             for account in ctx.config.accounts.iter() {
                 let prefix = util::get_prefix(
-                    account.user_id,
-                    ctx.config.default_account,
+                    &account.user_ref,
+                    ctx.config.default_account.as_ref(),
                     ctx.config.accounts.len(),
                 );
-                println!("{}{}", prefix, account.verbose());
+                println!("{prefix}{account}");
             }
         }
 
@@ -116,9 +118,9 @@ pub async fn handle_account_commands(
             let user =
                 requests::auth::signup(ctx.client, &api_url, &signup_req)
                     .await?;
-            ctx.config.get_or_create_account_config(&user);
+            ctx.config.get_or_create_account_config(user.as_ref());
             ctx.config.save()?;
-            println!("Created account: {}", user.verbose());
+            println!("Created account: {user}");
         }
 
         AccountCommands::Login(login_args) => {
@@ -126,25 +128,25 @@ pub async fn handle_account_commands(
             let account = if let (Some(name), Some(domain)) =
                 (&login_args.name, &login_args.domain)
             {
+                let user_ref = UserRef::new(name.clone(), domain.clone());
                 // Try to find existing account in config
                 if let Some(acc) =
-                    ctx.config.get_account_config_by_name(name, domain)
+                    ctx.config.get_account_config(user_ref.clone())
                 {
                     acc
                 } else {
                     // Account doesn't exist, fetch it from server
                     let api_url = get_api_url(domain);
-                    let user = requests::users::fetch_by_name_and_domain(
+                    let user = requests::users::fetch_by_ref(
                         ctx.client,
                         &api_url,
-                        name.clone(),
-                        domain.clone(),
+                        user_ref.clone(),
                     )
                     .await?;
-                    ctx.config.get_or_create_account_config(&user);
+                    ctx.config.get_or_create_account_config(user.as_ref());
                     ctx.config.save()?;
                     ctx.config
-                        .get_account_config_by_name(name, domain)
+                        .get_account_config(user_ref)
                         .expect("Account should exist after creation")
                 }
             } else {
@@ -155,16 +157,16 @@ pub async fn handle_account_commands(
                 CliError::InvalidArgument("Password is required.".into())
             })?;
 
-            // Generate a random client_id for this session
+            // TODO: Don't generate a random client_id for each session
             let client_id = Uuid::new_v4().to_string();
 
-            let api_url = get_api_url(&account.domain);
+            let api_url = get_api_url(&account.user_ref.domain);
             let token_response = requests::auth::token_password(
                 ctx.client,
                 &api_url,
-                &account.name,
+                &account.user_ref.name,
                 &password,
-                None, // scope defaults to "openid" on server
+                None,
                 Some(&client_id),
             )
             .await?;
@@ -178,12 +180,12 @@ pub async fn handle_account_commands(
                         + token_response.expires_in,
                 ),
                 client_id: Some(client_id),
-                scope: None, // Server defaults to "openid"
+                scope: None,
             };
-            ctx.auth_cache.set(account.user_id, account_auth);
+            ctx.auth_cache.set(&account.user_ref, account_auth);
             ctx.auth_cache.save()?;
 
-            println!("Logged in successfully: {}", account.verbose());
+            println!("Logged in successfully: {account}");
         }
 
         AccountCommands::Logout(logout_args) => {
@@ -191,7 +193,10 @@ pub async fn handle_account_commands(
                 (&logout_args.name, &logout_args.domain)
             {
                 ctx.config
-                    .get_account_config_by_name(name, domain)
+                    .get_account_config(UserRef::new(
+                        name.clone(),
+                        domain.clone(),
+                    ))
                     .ok_or_else(|| {
                         CliError::InvalidArgument("Account not found.".into())
                     })?
@@ -199,14 +204,11 @@ pub async fn handle_account_commands(
                 ctx.account.ok_or(CliError::MissingAccount)?
             };
 
-            if ctx.auth_cache.remove(&account.user_id).is_some() {
+            if ctx.auth_cache.remove(&account.user_ref).is_some() {
                 ctx.auth_cache.save()?;
-                println!("Logged out successfully: {}", account.verbose());
+                println!("Logged out successfully: {account}");
             } else {
-                println!(
-                    "No authentication data found for: {}",
-                    account.verbose()
-                );
+                println!("No authentication data found for: {account}");
             }
         }
 
@@ -214,17 +216,16 @@ pub async fn handle_account_commands(
             let account = if let (Some(name), Some(domain)) =
                 (&status_args.name, &status_args.domain)
             {
-                ctx.config
-                    .get_account_config_by_name(name, domain)
-                    .ok_or_else(|| {
-                        CliError::InvalidArgument("Account not found.".into())
-                    })?
+                let user_ref = UserRef::new(name.clone(), domain.clone());
+                ctx.config.get_account_config(user_ref).ok_or_else(|| {
+                    CliError::InvalidArgument("Account not found.".into())
+                })?
             } else {
                 ctx.account.ok_or(CliError::MissingAccount)?
             };
 
-            if let Some(auth) = ctx.auth_cache.get(&account.user_id) {
-                println!("Account: {}", account.verbose());
+            if let Some(auth) = ctx.auth_cache.get(&account.user_ref) {
+                println!("Account: {account}");
                 println!("  Authenticated: Yes");
                 if let Some(expires_at) = auth.expires_at {
                     let expires =
@@ -252,7 +253,7 @@ pub async fn handle_account_commands(
                     println!("  Scope: {}", scope);
                 }
             } else {
-                println!("Account: {}", account.verbose());
+                println!("Account: {account}");
                 println!("  Authenticated: No");
             }
         }
@@ -264,53 +265,53 @@ pub async fn handle_account_commands(
                 ));
             }
 
-            let (user_id, domain) = if let Some(user_id) = delete_args.user_id {
+            let user_ref = if let (Some(name), Some(domain)) =
+                (&delete_args.name, &delete_args.domain)
+            {
                 let account = ctx
                     .config
-                    .accounts
-                    .iter()
-                    .find(|a| a.user_id == user_id)
+                    .get_account_config(UserRef::new(
+                        name.clone(),
+                        domain.clone(),
+                    ))
                     .ok_or_else(|| {
                         CliError::InvalidArgument(
-                            "User ID not found in local config.".into(),
+                            "Account not found in local config.".into(),
                         )
                     })?;
-                (account.user_id, account.domain.clone())
+                account.user_ref.clone()
             } else {
                 let account = select_inline(
                     &ctx.config.accounts,
                     "Select account to delete",
-                    crate::storage::AccountConfig::to_string,
+                    AccountConfig::to_string,
                 )?
                 .ok_or(CliError::Cancellation)?;
                 println!();
-                (account.user_id, account.domain.clone())
+                account.user_ref.clone()
             };
 
-            // Derive API URL from the selected/matched account's domain
-            let api_url = get_api_url(&domain);
+            let api_url = get_api_url(&user_ref.domain);
             let access_token =
-                ctx.get_access_token_for(user_id, &api_url).await?;
+                ctx.get_access_token_for(&user_ref, &api_url).await?;
 
-            // Delete the user on its home server
             requests::users::delete(
                 ctx.client,
                 &api_url,
                 &access_token,
-                user_id,
+                user_ref.clone(),
             )
             .await?;
 
-            // Clean up local config/auth
-            ctx.auth_cache.remove(&user_id);
-            ctx.config.accounts.retain(|a| a.user_id != user_id);
-            if ctx.config.default_account == Some(user_id) {
+            ctx.auth_cache.remove(&user_ref);
+            ctx.config.accounts.retain(|a| a.user_ref != user_ref);
+            if ctx.config.default_account.as_ref() == Some(&user_ref) {
                 ctx.config.default_account = None;
             }
             ctx.config.save()?;
             ctx.auth_cache.save()?;
 
-            println!("Deleted account/user: {user_id}");
+            println!("Deleted account/user: {}", user_ref);
         }
 
         AccountCommands::Default(default_args) => {

@@ -1,6 +1,6 @@
+use runelink_types::UserRef;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use uuid::Uuid;
 
 use crate::error::CliError;
 use crate::storage::{load_data, save_data};
@@ -23,10 +23,10 @@ pub struct AccountAuth {
 }
 
 /// Auth cache storing authentication data for multiple accounts.
+/// Keys are "name@domain" identity strings (JSON requires string keys).
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct AuthCache {
-    /// Map from user_id to account auth data
-    pub accounts: HashMap<Uuid, AccountAuth>,
+    pub accounts: HashMap<String, AccountAuth>,
 }
 
 impl AuthCache {
@@ -41,28 +41,28 @@ impl AuthCache {
     }
 
     /// Get auth data for a user.
-    pub fn get(&self, user_id: &Uuid) -> Option<&AccountAuth> {
-        self.accounts.get(user_id)
+    pub fn get(&self, user_ref: &UserRef) -> Option<&AccountAuth> {
+        self.accounts.get(&user_ref.as_subject())
     }
 
     /// Get mutable auth data for a user.
-    pub fn get_mut(&mut self, user_id: &Uuid) -> Option<&mut AccountAuth> {
-        self.accounts.get_mut(user_id)
+    pub fn get_mut(&mut self, user_ref: &UserRef) -> Option<&mut AccountAuth> {
+        self.accounts.get_mut(&user_ref.as_subject())
     }
 
     /// Set auth data for a user.
-    pub fn set(&mut self, user_id: Uuid, auth: AccountAuth) {
-        self.accounts.insert(user_id, auth);
+    pub fn set(&mut self, user_ref: &UserRef, auth: AccountAuth) {
+        self.accounts.insert(user_ref.as_subject(), auth);
     }
 
-    /// Remove auth data for a user (logout).
-    pub fn remove(&mut self, user_id: &Uuid) -> Option<AccountAuth> {
-        self.accounts.remove(user_id)
+    /// Remove auth data for a user.
+    pub fn remove(&mut self, user_ref: &UserRef) -> Option<AccountAuth> {
+        self.accounts.remove(&user_ref.as_subject())
     }
 
     /// Check if a user has auth data.
     #[allow(dead_code)]
-    pub fn has_auth(&self, user_id: &Uuid) -> bool {
-        self.accounts.contains_key(user_id)
+    pub fn has_auth(&self, user_ref: &UserRef) -> bool {
+        self.accounts.contains_key(&user_ref.as_subject())
     }
 }

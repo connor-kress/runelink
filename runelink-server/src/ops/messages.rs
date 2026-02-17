@@ -46,8 +46,7 @@ pub async fn create(
         let token = state.key_manager.issue_federation_jwt_delegated(
             state.config.api_url(),
             api_url.clone(),
-            user_ref.id,
-            user_ref.domain.clone(),
+            user_ref.clone(),
         )?;
         let message = requests::messages::federated::create(
             &state.http_client,
@@ -92,8 +91,7 @@ pub async fn get_all(
         let token = state.key_manager.issue_federation_jwt_delegated(
             state.config.api_url(),
             api_url.clone(),
-            user_ref.id,
-            user_ref.domain.clone(),
+            user_ref.clone(),
         )?;
         let messages = requests::messages::federated::fetch_all(
             &state.http_client,
@@ -137,8 +135,7 @@ pub async fn get_by_server(
         let token = state.key_manager.issue_federation_jwt_delegated(
             state.config.api_url(),
             api_url.clone(),
-            user_ref.id,
-            user_ref.domain.clone(),
+            user_ref.clone(),
         )?;
         let messages = requests::messages::federated::fetch_by_server(
             &state.http_client,
@@ -185,8 +182,7 @@ pub async fn get_by_channel(
         let token = state.key_manager.issue_federation_jwt_delegated(
             state.config.api_url(),
             api_url.clone(),
-            user_ref.id,
-            user_ref.domain.clone(),
+            user_ref.clone(),
         )?;
         let messages = requests::messages::federated::fetch_by_channel(
             &state.http_client,
@@ -246,8 +242,7 @@ pub async fn get_by_id(
         let token = state.key_manager.issue_federation_jwt_delegated(
             state.config.api_url(),
             api_url.clone(),
-            user_ref.id,
-            user_ref.domain.clone(),
+            user_ref.clone(),
         )?;
         let message = requests::messages::federated::fetch_by_id(
             &state.http_client,
@@ -311,8 +306,7 @@ pub async fn delete(
         let token = state.key_manager.issue_federation_jwt_delegated(
             state.config.api_url(),
             api_url.clone(),
-            user_ref.id,
-            user_ref.domain.clone(),
+            user_ref.clone(),
         )?;
         requests::messages::federated::delete(
             &state.http_client,
@@ -366,7 +360,7 @@ pub mod auth {
         let message =
             queries::messages::get_by_id(&state.db_pool, message_id).await?;
         if let Some(author) = message.author {
-            Ok(or!(Req::User(author.id), Req::ServerAdmin(server_id)))
+            Ok(or!(Req::User(author.into()), Req::ServerAdmin(server_id)))
         } else {
             Ok(Req::ServerAdmin(server_id))
         }

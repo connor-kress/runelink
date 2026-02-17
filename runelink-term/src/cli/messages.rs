@@ -101,7 +101,7 @@ pub async fn handle_message_commands(
             .await?;
             let api_url = ctx.home_api_url()?;
             let access_token = ctx.get_access_token().await?;
-            let target_domain = if server.domain != account.domain {
+            let target_domain = if server.domain != account.user_ref.domain {
                 Some(server.domain.as_str())
             } else {
                 None
@@ -149,11 +149,11 @@ pub async fn handle_message_commands(
             let api_url = ctx.home_api_url()?;
             let access_token = ctx.get_access_token().await?;
             let new_message = NewMessage {
+                author: account.user_ref.clone(),
                 body,
-                author_id: account.user_id,
             };
             let target_domain = send_args.domain.as_deref().or_else(|| {
-                if server.domain != account.domain {
+                if server.domain != account.user_ref.domain {
                     Some(server.domain.as_str())
                 } else {
                     None

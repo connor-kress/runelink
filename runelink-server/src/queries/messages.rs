@@ -38,12 +38,13 @@ pub async fn insert(
 ) -> ApiResult<Message> {
     let new_id: Uuid = sqlx::query_scalar!(
         r#"
-        INSERT INTO messages (channel_id, author_id, body)
-        VALUES ($1, $2, $3)
+        INSERT INTO messages (channel_id, author_name, author_domain, body)
+        VALUES ($1, $2, $3, $4)
         RETURNING id;
         "#,
         channel_id,
-        new_message.author_id,
+        new_message.author.name,
+        new_message.author.domain,
         new_message.body,
     )
     .fetch_one(pool)
@@ -64,7 +65,7 @@ pub async fn get_all(pool: &DbPool) -> ApiResult<Vec<Message>> {
             m.updated_at,
             to_jsonb(a) AS "author: Json<User>"
         FROM messages m
-        LEFT JOIN users a ON a.id = m.author_id
+        LEFT JOIN users a ON a.name = m.author_name AND a.domain = m.author_domain
         ORDER BY m.created_at DESC;
         "#
     )
@@ -89,7 +90,7 @@ pub async fn get_by_server(
             m.updated_at,
             to_jsonb(a) AS "author: Json<User>"
         FROM messages m
-        LEFT JOIN users a ON a.id = m.author_id
+        LEFT JOIN users a ON a.name = m.author_name AND a.domain = m.author_domain
         JOIN channels c ON c.id = m.channel_id
         WHERE c.server_id = $1
         ORDER BY m.created_at DESC;
@@ -117,7 +118,7 @@ pub async fn get_by_channel(
             m.updated_at,
             to_jsonb(a) AS "author: Json<User>"
         FROM messages m
-        LEFT JOIN users a ON a.id = m.author_id
+        LEFT JOIN users a ON a.name = m.author_name AND a.domain = m.author_domain
         WHERE m.channel_id = $1
         ORDER BY m.created_at DESC;
         "#,
@@ -141,7 +142,7 @@ pub async fn get_by_id(pool: &DbPool, msg_id: Uuid) -> ApiResult<Message> {
             m.updated_at,
             to_jsonb(a) AS "author: Json<User>"
         FROM messages m
-        LEFT JOIN users a ON a.id = m.author_id
+        LEFT JOIN users a ON a.name = m.author_name AND a.domain = m.author_domain
         WHERE m.id = $1;
         "#,
         msg_id,
