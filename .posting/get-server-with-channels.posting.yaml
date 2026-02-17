@@ -1,2 +1,0 @@
-name: get server with channels
-url: $BASE_API_URL/servers/$SERVER_ID/with_channels

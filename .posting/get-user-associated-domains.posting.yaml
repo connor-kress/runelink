@@ -1,2 +1,0 @@
-name: get user associated domains
-url: $BASE_API_URL/users/$USER_ID/domains

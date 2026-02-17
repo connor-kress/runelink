@@ -1,7 +1,0 @@
-name: get user by name and domain
-url: $BASE_API_URL/users/find
-params:
-- name: name
-  value: $USER_NAME
-- name: domain
-  value: $USER_DOMAIN

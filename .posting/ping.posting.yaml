@@ -1,7 +1,0 @@
-name: ping
-url: $BASE_API_URL/ping
-params:
-- name: id
-  value: '4'
-- name: msg
-  value: hello?

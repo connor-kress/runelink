@@ -1,2 +1,0 @@
-name: get user by id
-url: $BASE_API_URL/users/$USER_ID

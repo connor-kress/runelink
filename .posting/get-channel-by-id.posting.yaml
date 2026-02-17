@@ -1,2 +1,0 @@
-name: get channel by id
-url: $BASE_API_URL/channels/$CHANNEL_ID

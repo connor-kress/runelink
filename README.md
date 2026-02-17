@@ -131,10 +131,6 @@ You can verify it’s up with:
 curl "http://localhost:7000/ping"
 ```
 
-## API + request collections
-
-The `.posting/` directory contains request definitions and small scripts for exercising the API during development.
-
 ## Roadmap (high level)
 
 - A public/demo instance: **planned**.

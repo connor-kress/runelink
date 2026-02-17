@@ -1,2 +1,0 @@
-name: get server member by id
-url: $BASE_API_URL/servers/$SERVER_ID/users/$USER_ID
