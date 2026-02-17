@@ -27,9 +27,9 @@ pub struct Cli {
     /// Optional: The account's username
     #[clap(long)]
     pub name: Option<String>,
-    /// Optional: The domain name of the account's host
+    /// Optional: The host name of the account's host
     #[clap(long)]
-    pub domain: Option<String>,
+    pub host: Option<String>,
     /// Increase logging verbosity (-v, -vv, -vvv)
     #[arg(short, long, action = clap::ArgAction::Count)]
     verbose: u8,
@@ -77,9 +77,9 @@ pub async fn handle_cli(
     auth_cache: &mut AuthCache,
 ) -> Result<(), CliError> {
     init_logging(cli.verbose);
-    let account_owned = match (&cli.name, &cli.domain) {
-        (Some(name), Some(domain)) => {
-            let user_ref = UserRef::new(name.clone(), domain.clone());
+    let account_owned = match (&cli.name, &cli.host) {
+        (Some(name), Some(host)) => {
+            let user_ref = UserRef::new(name.clone(), host.clone());
             config.get_account_config(user_ref).cloned()
         }
         _ => config.get_default_account().cloned(),

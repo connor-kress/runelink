@@ -41,9 +41,9 @@ pub struct ChannelListArgs {
     /// Include channels from all servers you are a member of
     #[clap(short, long)]
     pub all: bool,
-    /// The domain of host or server
-    #[clap(short, long)]
-    pub domain: Option<String>,
+    /// The host of host or server
+    #[clap(long)]
+    pub host: Option<String>,
 }
 
 #[derive(clap::Args, Debug)]
@@ -51,9 +51,9 @@ pub struct ChannelGetArgs {
     /// The ID of the server
     #[clap(long)]
     pub server_id: Uuid,
-    /// The domain of the server
+    /// The host of the server
     #[clap(long)]
-    pub domain: Option<String>,
+    pub host: Option<String>,
     /// The ID of the channel
     #[clap(long)]
     pub channel_id: Uuid,
@@ -73,9 +73,9 @@ pub struct ChannelCreateArgs {
     /// The server ID
     #[clap(long)]
     pub server_id: Option<Uuid>,
-    /// The domain of the server
+    /// The host of the server
     #[clap(long)]
-    pub domain: Option<String>,
+    pub host: Option<String>,
 }
 
 #[derive(clap::Args, Debug)]
@@ -86,9 +86,9 @@ pub struct ChannelDeleteArgs {
     /// The ID of the channel to delete
     #[clap(long)]
     pub channel_id: Option<Uuid>,
-    /// The domain of the server
+    /// The host of the server
     #[clap(long)]
-    pub domain: Option<String>,
+    pub host: Option<String>,
 }
 
 pub async fn handle_channel_commands(
@@ -112,7 +112,7 @@ pub async fn handle_channel_commands(
                         &api_url,
                         &access_token,
                         server_id,
-                        list_args.domain.as_deref(),
+                        list_args.host.as_deref(),
                     )
                     .await?
                 }
@@ -121,7 +121,7 @@ pub async fn handle_channel_commands(
                         ctx.client,
                         &api_url,
                         &access_token,
-                        list_args.domain.as_deref(),
+                        list_args.host.as_deref(),
                     )
                     .await?
                 }
@@ -136,7 +136,7 @@ pub async fn handle_channel_commands(
                         &api_url,
                         &access_token,
                         server.id,
-                        Some(server.domain.as_str()),
+                        Some(server.host.as_str()),
                     )
                     .await?
                 }
@@ -162,7 +162,7 @@ pub async fn handle_channel_commands(
                 &access_token,
                 get_args.server_id,
                 get_args.channel_id,
-                get_args.domain.as_deref(),
+                get_args.host.as_deref(),
             )
             .await?;
             println!("{}", channel.verbose());
@@ -178,7 +178,7 @@ pub async fn handle_channel_commands(
                         ctx.client,
                         &api_url,
                         server_id,
-                        create_args.domain.as_deref(),
+                        create_args.host.as_deref(),
                     )
                     .await?
                 }
@@ -200,8 +200,8 @@ pub async fn handle_channel_commands(
                 title,
                 description: desc,
             };
-            let target_domain = if server.domain != account.user_ref.domain {
-                Some(server.domain.as_str())
+            let target_host = if server.host != account.user_ref.host {
+                Some(server.host.as_str())
             } else {
                 None
             };
@@ -211,7 +211,7 @@ pub async fn handle_channel_commands(
                 &access_token,
                 server.id,
                 &new_channel,
-                target_domain,
+                target_host,
             )
             .await?;
             println!("Created channel: {}", channel.verbose());
@@ -221,7 +221,7 @@ pub async fn handle_channel_commands(
             let _account = ctx.account.ok_or(CliError::MissingAccount)?;
             let api_url = ctx.home_api_url()?;
             let access_token = ctx.get_access_token().await?;
-            let (server_id, channel_id, server_domain) =
+            let (server_id, channel_id, server_host) =
                 match (delete_args.server_id, delete_args.channel_id) {
                     (Some(server_id), Some(channel_id)) => {
                         // Both IDs provided, use them directly
@@ -236,19 +236,19 @@ pub async fn handle_channel_commands(
                                 delete_args.server_id,
                             )
                             .await?;
-                        (server.id, channel.id, Some(server.domain.clone()))
+                        (server.id, channel.id, Some(server.host.clone()))
                     }
                 };
-            let target_domain = server_domain
+            let target_host = server_host
                 .as_deref()
-                .or_else(|| delete_args.domain.as_deref());
+                .or_else(|| delete_args.host.as_deref());
             requests::channels::delete(
                 ctx.client,
                 &api_url,
                 &access_token,
                 server_id,
                 channel_id,
-                target_domain,
+                target_host,
             )
             .await?;
             println!("Deleted channel: {channel_id}");

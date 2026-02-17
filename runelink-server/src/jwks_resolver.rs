@@ -173,13 +173,13 @@ pub async fn decode_federation_jwt(
     .map_err(|_| ApiError::AuthError("invalid or expired token".into()))?;
     let claims = data.claims;
 
-    // Verify delegation policy: issuer can only delegate users from their own domain
+    // Verify delegation policy: issuer can only delegate users from their own host
     if let Some(user_ref) = &claims.user_ref {
-        let expected_iss = get_api_url(&user_ref.domain);
+        let expected_iss = get_api_url(&user_ref.host);
         if claims.iss != expected_iss {
             return Err(ApiError::AuthError(format!(
                 "Federation delegation mismatch: token from {} cannot delegate user from {}",
-                claims.iss, user_ref.domain
+                claims.iss, user_ref.host
             )));
         }
     }

@@ -15,11 +15,11 @@ pub async fn create(
     api_url: &str,
     access_token: &str,
     new_server: &NewServer,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> Result<Server> {
     let mut url = format!("{api_url}/servers");
-    if let Some(domain) = target_domain {
-        url = format!("{url}?target_domain={domain}");
+    if let Some(host) = target_host {
+        url = format!("{url}?target_host={host}");
     }
     info!("creating server: {url}");
     post_json_authed::<_, Server>(client, &url, access_token, new_server).await
@@ -28,11 +28,11 @@ pub async fn create(
 pub async fn fetch_all(
     client: &Client,
     api_url: &str,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> Result<Vec<Server>> {
     let mut url = format!("{api_url}/servers");
-    if let Some(domain) = target_domain {
-        url = format!("{url}?target_domain={domain}");
+    if let Some(host) = target_host {
+        url = format!("{url}?target_host={host}");
     }
     info!("fetching all servers: {url}");
     fetch_json::<Vec<Server>>(client, &url).await
@@ -42,11 +42,11 @@ pub async fn fetch_by_id(
     client: &Client,
     api_url: &str,
     server_id: Uuid,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> Result<Server> {
     let mut url = format!("{api_url}/servers/{server_id}");
-    if let Some(domain) = target_domain {
-        url = format!("{url}?target_domain={domain}");
+    if let Some(host) = target_host {
+        url = format!("{url}?target_host={host}");
     }
     info!("fetching server: {url}");
     fetch_json::<Server>(client, &url).await
@@ -72,11 +72,11 @@ pub async fn delete(
     api_url: &str,
     access_token: &str,
     server_id: Uuid,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> Result<()> {
     let mut url = format!("{api_url}/servers/{server_id}");
-    if let Some(domain) = target_domain {
-        url = format!("{url}?target_domain={domain}");
+    if let Some(host) = target_host {
+        url = format!("{url}?target_host={host}");
     }
     info!("deleting server: {url}");
     delete_authed(client, &url, access_token).await

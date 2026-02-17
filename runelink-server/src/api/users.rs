@@ -15,7 +15,7 @@ use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
 pub struct UserQueryParams {
-    pub target_domain: Option<String>,
+    pub target_host: Option<String>,
 }
 
 /// POST /users
@@ -40,60 +40,60 @@ pub async fn get_all(
     State(state): State<AppState>,
     Query(params): Query<UserQueryParams>,
 ) -> ApiResult<impl IntoResponse> {
-    info!("GET /users?target_domain={:?}", params.target_domain);
+    info!("GET /users?target_host={:?}", params.target_host);
     let users =
-        ops::users::get_all(&state, params.target_domain.as_deref()).await?;
+        ops::users::get_all(&state, params.target_host.as_deref()).await?;
     Ok((StatusCode::OK, Json(users)))
 }
 
-/// GET /users/{domain}/{name}
+/// GET /users/{host}/{name}
 pub async fn get_by_ref(
     State(state): State<AppState>,
-    Path((domain, name)): Path<(String, String)>,
+    Path((host, name)): Path<(String, String)>,
     Query(params): Query<UserQueryParams>,
 ) -> ApiResult<impl IntoResponse> {
     info!(
-        "GET /users/{domain}/{name}?target_domain={:?}",
-        params.target_domain
+        "GET /users/{host}/{name}?target_host={:?}",
+        params.target_host
     );
-    let user_ref = UserRef::new(name, domain);
+    let user_ref = UserRef::new(name, host);
     let user = ops::users::get_by_ref(
         &state,
         user_ref,
-        params.target_domain.as_deref(),
+        params.target_host.as_deref(),
     )
     .await?;
     Ok((StatusCode::OK, Json(user)))
 }
 
-/// GET /users/{domain}/{name}/domains
-pub async fn get_user_associated_domains(
+/// GET /users/{host}/{name}/hosts
+pub async fn get_associated_hosts(
     State(state): State<AppState>,
-    Path((domain, name)): Path<(String, String)>,
+    Path((host, name)): Path<(String, String)>,
     Query(params): Query<UserQueryParams>,
 ) -> ApiResult<impl IntoResponse> {
     info!(
-        "GET /users/{domain}/{name}/domains?target_domain={:?}",
-        params.target_domain
+        "GET /users/{host}/{name}/hosts?target_host={:?}",
+        params.target_host
     );
-    let user_ref = UserRef::new(name, domain);
-    let domains = ops::hosts::get_user_associated_domains(
+    let user_ref = UserRef::new(name, host);
+    let hosts = ops::users::get_associated_hosts(
         &state,
         user_ref,
-        params.target_domain.as_deref(),
+        params.target_host.as_deref(),
     )
     .await?;
-    Ok((StatusCode::OK, Json(domains)))
+    Ok((StatusCode::OK, Json(hosts)))
 }
 
-/// DELETE /users/{domain}/{name}
+/// DELETE /users/{host}/{name}
 pub async fn delete(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Path((domain, name)): Path<(String, String)>,
+    Path((host, name)): Path<(String, String)>,
 ) -> ApiResult<impl IntoResponse> {
-    let user_ref = UserRef::new(name.clone(), domain.clone());
-    info!("DELETE /users/{domain}/{name}");
+    let user_ref = UserRef::new(name.clone(), host.clone());
+    info!("DELETE /users/{host}/{name}");
     let session = authorize(
         &state,
         Principal::from_client_headers(&headers, &state)?,
@@ -108,16 +108,16 @@ pub async fn delete(
 pub mod federated {
     use super::*;
 
-    /// DELETE /federation/users/{domain}/{name}
+    /// DELETE /federation/users/{host}/{name}
     pub async fn delete(
         State(state): State<AppState>,
         headers: HeaderMap,
-        Path((domain, name)): Path<(String, String)>,
+        Path((host, name)): Path<(String, String)>,
     ) -> ApiResult<impl IntoResponse> {
-        let user_ref = UserRef::new(name, domain);
+        let user_ref = UserRef::new(name, host);
         info!(
             "DELETE /federation/users/{}/{}",
-            user_ref.domain, user_ref.name
+            user_ref.host, user_ref.name
         );
         let session = authorize(
             &state,

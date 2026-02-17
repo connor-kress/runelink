@@ -92,7 +92,7 @@ pub async fn token(
             // Get user
             let user = queries::users::get_by_ref(
                 &state.db_pool,
-                UserRef::new(username, state.config.local_domain()),
+                UserRef::new(username, state.config.local_host()),
             )
             .await?;
 
@@ -163,7 +163,7 @@ pub async fn token(
 
             // Create new client access JWT
             let user_ref =
-                UserRef::new(rt.user_name.clone(), rt.user_domain.clone());
+                UserRef::new(rt.user_name.clone(), rt.user_host.clone());
             let lifetime = Duration::hours(1);
             let claims = ClientAccessClaims::new(
                 &user_ref,
@@ -224,7 +224,7 @@ pub async fn signup(
     // Insert user
     let new_user = NewUser {
         name: req.name,
-        domain: state.config.local_domain(),
+        host: state.config.local_host(),
         role: UserRole::User,
     };
     let user = queries::users::insert(&state.db_pool, &new_user).await?;

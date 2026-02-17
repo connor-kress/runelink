@@ -10,12 +10,12 @@ pub async fn insert(
     let local_account = sqlx::query_as!(
         LocalAccount,
         r#"
-        INSERT INTO local_accounts (user_name, user_domain, password_hash)
+        INSERT INTO local_accounts (user_name, user_host, password_hash)
         VALUES ($1, $2, $3)
-        RETURNING user_name, user_domain, password_hash, created_at, updated_at;
+        RETURNING user_name, user_host, password_hash, created_at, updated_at;
         "#,
         user.name,
-        user.domain,
+        user.host,
         password_hash,
     )
     .fetch_one(pool)
@@ -30,12 +30,12 @@ pub async fn get_by_user(
     let local_account = sqlx::query_as!(
         LocalAccount,
         r#"
-        SELECT user_name, user_domain, password_hash, created_at, updated_at
+        SELECT user_name, user_host, password_hash, created_at, updated_at
         FROM local_accounts
-        WHERE user_name = $1 AND user_domain = $2;
+        WHERE user_name = $1 AND user_host = $2;
         "#,
         user.name,
-        user.domain,
+        user.host,
     )
     .fetch_one(pool)
     .await?;
@@ -45,9 +45,9 @@ pub async fn get_by_user(
 #[allow(dead_code)]
 pub async fn delete_by_user(pool: &DbPool, user: UserRef) -> ApiResult<()> {
     sqlx::query!(
-        "DELETE FROM local_accounts WHERE user_name = $1 AND user_domain = $2;",
+        "DELETE FROM local_accounts WHERE user_name = $1 AND user_host = $2;",
         user.name,
-        user.domain,
+        user.host,
     )
     .execute(pool)
     .await?;

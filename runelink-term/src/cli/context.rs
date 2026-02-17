@@ -4,7 +4,7 @@ use runelink_types::UserRef;
 use time::OffsetDateTime;
 
 use crate::error::CliError;
-use crate::storage::{AccountConfig, AppConfig, TryGetDomain};
+use crate::storage::{AccountConfig, AppConfig, TryGetHost};
 use crate::storage_auth::AuthCache;
 
 pub struct CliContext<'a> {

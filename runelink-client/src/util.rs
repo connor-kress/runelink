@@ -1,29 +1,29 @@
-pub fn pad_domain(domain: &str) -> String {
-    if domain.starts_with('[') {
+pub fn pad_host(host: &str) -> String {
+    if host.starts_with('[') {
         // IPv6 literal
-        match domain.find(']') {
+        match host.find(']') {
             Some(closing) => {
-                let after = &domain[closing + 1..];
+                let after = &host[closing + 1..];
                 if after.starts_with(':') {
-                    domain.to_string()
+                    host.to_string()
                 } else {
-                    format!("{domain}:7000")
+                    format!("{host}:7000")
                 }
             }
             None => {
                 // malformed IPv6, just append
-                format!("{domain}:7000")
+                format!("{host}:7000")
             }
         }
-    } else if domain.contains(':') {
-        domain.to_string()
+    } else if host.contains(':') {
+        host.to_string()
     } else {
-        format!("{domain}:7000")
+        format!("{host}:7000")
     }
 }
 
-pub fn get_api_url(domain: &str) -> String {
-    let host_with_port = pad_domain(domain);
+pub fn get_api_url(host: &str) -> String {
+    let host_with_port = pad_host(host);
     format!("http://{host_with_port}")
 }
 

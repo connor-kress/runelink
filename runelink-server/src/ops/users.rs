@@ -20,24 +20,22 @@ pub async fn create(
 }
 
 /// List all users (public).
-/// If target_domain is provided and not the local domain, fetches from that remote domain.
-/// Otherwise, returns local users.
 pub async fn get_all(
     state: &AppState,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> ApiResult<Vec<User>> {
-    if !state.config.is_remote_domain(target_domain) {
+    if !state.config.is_remote_host(target_host) {
         let users = queries::users::get_all(&state.db_pool).await?;
         Ok(users)
     } else {
-        let domain = target_domain.unwrap();
-        let api_url = get_api_url(domain);
+        let host = target_host.unwrap();
+        let api_url = get_api_url(host);
         let users =
             requests::users::fetch_all(&state.http_client, &api_url, None)
                 .await
                 .map_err(|e| {
                     ApiError::Internal(format!(
-                        "Failed to fetch users from {domain}: {e}"
+                        "Failed to fetch users from {host}: {e}"
                     ))
                 })?;
         Ok(users)
@@ -48,14 +46,14 @@ pub async fn get_all(
 pub async fn get_by_ref(
     state: &AppState,
     user_ref: UserRef,
-    _target_domain: Option<&str>,
+    _target_host: Option<&str>,
 ) -> ApiResult<User> {
-    if !state.config.is_remote_domain(Some(&user_ref.domain)) {
+    if !state.config.is_remote_host(Some(&user_ref.host)) {
         let user = queries::users::get_by_ref(&state.db_pool, user_ref).await?;
         Ok(user)
     } else {
-        let api_url = get_api_url(&user_ref.domain);
-        let domain = user_ref.domain.clone();
+        let api_url = get_api_url(&user_ref.host);
+        let host = user_ref.host.clone();
         let user = requests::users::fetch_by_ref(
             &state.http_client,
             &api_url,
@@ -65,7 +63,7 @@ pub async fn get_by_ref(
         .map_err(|e| {
             ApiError::Internal(format!(
                 "Failed to fetch user from {}: {e}",
-                domain
+                host
             ))
         })?;
         Ok(user)
@@ -80,21 +78,21 @@ pub async fn delete_home_user(
 ) -> ApiResult<()> {
     let user =
         queries::users::get_by_ref(&state.db_pool, user_ref.clone()).await?;
-    if user.domain != state.config.local_domain() {
+    if user.host != state.config.local_host() {
         return Err(ApiError::BadRequest(
             "Can only delete users from their home server".into(),
         ));
     }
 
-    let foreign_domains =
-        queries::memberships::get_remote_server_domains_for_user(
+    let foreign_hosts =
+        queries::memberships::get_remote_server_hosts_for_user(
             &state.db_pool,
             user_ref.clone(),
         )
         .await?;
 
-    for domain in &foreign_domains {
-        let api_url = get_api_url(domain);
+    for host in &foreign_hosts {
+        let api_url = get_api_url(host);
         let token_result = state.key_manager.issue_federation_jwt_delegated(
             state.config.api_url(),
             api_url.clone(),
@@ -111,13 +109,13 @@ pub async fn delete_home_user(
                 .await;
                 if let Err(e) = user_result {
                     warn!(
-                        "Failed to delete user {user_ref} on foreign server {domain}: {e}"
+                        "Failed to delete user {user_ref} on foreign server {host}: {e}"
                     );
                 }
             }
             Err(e) => {
                 warn!(
-                    "Failed to issue federation token for user {user_ref} on domain {domain}: {e}"
+                    "Failed to issue federation token for user {user_ref} on host {host}: {e}"
                 );
             }
         }
@@ -139,20 +137,20 @@ pub async fn delete_remote_user_record(
         )
     })?;
     if session_user_ref.name != user_ref.name
-        || session_user_ref.domain != user_ref.domain
+        || session_user_ref.host != user_ref.host
     {
         return Err(ApiError::BadRequest(
             "User identity in path does not match user reference in token"
                 .into(),
         ));
     }
-    if session_user_ref.domain == state.config.local_domain() {
+    if session_user_ref.host == state.config.local_host() {
         return Err(ApiError::BadRequest(
             "Cannot delete local users via federation".into(),
         ));
     }
 
-    let expected_home_server_url = get_api_url(&session_user_ref.domain);
+    let expected_home_server_url = get_api_url(&session_user_ref.host);
     let federation_claims = session.federation.as_ref().ok_or_else(|| {
         ApiError::AuthError("Federation claims required".into())
     })?;
@@ -165,6 +163,38 @@ pub async fn delete_remote_user_record(
 
     queries::users::delete(&state.db_pool, user_ref.clone()).await?;
     Ok(())
+}
+
+/// Get all hosts associated with a user (public).
+pub async fn get_associated_hosts(
+    state: &AppState,
+    user_ref: UserRef,
+    target_host: Option<&str>,
+) -> ApiResult<Vec<String>> {
+    if !state.config.is_remote_host(target_host) {
+        let hosts = queries::users::get_associated_hosts(
+            &state.db_pool,
+            &user_ref,
+        )
+        .await?;
+        Ok(hosts)
+    } else {
+        let host = target_host.unwrap();
+        let api_url = get_api_url(host);
+        let hosts = requests::users::fetch_associated_hosts(
+            &state.http_client,
+            &api_url,
+            user_ref,
+            None,
+        )
+        .await
+        .map_err(|e| {
+            ApiError::Internal(format!(
+                "Failed to fetch user associated hosts from {host}: {e}"
+            ))
+        })?;
+        Ok(hosts)
+    }
 }
 
 /// Auth requirements for user operations.

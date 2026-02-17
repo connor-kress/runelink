@@ -16,7 +16,7 @@ use uuid::Uuid;
 
 #[derive(Deserialize, Debug)]
 pub struct ServerQueryParams {
-    pub target_domain: Option<String>,
+    pub target_host: Option<String>,
 }
 
 /// POST /servers
@@ -27,8 +27,8 @@ pub async fn create(
     Json(new_server): Json<NewServer>,
 ) -> ApiResult<impl IntoResponse> {
     info!(
-        "POST /servers?target_domain={:?}\nnew_server = {:#?}",
-        params.target_domain, new_server
+        "POST /servers?target_host={:?}\nnew_server = {:#?}",
+        params.target_host, new_server
     );
     let session = authorize(
         &state,
@@ -40,7 +40,7 @@ pub async fn create(
         &state,
         &session,
         &new_server,
-        params.target_domain.as_deref(),
+        params.target_host.as_deref(),
     )
     .await?;
     Ok((StatusCode::CREATED, Json(server)))
@@ -51,9 +51,9 @@ pub async fn get_all(
     State(state): State<AppState>,
     Query(params): Query<ServerQueryParams>,
 ) -> ApiResult<impl IntoResponse> {
-    info!("GET /servers?target_domain={:?}", params.target_domain);
+    info!("GET /servers?target_host={:?}", params.target_host);
     let servers =
-        ops::servers::get_all(&state, params.target_domain.as_deref()).await?;
+        ops::servers::get_all(&state, params.target_host.as_deref()).await?;
     Ok((StatusCode::OK, Json(servers)))
 }
 
@@ -64,13 +64,13 @@ pub async fn get_by_id(
     Query(params): Query<ServerQueryParams>,
 ) -> ApiResult<impl IntoResponse> {
     info!(
-        "GET /servers/{server_id}?target_domain={:?}",
-        params.target_domain
+        "GET /servers/{server_id}?target_host={:?}",
+        params.target_host
     );
     let server = ops::servers::get_by_id(
         &state,
         server_id,
-        params.target_domain.as_deref(),
+        params.target_host.as_deref(),
     )
     .await?;
     Ok((StatusCode::OK, Json(server)))
@@ -84,8 +84,8 @@ pub async fn get_with_channels(
     Query(params): Query<ServerQueryParams>,
 ) -> ApiResult<impl IntoResponse> {
     info!(
-        "GET /servers/{server_id}/with_channels?target_domain={:?}",
-        params.target_domain
+        "GET /servers/{server_id}/with_channels?target_host={:?}",
+        params.target_host
     );
     let session = authorize(
         &state,
@@ -97,7 +97,7 @@ pub async fn get_with_channels(
         &state,
         &session,
         server_id,
-        params.target_domain.as_deref(),
+        params.target_host.as_deref(),
     )
     .await?;
     Ok((StatusCode::OK, Json(server_with_channels)))
@@ -111,8 +111,8 @@ pub async fn delete(
     Query(params): Query<ServerQueryParams>,
 ) -> ApiResult<impl IntoResponse> {
     info!(
-        "DELETE /servers/{server_id}?target_domain={:?}",
-        params.target_domain
+        "DELETE /servers/{server_id}?target_host={:?}",
+        params.target_host
     );
     let session = authorize(
         &state,
@@ -124,7 +124,7 @@ pub async fn delete(
         &state,
         &session,
         server_id,
-        params.target_domain.as_deref(),
+        params.target_host.as_deref(),
     )
     .await?;
     Ok(StatusCode::NO_CONTENT)

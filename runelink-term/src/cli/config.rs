@@ -41,17 +41,17 @@ pub enum DefaultAccountCommands {
     /// Show the default account
     Get,
     /// Set the default account
-    Set(NameAndDomainArgs),
+    Set(NameAndHostArgs),
 }
 
 #[derive(clap::Args, Debug)]
-pub struct NameAndDomainArgs {
+pub struct NameAndHostArgs {
     /// The account's username
     #[clap(long)]
     pub name: Option<String>,
-    /// The domain name of the account's host
+    /// The host name of the account's host
     #[clap(long)]
-    pub domain: Option<String>,
+    pub host: Option<String>,
 }
 
 pub async fn handle_default_account_commands(
@@ -68,10 +68,10 @@ pub async fn handle_default_account_commands(
         }
 
         DefaultAccountCommands::Set(set_args) => {
-            let account = if let (Some(name), Some(domain)) =
-                (&set_args.name, &set_args.domain)
+            let account = if let (Some(name), Some(host)) =
+                (&set_args.name, &set_args.host)
             {
-                let user_ref = UserRef::new(name.clone(), domain.clone());
+                let user_ref = UserRef::new(name.clone(), host.clone());
                 ctx.config.get_account_config(user_ref).ok_or_else(|| {
                     CliError::InvalidArgument("Account not found.".into())
                 })?

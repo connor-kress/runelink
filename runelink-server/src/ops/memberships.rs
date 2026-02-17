@@ -21,16 +21,16 @@ pub async fn create(
     // If this membership is for a remote server, proxy via federation and cache locally.
     if state
         .config
-        .is_remote_domain(Some(&new_membership.server_domain))
+        .is_remote_host(Some(&new_membership.server_host))
     {
         // Home Server should only create memberships for its own users.
-        let user_domain = new_membership.user_ref.domain.clone();
-        if state.config.is_remote_domain(Some(&user_domain)) {
+        let user_host = new_membership.user_ref.host.clone();
+        if state.config.is_remote_host(Some(&user_host)) {
             return Err(ApiError::BadRequest(
-                "User domain in membership does not match local domain".into(),
+                "User host in membership does not match local host".into(),
             ));
         }
-        let server_api_url = get_api_url(&new_membership.server_domain);
+        let server_api_url = get_api_url(&new_membership.server_host);
         let token = state.key_manager.issue_federation_jwt_delegated(
             state.config.api_url(),
             server_api_url.clone(),
@@ -57,10 +57,10 @@ pub async fn create(
     }
 
     // Ensure remote user exists locally before creating membership
-    if new_membership.user_ref.domain != state.config.local_domain() {
+    if new_membership.user_ref.host != state.config.local_host() {
         let user = session.lookup_user(state).await?;
         if user.is_none() {
-            let api_url = get_api_url(&new_membership.user_ref.domain);
+            let api_url = get_api_url(&new_membership.user_ref.host);
             let user = requests::users::fetch_by_ref(
                 &state.http_client,
                 &api_url,
@@ -96,10 +96,10 @@ pub async fn create(
 pub async fn get_members_by_server(
     state: &AppState,
     server_id: Uuid,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> ApiResult<Vec<ServerMember>> {
     // Handle local case
-    if !state.config.is_remote_domain(target_domain) {
+    if !state.config.is_remote_host(target_host) {
         let members = queries::memberships::get_members_by_server(
             &state.db_pool,
             server_id,
@@ -107,9 +107,9 @@ pub async fn get_members_by_server(
         .await?;
         Ok(members)
     } else {
-        // Fetch from remote domain (public endpoint, no auth needed)
-        let domain = target_domain.unwrap();
-        let api_url = get_api_url(domain);
+        // Fetch from remote host (public endpoint, no auth needed)
+        let host = target_host.unwrap();
+        let api_url = get_api_url(host);
         let members = requests::memberships::fetch_members_by_server(
             &state.http_client,
             &api_url,
@@ -119,7 +119,7 @@ pub async fn get_members_by_server(
         .await
         .map_err(|e| {
             ApiError::Internal(format!(
-                "Failed to fetch members from {domain}: {e}"
+                "Failed to fetch members from {host}: {e}"
             ))
         })?;
         Ok(members)
@@ -131,10 +131,10 @@ pub async fn get_member_by_user_and_server(
     state: &AppState,
     server_id: Uuid,
     user_ref: UserRef,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> ApiResult<ServerMember> {
     // Handle local case
-    if !state.config.is_remote_domain(target_domain) {
+    if !state.config.is_remote_host(target_host) {
         let member = queries::memberships::get_local_member_by_user_and_server(
             &state.db_pool,
             server_id,
@@ -143,9 +143,9 @@ pub async fn get_member_by_user_and_server(
         .await?;
         Ok(member)
     } else {
-        // Fetch from remote domain (public endpoint, no auth needed)
-        let domain = target_domain.unwrap();
-        let api_url = get_api_url(domain);
+        // Fetch from remote host (public endpoint, no auth needed)
+        let host = target_host.unwrap();
+        let api_url = get_api_url(host);
         let member = requests::memberships::fetch_member_by_user_and_server(
             &state.http_client,
             &api_url,
@@ -156,7 +156,7 @@ pub async fn get_member_by_user_and_server(
         .await
         .map_err(|e| {
             ApiError::Internal(format!(
-                "Failed to fetch member from {domain}: {e}"
+                "Failed to fetch member from {host}: {e}"
             ))
         })?;
         Ok(member)
@@ -179,7 +179,7 @@ pub async fn delete(
     session: &mut Session,
     server_id: Uuid,
     user_ref: UserRef,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> ApiResult<()> {
     let session_user_ref = session.user_ref.clone().ok_or_else(|| {
         ApiError::AuthError("User reference required for leaving server".into())
@@ -191,7 +191,7 @@ pub async fn delete(
     }
 
     // Handle local case
-    if !state.config.is_remote_domain(target_domain) {
+    if !state.config.is_remote_host(target_host) {
         // Verify the membership exists
         queries::memberships::get_local_member_by_user_and_server(
             &state.db_pool,
@@ -203,9 +203,9 @@ pub async fn delete(
             .await?;
         Ok(())
     } else {
-        // Delete on remote domain using federation
-        let domain = target_domain.unwrap();
-        let api_url = get_api_url(domain);
+        // Delete on remote host using federation
+        let host = target_host.unwrap();
+        let api_url = get_api_url(host);
         let token = state.key_manager.issue_federation_jwt_delegated(
             state.config.api_url(),
             api_url.clone(),
@@ -221,7 +221,7 @@ pub async fn delete(
         .await
         .map_err(|e| {
             ApiError::Internal(format!(
-                "Failed to leave server on {domain}: {e}"
+                "Failed to leave server on {host}: {e}"
             ))
         })?;
         // Also delete from local cache if it exists

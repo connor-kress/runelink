@@ -9,14 +9,14 @@ pub async fn insert_refresh(
     let refresh_token = sqlx::query_as!(
         RefreshToken,
         r#"
-        INSERT INTO refresh_tokens (token, user_name, user_domain, client_id, issued_at,
+        INSERT INTO refresh_tokens (token, user_name, user_host, client_id, issued_at,
                                     expires_at, revoked)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING token, user_name, user_domain, client_id, issued_at, expires_at, revoked
+        RETURNING token, user_name, user_host, client_id, issued_at, expires_at, revoked
         "#,
         rt.token,
         rt.user_name,
-        rt.user_domain,
+        rt.user_host,
         rt.client_id,
         rt.issued_at,
         rt.expires_at,
@@ -34,7 +34,7 @@ pub async fn get_refresh(
     let refresh_token = sqlx::query_as!(
         RefreshToken,
         r#"
-        SELECT token, user_name, user_domain, client_id, issued_at, expires_at, revoked
+        SELECT token, user_name, user_host, client_id, issued_at, expires_at, revoked
         FROM refresh_tokens
         WHERE token = $1
         "#,

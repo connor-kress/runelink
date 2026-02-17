@@ -10,18 +10,16 @@ use crate::{
 };
 
 /// Create a new message in a channel.
-/// If target_domain is provided and not the local domain, creates on that remote domain.
-/// Otherwise, creates locally.
 pub async fn create(
     state: &AppState,
     session: &Session,
     server_id: Uuid,
     channel_id: Uuid,
     new_message: &NewMessage,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> ApiResult<Message> {
     // Handle local case
-    if !state.config.is_remote_domain(target_domain) {
+    if !state.config.is_remote_host(target_host) {
         let channel =
             queries::channels::get_by_id(&state.db_pool, channel_id).await?;
         if channel.server_id != server_id {
@@ -34,9 +32,9 @@ pub async fn create(
                 .await?;
         Ok(message)
     } else {
-        // Create on remote domain using federation
-        let domain = target_domain.unwrap();
-        let api_url = get_api_url(domain);
+        // Create on remote host using federation
+        let host = target_host.unwrap();
+        let api_url = get_api_url(host);
         let user_ref = session.user_ref.as_ref().ok_or_else(|| {
             ApiError::Internal(
                 "User reference required for federated message creation"
@@ -59,7 +57,7 @@ pub async fn create(
         .await
         .map_err(|e| {
             ApiError::Internal(format!(
-                "Failed to create message on {domain}: {e}"
+                "Failed to create message on {host}: {e}"
             ))
         })?;
         Ok(message)
@@ -67,21 +65,19 @@ pub async fn create(
 }
 
 /// Get all messages.
-/// If target_domain is provided and not the local domain, fetches from that remote domain.
-/// Otherwise, returns local messages.
 pub async fn get_all(
     state: &AppState,
     session: &Session,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> ApiResult<Vec<Message>> {
     // Handle local case
-    if !state.config.is_remote_domain(target_domain) {
+    if !state.config.is_remote_host(target_host) {
         let messages = queries::messages::get_all(&state.db_pool).await?;
         Ok(messages)
     } else {
-        // Fetch from remote domain using federation
-        let domain = target_domain.unwrap();
-        let api_url = get_api_url(domain);
+        // Fetch from remote host using federation
+        let host = target_host.unwrap();
+        let api_url = get_api_url(host);
         let user_ref = session.user_ref.as_ref().ok_or_else(|| {
             ApiError::Internal(
                 "User reference required for federated message fetching"
@@ -101,7 +97,7 @@ pub async fn get_all(
         .await
         .map_err(|e| {
             ApiError::Internal(format!(
-                "Failed to fetch messages from {domain}: {e}"
+                "Failed to fetch messages from {host}: {e}"
             ))
         })?;
         Ok(messages)
@@ -109,23 +105,21 @@ pub async fn get_all(
 }
 
 /// Get messages in a server.
-/// If target_domain is provided and not the local domain, fetches from that remote domain.
-/// Otherwise, returns local messages.
 pub async fn get_by_server(
     state: &AppState,
     session: &Session,
     server_id: Uuid,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> ApiResult<Vec<Message>> {
     // Handle local case
-    if !state.config.is_remote_domain(target_domain) {
+    if !state.config.is_remote_host(target_host) {
         let messages =
             queries::messages::get_by_server(&state.db_pool, server_id).await?;
         Ok(messages)
     } else {
-        // Fetch from remote domain using federation
-        let domain = target_domain.unwrap();
-        let api_url = get_api_url(domain);
+        // Fetch from remote host using federation
+        let host = target_host.unwrap();
+        let api_url = get_api_url(host);
         let user_ref = session.user_ref.as_ref().ok_or_else(|| {
             ApiError::Internal(
                 "User reference required for federated message fetching"
@@ -146,7 +140,7 @@ pub async fn get_by_server(
         .await
         .map_err(|e| {
             ApiError::Internal(format!(
-                "Failed to fetch messages from {domain}: {e}"
+                "Failed to fetch messages from {host}: {e}"
             ))
         })?;
         Ok(messages)
@@ -154,25 +148,23 @@ pub async fn get_by_server(
 }
 
 /// Get messages in a channel.
-/// If target_domain is provided and not the local domain, fetches from that remote domain.
-/// Otherwise, returns local messages.
 pub async fn get_by_channel(
     state: &AppState,
     session: &Session,
     server_id: Uuid,
     channel_id: Uuid,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> ApiResult<Vec<Message>> {
     // Handle local case
-    if !state.config.is_remote_domain(target_domain) {
+    if !state.config.is_remote_host(target_host) {
         let messages =
             queries::messages::get_by_channel(&state.db_pool, channel_id)
                 .await?;
         Ok(messages)
     } else {
-        // Fetch from remote domain using federation
-        let domain = target_domain.unwrap();
-        let api_url = get_api_url(domain);
+        // Fetch from remote host using federation
+        let host = target_host.unwrap();
+        let api_url = get_api_url(host);
         let user_ref = session.user_ref.as_ref().ok_or_else(|| {
             ApiError::Internal(
                 "User reference required for federated message fetching"
@@ -194,7 +186,7 @@ pub async fn get_by_channel(
         .await
         .map_err(|e| {
             ApiError::Internal(format!(
-                "Failed to fetch messages from {domain}: {e}"
+                "Failed to fetch messages from {host}: {e}"
             ))
         })?;
         Ok(messages)
@@ -202,18 +194,16 @@ pub async fn get_by_channel(
 }
 
 /// Get a message by its ID.
-/// If target_domain is provided and not the local domain, fetches from that remote domain.
-/// Otherwise, returns local message.
 pub async fn get_by_id(
     state: &AppState,
     session: &Session,
     server_id: Uuid,
     channel_id: Uuid,
     message_id: Uuid,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> ApiResult<Message> {
     // Handle local case
-    if !state.config.is_remote_domain(target_domain) {
+    if !state.config.is_remote_host(target_host) {
         let message =
             queries::messages::get_by_id(&state.db_pool, message_id).await?;
         if message.channel_id != channel_id {
@@ -230,9 +220,9 @@ pub async fn get_by_id(
         }
         Ok(message)
     } else {
-        // Fetch from remote domain using federation
-        let domain = target_domain.unwrap();
-        let api_url = get_api_url(domain);
+        // Fetch from remote host using federation
+        let host = target_host.unwrap();
+        let api_url = get_api_url(host);
         let user_ref = session.user_ref.as_ref().ok_or_else(|| {
             ApiError::Internal(
                 "User reference required for federated message fetching"
@@ -255,7 +245,7 @@ pub async fn get_by_id(
         .await
         .map_err(|e| {
             ApiError::Internal(format!(
-                "Failed to fetch message from {domain}: {e}"
+                "Failed to fetch message from {host}: {e}"
             ))
         })?;
         Ok(message)
@@ -263,18 +253,16 @@ pub async fn get_by_id(
 }
 
 /// Delete a message by ID.
-/// If target_domain is provided and not the local domain, deletes on that remote domain.
-/// Otherwise, deletes locally.
 pub async fn delete(
     state: &AppState,
     session: &Session,
     server_id: Uuid,
     channel_id: Uuid,
     message_id: Uuid,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> ApiResult<()> {
     // Handle local case
-    if !state.config.is_remote_domain(target_domain) {
+    if !state.config.is_remote_host(target_host) {
         // Verify the message belongs to the channel and server
         // TODO: This should be done with one database query
         let message =
@@ -294,9 +282,9 @@ pub async fn delete(
         queries::messages::delete(&state.db_pool, message_id).await?;
         Ok(())
     } else {
-        // Delete on remote domain using federation
-        let domain = target_domain.unwrap();
-        let api_url = get_api_url(domain);
+        // Delete on remote host using federation
+        let host = target_host.unwrap();
+        let api_url = get_api_url(host);
         let user_ref = session.user_ref.as_ref().ok_or_else(|| {
             ApiError::Internal(
                 "User reference required for federated message deletion"
@@ -319,7 +307,7 @@ pub async fn delete(
         .await
         .map_err(|e| {
             ApiError::Internal(format!(
-                "Failed to delete message on {domain}: {e}"
+                "Failed to delete message on {host}: {e}"
             ))
         })?;
         Ok(())
@@ -403,7 +391,7 @@ pub mod auth {
             server_id: Uuid,
             message_id: Uuid,
         ) -> ApiResult<Req> {
-            // TODO: Check if the author is from the same domain as the server
+            // TODO: Check if the author is from the same host as the server
             let base = delete_base(state, server_id, message_id).await?;
             Ok(base.federated_only())
         }

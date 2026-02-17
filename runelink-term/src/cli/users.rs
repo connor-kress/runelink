@@ -22,9 +22,9 @@ pub enum UserCommands {
 
 #[derive(clap::Args, Debug)]
 pub struct UserGetArgs {
-    /// The domain of the user
+    /// The host of the user
     #[clap(long)]
-    pub domain: String,
+    pub host: String,
     /// The ID of the user to fetch
     #[clap(long)]
     pub name: String,
@@ -32,9 +32,9 @@ pub struct UserGetArgs {
 
 #[derive(clap::Args, Debug)]
 pub struct UserListArgs {
-    /// The domain of the host
+    /// The host of the host
     #[clap(long)]
-    pub domain: Option<String>,
+    pub host: Option<String>,
     /// The ID of the server
     #[clap(long)]
     pub server_id: Option<Uuid>,
@@ -54,7 +54,7 @@ pub async fn handle_user_commands(
                     ctx.client,
                     &api_url,
                     server_id,
-                    list_args.domain.as_deref(),
+                    list_args.host.as_deref(),
                 )
                 .await?;
                 users = members.into_iter().map(|m| m.user).collect();
@@ -62,7 +62,7 @@ pub async fn handle_user_commands(
                 users = requests::users::fetch_all(
                     ctx.client,
                     &api_url,
-                    list_args.domain.as_deref(),
+                    list_args.host.as_deref(),
                 )
                 .await?;
             }
@@ -73,7 +73,7 @@ pub async fn handle_user_commands(
 
         UserCommands::Get(get_args) => {
             let user_ref =
-                UserRef::new(get_args.name.clone(), get_args.domain.clone());
+                UserRef::new(get_args.name.clone(), get_args.host.clone());
             let api_url = ctx.home_api_url()?;
             let user =
                 requests::users::fetch_by_ref(ctx.client, &api_url, user_ref)

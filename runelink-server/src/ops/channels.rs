@@ -10,25 +10,23 @@ use crate::{
 };
 
 /// Create a new channel in a server.
-/// If target_domain is provided and not the local domain, creates on that remote domain.
-/// Otherwise, creates locally.
 pub async fn create(
     state: &AppState,
     session: &Session,
     server_id: Uuid,
     new_channel: &NewChannel,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> ApiResult<Channel> {
     // Handle local case
-    if !state.config.is_remote_domain(target_domain) {
+    if !state.config.is_remote_host(target_host) {
         let channel =
             queries::channels::insert(&state.db_pool, server_id, new_channel)
                 .await?;
         Ok(channel)
     } else {
-        // Create on remote domain using federation
-        let domain = target_domain.unwrap();
-        let api_url = get_api_url(domain);
+        // Create on remote host using federation
+        let host = target_host.unwrap();
+        let api_url = get_api_url(host);
         let user_ref = session.user_ref.clone().ok_or_else(|| {
             ApiError::Internal(
                 "User reference required for federated channel creation"
@@ -50,7 +48,7 @@ pub async fn create(
         .await
         .map_err(|e| {
             ApiError::Internal(format!(
-                "Failed to create channel on {domain}: {e}"
+                "Failed to create channel on {host}: {e}"
             ))
         })?;
         Ok(channel)
@@ -58,21 +56,19 @@ pub async fn create(
 }
 
 /// Get all channels.
-/// If target_domain is provided and not the local domain, fetches from that remote domain.
-/// Otherwise, returns local channels.
 pub async fn get_all(
     state: &AppState,
     session: &Session,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> ApiResult<Vec<Channel>> {
-    if !state.config.is_remote_domain(target_domain) {
+    if !state.config.is_remote_host(target_host) {
         // Handle local case
         let channels = queries::channels::get_all(&state.db_pool).await?;
         Ok(channels)
     } else {
-        // Fetch from remote domain using federation
-        let domain = target_domain.unwrap();
-        let api_url = get_api_url(domain);
+        // Fetch from remote host using federation
+        let host = target_host.unwrap();
+        let api_url = get_api_url(host);
         let user_ref = session.user_ref.clone().ok_or_else(|| {
             ApiError::Internal(
                 "User reference required for federated channel fetching"
@@ -92,7 +88,7 @@ pub async fn get_all(
         .await
         .map_err(|e| {
             ApiError::Internal(format!(
-                "Failed to fetch channels from {domain}: {e}"
+                "Failed to fetch channels from {host}: {e}"
             ))
         })?;
         Ok(channels)
@@ -100,21 +96,19 @@ pub async fn get_all(
 }
 
 /// Get channels in a server.
-/// If target_domain is provided and not the local domain, fetches from that remote domain.
-/// Otherwise, returns local channels.
 pub async fn get_by_server(
     state: &AppState,
     session: &Session,
     server_id: Uuid,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> ApiResult<Vec<Channel>> {
-    if !state.config.is_remote_domain(target_domain) {
+    if !state.config.is_remote_host(target_host) {
         // Handle local case
         queries::channels::get_by_server(&state.db_pool, server_id).await
     } else {
-        // Fetch from remote domain using federation
-        let domain = target_domain.unwrap();
-        let api_url = get_api_url(domain);
+        // Fetch from remote host using federation
+        let host = target_host.unwrap();
+        let api_url = get_api_url(host);
         let user_ref = session.user_ref.clone().ok_or_else(|| {
             ApiError::Internal(
                 "User reference required for federated channel fetching"
@@ -135,7 +129,7 @@ pub async fn get_by_server(
         .await
         .map_err(|e| {
             ApiError::Internal(format!(
-                "Failed to fetch channels from {domain}: {e}"
+                "Failed to fetch channels from {host}: {e}"
             ))
         })?;
         Ok(channels)
@@ -143,24 +137,22 @@ pub async fn get_by_server(
 }
 
 /// Get a channel by its ID.
-/// If target_domain is provided and not the local domain, fetches from that remote domain.
-/// Otherwise, returns local channel.
 pub async fn get_by_id(
     state: &AppState,
     session: &Session,
     server_id: Uuid,
     channel_id: Uuid,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> ApiResult<Channel> {
-    if !state.config.is_remote_domain(target_domain) {
+    if !state.config.is_remote_host(target_host) {
         // Handle local case
         let channel =
             queries::channels::get_by_id(&state.db_pool, channel_id).await?;
         Ok(channel)
     } else {
-        // Fetch from remote domain using federation
-        let domain = target_domain.unwrap();
-        let api_url = get_api_url(domain);
+        // Fetch from remote host using federation
+        let host = target_host.unwrap();
+        let api_url = get_api_url(host);
         let user_ref = session.user_ref.clone().ok_or_else(|| {
             ApiError::Internal(
                 "User reference required for federated channel fetching"
@@ -182,7 +174,7 @@ pub async fn get_by_id(
         .await
         .map_err(|e| {
             ApiError::Internal(format!(
-                "Failed to fetch channel from {domain}: {e}"
+                "Failed to fetch channel from {host}: {e}"
             ))
         })?;
         Ok(channel)
@@ -190,17 +182,15 @@ pub async fn get_by_id(
 }
 
 /// Delete a channel by ID.
-/// If target_domain is provided and not the local domain, deletes on that remote domain.
-/// Otherwise, deletes locally.
 pub async fn delete(
     state: &AppState,
     session: &Session,
     server_id: Uuid,
     channel_id: Uuid,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> ApiResult<()> {
     // Handle local case
-    if !state.config.is_remote_domain(target_domain) {
+    if !state.config.is_remote_host(target_host) {
         // Verify the channel belongs to the server
         let channel =
             queries::channels::get_by_id(&state.db_pool, channel_id).await?;
@@ -212,9 +202,9 @@ pub async fn delete(
         queries::channels::delete(&state.db_pool, channel_id).await?;
         Ok(())
     } else {
-        // Delete on remote domain using federation
-        let domain = target_domain.unwrap();
-        let api_url = get_api_url(domain);
+        // Delete on remote host using federation
+        let host = target_host.unwrap();
+        let api_url = get_api_url(host);
         let user_ref = session.user_ref.clone().ok_or_else(|| {
             ApiError::Internal(
                 "User reference required for federated channel deletion"
@@ -236,7 +226,7 @@ pub async fn delete(
         .await
         .map_err(|e| {
             ApiError::Internal(format!(
-                "Failed to delete channel on {domain}: {e}"
+                "Failed to delete channel on {host}: {e}"
             ))
         })?;
         Ok(())

@@ -84,19 +84,19 @@ impl AppConfig {
     }
 }
 
-pub trait TryGetDomain {
-    fn try_get_domain(&self) -> Result<&str, CliError>;
+pub trait TryGetHost {
+    fn try_get_host(&self) -> Result<&str, CliError>;
     fn try_get_api_url(&self) -> Result<String, CliError>;
 }
 
-impl TryGetDomain for Option<&AccountConfig> {
-    fn try_get_domain(&self) -> Result<&str, CliError> {
-        self.map(|ac| ac.user_ref.domain.as_str())
+impl TryGetHost for Option<&AccountConfig> {
+    fn try_get_host(&self) -> Result<&str, CliError> {
+        self.map(|ac| ac.user_ref.host.as_str())
             .ok_or(CliError::MissingAccount)
     }
 
     fn try_get_api_url(&self) -> Result<String, CliError> {
-        self.try_get_domain().map(get_api_url)
+        self.try_get_host().map(get_api_url)
     }
 }
 

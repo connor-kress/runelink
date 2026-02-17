@@ -7,18 +7,18 @@ pub async fn insert(pool: &DbPool, new_user: &NewUser) -> ApiResult<User> {
     let user = sqlx::query_as!(
         User,
         r#"
-        INSERT INTO users (name, domain, role)
+        INSERT INTO users (name, host, role)
         VALUES ($1, $2, $3)
         RETURNING
             name,
-            domain,
+            host,
             role AS "role: UserRole",
             created_at,
             updated_at,
             synced_at;
         "#,
         new_user.name,
-        new_user.domain,
+        new_user.host,
         new_user.role as UserRole,
     )
     .fetch_one(pool)
@@ -33,22 +33,22 @@ pub async fn upsert_remote(
     let user = sqlx::query_as!(
         User,
         r#"
-        INSERT INTO users (name, domain, role, created_at, updated_at, synced_at)
+        INSERT INTO users (name, host, role, created_at, updated_at, synced_at)
         VALUES ($1, $2, $3, $4, $5, $6)
-        ON CONFLICT (name, domain) DO UPDATE SET
+        ON CONFLICT (name, host) DO UPDATE SET
             role = EXCLUDED.role,
             updated_at = EXCLUDED.updated_at,
             synced_at = EXCLUDED.synced_at
         RETURNING
             name,
-            domain,
+            host,
             role AS "role: UserRole",
             created_at,
             updated_at,
             synced_at;
         "#,
         remote_user.name,
-        remote_user.domain,
+        remote_user.host,
         UserRole::User as UserRole,
         remote_user.created_at,
         remote_user.updated_at,
@@ -65,7 +65,7 @@ pub async fn get_all(pool: &DbPool) -> ApiResult<Vec<User>> {
         r#"
         SELECT
             name,
-            domain,
+            host,
             role AS "role: UserRole",
             created_at,
             updated_at,
@@ -85,19 +85,19 @@ pub async fn ensure_exists(
     let user = sqlx::query_as!(
         User,
         r#"
-        INSERT INTO users (name, domain, role)
+        INSERT INTO users (name, host, role)
         VALUES ($1, $2, 'user')
-        ON CONFLICT (name, domain) DO UPDATE SET updated_at = NOW()
+        ON CONFLICT (name, host) DO UPDATE SET updated_at = NOW()
         RETURNING
             name,
-            domain,
+            host,
             role AS "role: UserRole",
             created_at,
             updated_at,
             synced_at;
         "#,
         user_ref.name,
-        user_ref.domain,
+        user_ref.host,
     )
     .fetch_one(pool)
     .await?;
@@ -110,16 +110,16 @@ pub async fn get_by_ref(pool: &DbPool, user_ref: UserRef) -> ApiResult<User> {
         r#"
         SELECT
             name,
-            domain,
+            host,
             role AS "role: UserRole",
             created_at,
             updated_at,
             synced_at
         FROM users
-        WHERE name = $1 AND domain = $2;
+        WHERE name = $1 AND host = $2;
         "#,
         user_ref.name,
-        user_ref.domain,
+        user_ref.host,
     )
     .fetch_one(pool)
     .await?;
@@ -128,11 +128,32 @@ pub async fn get_by_ref(pool: &DbPool, user_ref: UserRef) -> ApiResult<User> {
 
 pub async fn delete(pool: &DbPool, user_ref: UserRef) -> ApiResult<()> {
     sqlx::query!(
-        "DELETE FROM users WHERE name = $1 AND domain = $2;",
+        "DELETE FROM users WHERE name = $1 AND host = $2;",
         user_ref.name,
-        user_ref.domain
+        user_ref.host
     )
     .execute(pool)
     .await?;
     Ok(())
+}
+
+
+pub async fn get_associated_hosts(
+    pool: &DbPool,
+    user_ref: &UserRef,
+) -> ApiResult<Vec<String>> {
+    let hosts = sqlx::query_scalar!(
+        r#"
+        SELECT DISTINCT s.host
+        FROM user_remote_server_memberships m
+        JOIN cached_remote_servers s ON s.id = m.remote_server_id
+        WHERE m.user_name = $1 AND m.user_host = $2
+        ORDER BY s.host ASC;
+        "#,
+        user_ref.name,
+        user_ref.host,
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(hosts)
 }

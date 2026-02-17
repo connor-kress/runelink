@@ -17,12 +17,12 @@ pub async fn create(
     server_id: Uuid,
     channel_id: Uuid,
     new_message: &NewMessage,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> Result<Message> {
     let mut url =
         format!("{api_url}/servers/{server_id}/channels/{channel_id}/messages");
-    if let Some(domain) = target_domain {
-        url = format!("{url}?target_domain={domain}");
+    if let Some(host) = target_host {
+        url = format!("{url}?target_host={host}");
     }
     info!("creating message: {url}");
     post_json_authed::<NewMessage, Message>(
@@ -39,11 +39,11 @@ pub async fn fetch_all(
     client: &Client,
     api_url: &str,
     access_token: &str,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> Result<Vec<Message>> {
     let mut url = format!("{api_url}/messages");
-    if let Some(domain) = target_domain {
-        url = format!("{url}?target_domain={domain}");
+    if let Some(host) = target_host {
+        url = format!("{url}?target_host={host}");
     }
     info!("fetching all messages: {url}");
     fetch_json_authed::<Vec<Message>>(client, &url, access_token).await
@@ -55,11 +55,11 @@ pub async fn fetch_by_server(
     api_url: &str,
     access_token: &str,
     server_id: Uuid,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> Result<Vec<Message>> {
     let mut url = format!("{api_url}/servers/{server_id}/messages");
-    if let Some(domain) = target_domain {
-        url = format!("{url}?target_domain={domain}");
+    if let Some(host) = target_host {
+        url = format!("{url}?target_host={host}");
     }
     info!("fetching messages by server: {url}");
     fetch_json_authed::<Vec<Message>>(client, &url, access_token).await
@@ -71,12 +71,12 @@ pub async fn fetch_by_channel(
     access_token: &str,
     server_id: Uuid,
     channel_id: Uuid,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> Result<Vec<Message>> {
     let mut url =
         format!("{api_url}/servers/{server_id}/channels/{channel_id}/messages");
-    if let Some(domain) = target_domain {
-        url = format!("{url}?target_domain={domain}");
+    if let Some(host) = target_host {
+        url = format!("{url}?target_host={host}");
     }
     info!("fetching messages by channel: {url}");
     fetch_json_authed::<Vec<Message>>(client, &url, access_token).await
@@ -89,13 +89,13 @@ pub async fn fetch_by_id(
     server_id: Uuid,
     channel_id: Uuid,
     message_id: Uuid,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> Result<Message> {
     let mut url = format!(
         "{api_url}/servers/{server_id}/channels/{channel_id}/messages/{message_id}"
     );
-    if let Some(domain) = target_domain {
-        url = format!("{url}?target_domain={domain}");
+    if let Some(host) = target_host {
+        url = format!("{url}?target_host={host}");
     }
     info!("fetching message: {url}");
     fetch_json_authed::<Message>(client, &url, access_token).await
@@ -108,13 +108,13 @@ pub async fn delete(
     server_id: Uuid,
     channel_id: Uuid,
     message_id: Uuid,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> Result<()> {
     let mut url = format!(
         "{api_url}/servers/{server_id}/channels/{channel_id}/messages/{message_id}"
     );
-    if let Some(domain) = target_domain {
-        url = format!("{url}?target_domain={domain}");
+    if let Some(host) = target_host {
+        url = format!("{url}?target_host={host}");
     }
     info!("deleting message: {url}");
     delete_authed(client, &url, access_token).await

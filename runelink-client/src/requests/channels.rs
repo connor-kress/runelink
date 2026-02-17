@@ -16,11 +16,11 @@ pub async fn create(
     access_token: &str,
     server_id: Uuid,
     new_channel: &NewChannel,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> Result<Channel> {
     let mut url = format!("{api_url}/servers/{server_id}/channels");
-    if let Some(domain) = target_domain {
-        url = format!("{url}?target_domain={domain}");
+    if let Some(host) = target_host {
+        url = format!("{url}?target_host={host}");
     }
     info!("creating channel: {url}");
     post_json_authed::<NewChannel, Channel>(
@@ -36,11 +36,11 @@ pub async fn fetch_all(
     client: &Client,
     api_url: &str,
     access_token: &str,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> Result<Vec<Channel>> {
     let mut url = format!("{api_url}/channels");
-    if let Some(domain) = target_domain {
-        url = format!("{url}?target_domain={domain}");
+    if let Some(host) = target_host {
+        url = format!("{url}?target_host={host}");
     }
     info!("fetching all channels: {url}");
     fetch_json_authed::<Vec<Channel>>(client, &url, access_token).await
@@ -51,11 +51,11 @@ pub async fn fetch_by_server(
     api_url: &str,
     access_token: &str,
     server_id: Uuid,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> Result<Vec<Channel>> {
     let mut url = format!("{api_url}/servers/{server_id}/channels");
-    if let Some(domain) = target_domain {
-        url = format!("{url}?target_domain={domain}");
+    if let Some(host) = target_host {
+        url = format!("{url}?target_host={host}");
     }
     info!("fetching channels by server: {url}");
     fetch_json_authed::<Vec<Channel>>(client, &url, access_token).await
@@ -67,12 +67,12 @@ pub async fn fetch_by_id(
     access_token: &str,
     server_id: Uuid,
     channel_id: Uuid,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> Result<Channel> {
     let mut url =
         format!("{api_url}/servers/{server_id}/channels/{channel_id}");
-    if let Some(domain) = target_domain {
-        url = format!("{url}?target_domain={domain}");
+    if let Some(host) = target_host {
+        url = format!("{url}?target_host={host}");
     }
     info!("fetching channel: {url}");
     fetch_json_authed::<Channel>(client, &url, access_token).await
@@ -84,12 +84,12 @@ pub async fn delete(
     access_token: &str,
     server_id: Uuid,
     channel_id: Uuid,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> Result<()> {
     let mut url =
         format!("{api_url}/servers/{server_id}/channels/{channel_id}");
-    if let Some(domain) = target_domain {
-        url = format!("{url}?target_domain={domain}");
+    if let Some(host) = target_host {
+        url = format!("{url}?target_host={host}");
     }
     info!("deleting channel: {url}");
     delete_authed(client, &url, access_token).await

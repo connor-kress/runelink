@@ -48,9 +48,9 @@ pub struct MessageGetArgs {
     /// The ID of the server the message is in
     #[clap(long)]
     pub server_id: Uuid,
-    /// The domain of the server the message is in
+    /// The host of the server the message is in
     #[clap(long)]
-    pub domain: Option<String>,
+    pub host: Option<String>,
 }
 
 #[derive(clap::Args, Debug)]
@@ -64,9 +64,9 @@ pub struct MessageSendArgs {
     /// The channel ID
     #[clap(long)]
     pub channel_id: Option<Uuid>,
-    /// The domain of the server
+    /// The host of the server
     #[clap(long)]
-    pub domain: Option<String>,
+    pub host: Option<String>,
 }
 
 #[derive(clap::Args, Debug)]
@@ -80,9 +80,9 @@ pub struct MessageDeleteArgs {
     /// The ID of the message to delete
     #[clap(long)]
     pub message_id: Uuid,
-    /// The domain of the server
+    /// The host of the server
     #[clap(long)]
-    pub domain: Option<String>,
+    pub host: Option<String>,
 }
 
 pub async fn handle_message_commands(
@@ -101,8 +101,8 @@ pub async fn handle_message_commands(
             .await?;
             let api_url = ctx.home_api_url()?;
             let access_token = ctx.get_access_token().await?;
-            let target_domain = if server.domain != account.user_ref.domain {
-                Some(server.domain.as_str())
+            let target_host = if server.host != account.user_ref.host {
+                Some(server.host.as_str())
             } else {
                 None
             };
@@ -112,7 +112,7 @@ pub async fn handle_message_commands(
                 &access_token,
                 server.id,
                 channel.id,
-                target_domain,
+                target_host,
             )
             .await?;
             for message in messages.iter().rev() {
@@ -131,7 +131,7 @@ pub async fn handle_message_commands(
                 get_args.server_id,
                 get_args.channel_id,
                 get_args.message_id,
-                get_args.domain.as_deref(),
+                get_args.host.as_deref(),
             )
             .await?;
             println!("{message}");
@@ -152,9 +152,9 @@ pub async fn handle_message_commands(
                 author: account.user_ref.clone(),
                 body,
             };
-            let target_domain = send_args.domain.as_deref().or_else(|| {
-                if server.domain != account.user_ref.domain {
-                    Some(server.domain.as_str())
+            let target_host = send_args.host.as_deref().or_else(|| {
+                if server.host != account.user_ref.host {
+                    Some(server.host.as_str())
                 } else {
                     None
                 }
@@ -166,7 +166,7 @@ pub async fn handle_message_commands(
                 server.id,
                 channel.id,
                 &new_message,
-                target_domain,
+                target_host,
             )
             .await?;
             println!("Sent message: {}", message.body);
@@ -183,7 +183,7 @@ pub async fn handle_message_commands(
                 delete_args.server_id,
                 delete_args.channel_id,
                 delete_args.message_id,
-                delete_args.domain.as_deref(),
+                delete_args.host.as_deref(),
             )
             .await?;
             println!("Deleted message: {}", delete_args.message_id);

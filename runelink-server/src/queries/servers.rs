@@ -13,14 +13,14 @@ struct LocalServerRow {
     pub description: Option<String>,
     pub created_at: OffsetDateTime,
     pub updated_at: OffsetDateTime,
-    // No 'domain' field
+    // No 'host' field
 }
 
 impl LocalServerRow {
     fn into_server(self, config: &ServerConfig) -> Server {
         Server {
             id: self.id,
-            domain: config.local_domain(),
+            host: config.local_host(),
             title: self.title,
             description: self.description,
             created_at: self.created_at,
@@ -52,12 +52,12 @@ pub async fn upsert_remote(pool: &DbPool, server: &Server) -> ApiResult<()> {
     sqlx::query!(
         r#"
         INSERT INTO cached_remote_servers (
-            id, domain, title, description, remote_created_at,
+            id, host, title, description, remote_created_at,
             remote_updated_at, synced_at
         )
         VALUES ($1, $2, $3, $4, $5, $6, NOW())
         ON CONFLICT(id) DO UPDATE
-            SET domain = EXCLUDED.domain,
+            SET host = EXCLUDED.host,
                 title = EXCLUDED.title,
                 description = EXCLUDED.description,
                 remote_created_at = EXCLUDED.remote_created_at,
@@ -65,7 +65,7 @@ pub async fn upsert_remote(pool: &DbPool, server: &Server) -> ApiResult<()> {
                 synced_at = NOW()
         "#,
         server.id,
-        server.domain,
+        server.host,
         server.title,
         server.description,
         server.created_at,

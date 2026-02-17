@@ -129,8 +129,8 @@ where
 #[derive(Clone, Debug)]
 pub enum ServerSelectionType<'a> {
     MemberOnly,
-    All { domain: &'a str },
-    NonMemberOnly { domain: &'a str },
+    All { host: &'a str },
+    NonMemberOnly { host: &'a str },
 }
 
 pub async fn get_server_selection(
@@ -140,14 +140,14 @@ pub async fn get_server_selection(
     let api_url = ctx.home_api_url()?;
     let account = ctx.account.ok_or(CliError::MissingAccount)?;
     let servers = match selection_type {
-        ServerSelectionType::All { domain } => {
-            // Use target_domain if it's different from account domain
-            let target_domain = if account.user_ref.domain != domain {
-                Some(domain)
+        ServerSelectionType::All { host } => {
+            // Use target_host if it's different from account host
+            let target_host = if account.user_ref.host != host {
+                Some(host)
             } else {
                 None
             };
-            requests::servers::fetch_all(ctx.client, &api_url, target_domain)
+            requests::servers::fetch_all(ctx.client, &api_url, target_host)
                 .await?
         }
 
@@ -160,12 +160,12 @@ pub async fn get_server_selection(
             .await?
         }
 
-        ServerSelectionType::NonMemberOnly { domain } => {
-            // Fetch all servers from the specified domain
-            let target_domain = if Some(domain)
-                != ctx.account.map(|ac| ac.user_ref.domain.as_str())
+        ServerSelectionType::NonMemberOnly { host } => {
+            // Fetch all servers from the specified host
+            let target_host = if Some(host)
+                != ctx.account.map(|ac| ac.user_ref.host.as_str())
             {
-                Some(domain)
+                Some(host)
             } else {
                 None
             };
@@ -173,7 +173,7 @@ pub async fn get_server_selection(
                 requests::servers::fetch_all(
                     ctx.client,
                     &api_url,
-                    target_domain
+                    target_host
                 ),
                 requests::servers::fetch_by_user(
                     ctx.client,
@@ -212,7 +212,7 @@ pub async fn get_server_selection(
 pub async fn get_channel_selection(
     ctx: &mut CliContext<'_>,
     server_id: Uuid,
-    server_domain: Option<&str>,
+    server_host: Option<&str>,
 ) -> Result<Channel, CliError> {
     let api_url = ctx.home_api_url()?;
     let access_token = ctx.get_access_token().await?;
@@ -221,7 +221,7 @@ pub async fn get_channel_selection(
         &api_url,
         &access_token,
         server_id,
-        server_domain,
+        server_host,
     )
     .await?;
     if channels.is_empty() {
@@ -257,7 +257,7 @@ pub async fn get_channel_selection_with_inputs(
                 &access_token,
                 server_id,
                 channel_id,
-                Some(server.domain.as_str()),
+                Some(server.host.as_str()),
             )
             .await?;
             Ok((server, channel))
@@ -273,7 +273,7 @@ pub async fn get_channel_selection_with_inputs(
             let channel = get_channel_selection(
                 ctx,
                 server.id,
-                Some(server.domain.as_str()),
+                Some(server.host.as_str()),
             )
             .await?;
             Ok((server, channel))
@@ -285,7 +285,7 @@ pub async fn get_channel_selection_with_inputs(
             let channel = get_channel_selection(
                 ctx,
                 server.id,
-                Some(server.domain.as_str()),
+                Some(server.host.as_str()),
             )
             .await?;
             Ok((server, channel))

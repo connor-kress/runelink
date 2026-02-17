@@ -13,16 +13,14 @@ use crate::{
 };
 
 /// Create a new server and add the creator as admin.
-/// If target_domain is provided and not the local domain, creates on that remote domain.
-/// Otherwise, creates locally.
 pub async fn create(
     state: &AppState,
     session: &Session,
     new_server: &NewServer,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> ApiResult<Server> {
     // Handle local case
-    if !state.config.is_remote_domain(target_domain) {
+    if !state.config.is_remote_host(target_host) {
         let server = queries::servers::insert(state, new_server).await?;
         // Get the creator's user identity
         // Since this requires HostAdmin (which requires client auth), these fields are always present
@@ -31,21 +29,21 @@ pub async fn create(
                 "Session missing user identity for server creation".into(),
             )
         })?;
-        // Ensure user exists (creates record for federated users from other domains)
+        // Ensure user exists (creates record for federated users from other hosts)
         queries::users::ensure_exists(&state.db_pool, user_ref.clone()).await?;
         let new_membership = NewServerMembership {
             user_ref,
             server_id: server.id,
-            server_domain: server.domain.clone(),
+            server_host: server.host.clone(),
             role: ServerRole::Admin,
         };
         queries::memberships::insert_local(&state.db_pool, &new_membership)
             .await?;
         Ok(server)
     } else {
-        // Create on remote domain using federation
-        let domain = target_domain.unwrap();
-        let api_url = get_api_url(domain);
+        // Create on remote host using federation
+        let host = target_host.unwrap();
+        let api_url = get_api_url(host);
         let user_ref = session.user_ref.clone().ok_or_else(|| {
             ApiError::Internal(
                 "User reference required for federated server creation"
@@ -66,7 +64,7 @@ pub async fn create(
         .await
         .map_err(|e| {
             ApiError::Internal(format!(
-                "Failed to create server on {domain}: {e}"
+                "Failed to create server on {host}: {e}"
             ))
         })?;
         // Cache the remote server and creator's admin membership on the home server.
@@ -86,13 +84,11 @@ pub async fn create(
 }
 
 /// List all servers (public).
-/// If target_domain is provided and not the local domain, fetches from that remote domain.
-/// Otherwise, returns local servers.
 pub async fn get_all(
     state: &AppState,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> ApiResult<Vec<Server>> {
-    if !state.config.is_remote_domain(target_domain) {
+    if !state.config.is_remote_host(target_host) {
         // Handle local case
         // TODO: add visibility specification for servers
         // We could then have an admin endpoint for all servers
@@ -100,15 +96,15 @@ pub async fn get_all(
         let servers = queries::servers::get_all(state).await?;
         Ok(servers)
     } else {
-        // Fetch from remote domain
-        let domain = target_domain.unwrap();
-        let api_url = get_api_url(domain);
+        // Fetch from remote host
+        let host = target_host.unwrap();
+        let api_url = get_api_url(host);
         let servers =
             requests::servers::fetch_all(&state.http_client, &api_url, None)
                 .await
                 .map_err(|e| {
                     ApiError::Internal(format!(
-                        "Failed to fetch servers from {domain}: {e}"
+                        "Failed to fetch servers from {host}: {e}"
                     ))
                 })?;
         Ok(servers)
@@ -116,22 +112,20 @@ pub async fn get_all(
 }
 
 /// Get a server by ID (public).
-/// If target_domain is provided and not the local domain, fetches from that remote domain.
-/// Otherwise, returns local server.
 pub async fn get_by_id(
     state: &AppState,
     server_id: Uuid,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> ApiResult<Server> {
-    if !state.config.is_remote_domain(target_domain) {
+    if !state.config.is_remote_host(target_host) {
         // Handle local case
         // TODO: separate public and private server objects?
         let server = queries::servers::get_by_id(state, server_id).await?;
         Ok(server)
     } else {
-        // Fetch from remote domain
-        let domain = target_domain.unwrap();
-        let api_url = get_api_url(domain);
+        // Fetch from remote host
+        let host = target_host.unwrap();
+        let api_url = get_api_url(host);
         let server = requests::servers::fetch_by_id(
             &state.http_client,
             &api_url,
@@ -141,7 +135,7 @@ pub async fn get_by_id(
         .await
         .map_err(|e| {
             ApiError::Internal(format!(
-                "Failed to fetch server from {domain}: {e}"
+                "Failed to fetch server from {host}: {e}"
             ))
         })?;
         Ok(server)
@@ -149,15 +143,13 @@ pub async fn get_by_id(
 }
 
 /// Get a server with its channels.
-/// If target_domain is provided and not the local domain, fetches from that remote domain.
-/// Otherwise, returns local server with channels.
 pub async fn get_with_channels(
     state: &AppState,
     session: &Session,
     server_id: Uuid,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> ApiResult<ServerWithChannels> {
-    if !state.config.is_remote_domain(target_domain) {
+    if !state.config.is_remote_host(target_host) {
         // Handle local case
         let (server, channels) = tokio::join!(
             queries::servers::get_by_id(state, server_id),
@@ -168,9 +160,9 @@ pub async fn get_with_channels(
             channels: channels?,
         })
     } else {
-        // Fetch from remote domain using federation
-        let domain = target_domain.unwrap();
-        let api_url = get_api_url(domain);
+        // Fetch from remote host using federation
+        let host = target_host.unwrap();
+        let api_url = get_api_url(host);
         let user_ref = session.user_ref.clone().ok_or_else(|| {
             ApiError::Internal(
                 "User reference required for federated server fetching"
@@ -192,7 +184,7 @@ pub async fn get_with_channels(
             .await
             .map_err(|e| {
                 ApiError::Internal(format!(
-                    "Failed to fetch server with channels from {domain}: {e}"
+                    "Failed to fetch server with channels from {host}: {e}"
                 ))
             })?;
         Ok(server_with_channels)
@@ -200,22 +192,20 @@ pub async fn get_with_channels(
 }
 
 /// Delete a server by ID.
-/// If target_domain is provided and not the local domain, deletes on that remote domain.
-/// Otherwise, deletes locally.
 pub async fn delete(
     state: &AppState,
     session: &Session,
     server_id: Uuid,
-    target_domain: Option<&str>,
+    target_host: Option<&str>,
 ) -> ApiResult<()> {
     // Handle local case
-    if !state.config.is_remote_domain(target_domain) {
+    if !state.config.is_remote_host(target_host) {
         queries::servers::delete(state, server_id).await?;
         Ok(())
     } else {
-        // Delete on remote domain using federation
-        let domain = target_domain.unwrap();
-        let api_url = get_api_url(domain);
+        // Delete on remote host using federation
+        let host = target_host.unwrap();
+        let api_url = get_api_url(host);
         let user_ref = session.user_ref.clone().ok_or_else(|| {
             ApiError::Internal(
                 "User reference required for federated server deletion"
@@ -236,7 +226,7 @@ pub async fn delete(
         .await
         .map_err(|e| {
             ApiError::Internal(format!(
-                "Failed to delete server on {domain}: {e}"
+                "Failed to delete server on {host}: {e}"
             ))
         })?;
         Ok(())

@@ -129,15 +129,15 @@ impl Requirement {
                         "Federated delegated user required".into(),
                     ));
                 };
-                let expected_iss = get_api_url(&expected.domain);
+                let expected_iss = get_api_url(&expected.host);
                 if claims.iss != expected_iss {
                     return Ok(Some(
-                        "Federation issuer does not match delegated user domain"
+                        "Federation issuer does not match delegated user host"
                             .into(),
                     ));
                 }
                 if user_ref.name != expected.name
-                    || user_ref.domain != expected.domain
+                    || user_ref.host != expected.host
                 {
                     return Ok(Some("Invalid delegated federated user".into()));
                 }
@@ -336,7 +336,7 @@ pub async fn authorize(
             let user_ref = UserRef::parse_subject(&auth.claims.sub)
                 .ok_or_else(|| {
                     ApiError::AuthError(
-                        "Invalid token subject (expected name@domain)".into(),
+                        "Invalid token subject (expected name@host)".into(),
                     )
                 })?;
             (Some(user_ref), None)

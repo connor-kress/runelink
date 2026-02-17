@@ -26,15 +26,15 @@ pub fn router() -> Router<AppState> {
         .route("/ping", get(ping))
         .route("/users", get(users::get_all).post(users::create))
         .route(
-            "/users/{domain}/{name}",
+            "/users/{host}/{name}",
             get(users::get_by_ref).delete(users::delete),
         )
         .route(
-            "/users/{domain}/{name}/domains",
-            get(users::get_user_associated_domains),
+            "/users/{host}/{name}/hosts",
+            get(users::get_associated_hosts),
         )
         .route(
-            "/users/{domain}/{name}/servers",
+            "/users/{host}/{name}/servers",
             get(memberships::get_by_user),
         )
         .route("/messages", get(messages::get_all))
@@ -73,7 +73,7 @@ pub fn router() -> Router<AppState> {
             get(memberships::get_members_by_server).post(memberships::create),
         )
         .route(
-            "/servers/{server_id}/users/{domain}/{name}",
+            "/servers/{server_id}/users/{host}/{name}",
             get(memberships::get_by_user_and_server)
                 .delete(memberships::delete),
         )
@@ -87,7 +87,7 @@ pub fn federation_router() -> Router<AppState> {
             post(memberships::federated::create),
         )
         .route(
-            "/servers/{server_id}/users/{domain}/{name}",
+            "/servers/{server_id}/users/{host}/{name}",
             delete(memberships::federated::delete),
         )
         .route("/servers", post(servers::federated::create))
@@ -122,7 +122,7 @@ pub fn federation_router() -> Router<AppState> {
             get(messages::federated::get_by_id)
                 .delete(messages::federated::delete),
         )
-        .route("/users/{domain}/{name}", delete(users::federated::delete))
+        .route("/users/{host}/{name}", delete(users::federated::delete))
 }
 
 #[derive(Deserialize, Debug)]

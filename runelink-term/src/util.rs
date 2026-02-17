@@ -25,8 +25,8 @@ pub fn group_memberships_by_host<'a>(
 ) -> HashMap<&'a str, Vec<&'a ServerMembership>> {
     let mut map = HashMap::<&'a str, Vec<&'a ServerMembership>>::new();
     for membership in memberships {
-        let domain = membership.server.domain.as_str();
-        map.entry(domain).or_default().push(membership);
+        let host = membership.server.host.as_str();
+        map.entry(host).or_default().push(membership);
     }
     map
 }

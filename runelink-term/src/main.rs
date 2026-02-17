@@ -15,13 +15,13 @@ mod storage_auth;
 mod util;
 
 #[allow(dead_code)]
-async fn test_connectivities(client: &Client, domains: Vec<&str>) {
+async fn test_connectivities(client: &Client, hosts: Vec<&str>) {
     println!("Hosts:");
-    for domain in domains {
-        let api_url = get_api_url(domain);
+    for host in hosts {
+        let api_url = get_api_url(host);
         match requests::ping(client, &api_url).await {
-            Ok(_) => println!("{} (ready)", domain),
-            Err(_) => println!("{} (down)", domain),
+            Ok(_) => println!("{} (ready)", host),
+            Err(_) => println!("{} (down)", host),
         }
     }
 }

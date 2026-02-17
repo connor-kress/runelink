@@ -38,9 +38,9 @@ pub enum ServerCommands {
 
 #[derive(clap::Args, Debug)]
 pub struct ServerListArgs {
-    /// The domain to list servers from (if not provided, lists servers the user is a member of)
+    /// The host to list servers from (if not provided, lists servers the user is a member of)
     #[clap(long)]
-    pub domain: Option<String>,
+    pub host: Option<String>,
 }
 
 #[derive(clap::Args, Debug)]
@@ -48,9 +48,9 @@ pub struct ServerGetArg {
     /// The ID of the server
     #[clap(long)]
     pub server_id: Uuid,
-    /// The domain of the server
+    /// The host of the server
     #[clap(long)]
-    pub domain: Option<String>,
+    pub host: Option<String>,
 }
 
 #[derive(clap::Args, Debug)]
@@ -64,9 +64,9 @@ pub struct ServerCreateArgs {
     /// Skip description cli prompt
     #[clap(long)]
     pub no_description: bool,
-    /// The domain of the server
+    /// The host of the server
     #[clap(long)]
-    pub domain: Option<String>,
+    pub host: Option<String>,
 }
 
 #[derive(clap::Args, Debug)]
@@ -74,9 +74,9 @@ pub struct ServerJoinArgs {
     /// The ID of the server
     #[clap(long)]
     pub server_id: Option<Uuid>,
-    /// The domain of the server
+    /// The host of the server
     #[clap(long)]
-    pub domain: Option<String>,
+    pub host: Option<String>,
 }
 
 #[derive(clap::Args, Debug)]
@@ -84,9 +84,9 @@ pub struct ServerLeaveArgs {
     /// The ID of the server to leave
     #[clap(long)]
     pub server_id: Option<Uuid>,
-    /// The domain of the server
+    /// The host of the server
     #[clap(long)]
-    pub domain: Option<String>,
+    pub host: Option<String>,
 }
 
 #[derive(clap::Args, Debug)]
@@ -94,9 +94,9 @@ pub struct ServerDeleteArgs {
     /// The ID of the server to delete
     #[clap(long)]
     pub server_id: Option<Uuid>,
-    /// The domain of the server
+    /// The host of the server
     #[clap(long)]
-    pub domain: Option<String>,
+    pub host: Option<String>,
 }
 
 pub async fn handle_server_commands(
@@ -107,16 +107,16 @@ pub async fn handle_server_commands(
         ServerCommands::List(list_args) => {
             let api_url = ctx.home_api_url()?;
 
-            if let Some(domain) = &list_args.domain {
-                // List all servers in the specified domain
+            if let Some(host) = &list_args.host {
+                // List all servers in the specified host
                 let servers = requests::servers::fetch_all(
                     ctx.client,
                     &api_url,
-                    Some(domain.as_str()),
+                    Some(host.as_str()),
                 )
                 .await?;
                 if servers.is_empty() {
-                    println!("No servers found in domain: {domain}");
+                    println!("No servers found in host: {host}");
                 } else {
                     for server in servers {
                         println!("{}", server.verbose());
@@ -138,7 +138,7 @@ pub async fn handle_server_commands(
                     )
                 }
                 let mut is_first = true;
-                for (domain, memberships) in
+                for (host, memberships) in
                     group_memberships_by_host(&memberships)
                 {
                     if is_first {
@@ -146,7 +146,7 @@ pub async fn handle_server_commands(
                     } else {
                         println!(); // separation between host groups
                     }
-                    println!("{domain}");
+                    println!("{host}");
                     for membership in memberships {
                         let server = &membership.server;
                         print!("    {}", server.verbose());
@@ -166,12 +166,12 @@ pub async fn handle_server_commands(
                 ctx.client,
                 &api_url,
                 get_args.server_id,
-                get_args.domain.as_deref(),
+                get_args.host.as_deref(),
             )
             .await?;
             println!(
-                "{domain} / {title} ({id})",
-                domain = server.domain,
+                "{host} / {title} ({id})",
+                host = server.host,
                 title = server.title,
                 id = server.id
             );
@@ -196,7 +196,7 @@ pub async fn handle_server_commands(
                 &api_url,
                 &access_token,
                 &new_server,
-                create_args.domain.as_deref(),
+                create_args.host.as_deref(),
             )
             .await?;
             println!("Created server: {}", server.verbose());
@@ -211,24 +211,24 @@ pub async fn handle_server_commands(
                     ctx.client,
                     &api_url,
                     server_id,
-                    join_args.domain.as_deref(),
+                    join_args.host.as_deref(),
                 )
                 .await?
             } else {
-                let domain = join_args
-                    .domain
+                let host = join_args
+                    .host
                     .as_deref()
-                    .unwrap_or(account.user_ref.domain.as_str());
+                    .unwrap_or(account.user_ref.host.as_str());
                 get_server_selection(
                     ctx,
-                    ServerSelectionType::NonMemberOnly { domain },
+                    ServerSelectionType::NonMemberOnly { host },
                 )
                 .await?
             };
             let new_member = NewServerMembership {
                 user_ref: account.user_ref.clone(),
                 server_id: server.id,
-                server_domain: server.domain.clone(),
+                server_host: server.host.clone(),
                 role: ServerRole::Member,
             };
             let _member = requests::memberships::create(
@@ -250,14 +250,14 @@ pub async fn handle_server_commands(
                     ctx.client,
                     &api_url,
                     server_id,
-                    leave_args.domain.as_deref(),
+                    leave_args.host.as_deref(),
                 )
                 .await?
             } else {
-                let domain = leave_args
-                    .domain
+                let host = leave_args
+                    .host
                     .as_deref()
-                    .unwrap_or(account.user_ref.domain.as_str());
+                    .unwrap_or(account.user_ref.host.as_str());
                 get_server_selection(ctx, ServerSelectionType::MemberOnly)
                     .await?
             };
@@ -267,7 +267,7 @@ pub async fn handle_server_commands(
                 &access_token,
                 server.id,
                 account.user_ref.clone(),
-                Some(server.domain.as_str()),
+                Some(server.host.as_str()),
             )
             .await?;
             println!("Left server: {}", server.verbose());
@@ -280,10 +280,10 @@ pub async fn handle_server_commands(
             let server_id = if let Some(server_id) = delete_args.server_id {
                 server_id
             } else {
-                let domain = delete_args
-                    .domain
+                let host = delete_args
+                    .host
                     .as_deref()
-                    .unwrap_or(account.user_ref.domain.as_str());
+                    .unwrap_or(account.user_ref.host.as_str());
                 get_server_selection(ctx, ServerSelectionType::MemberOnly)
                     .await?
                     .id
@@ -293,7 +293,7 @@ pub async fn handle_server_commands(
                 &api_url,
                 &access_token,
                 server_id,
-                delete_args.domain.as_deref(),
+                delete_args.host.as_deref(),
             )
             .await?;
             println!("Deleted server: {server_id}");

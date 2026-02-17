@@ -16,7 +16,7 @@ use uuid::Uuid;
 
 #[derive(Deserialize, Debug)]
 pub struct MessageQueryParams {
-    pub target_domain: Option<String>,
+    pub target_host: Option<String>,
 }
 
 /// POST /servers/{server_id}/channels/{channel_id}/messages
@@ -28,8 +28,8 @@ pub async fn create(
     Json(new_message): Json<NewMessage>,
 ) -> ApiResult<impl IntoResponse> {
     info!(
-        "POST /servers/{server_id}/channels/{channel_id}/messages?target_domain={:?}\nnew_message = {:#?}",
-        params.target_domain, new_message
+        "POST /servers/{server_id}/channels/{channel_id}/messages?target_host={:?}\nnew_message = {:#?}",
+        params.target_host, new_message
     );
     let session = authorize(
         &state,
@@ -43,7 +43,7 @@ pub async fn create(
         server_id,
         channel_id,
         &new_message,
-        params.target_domain.as_deref(),
+        params.target_host.as_deref(),
     )
     .await?;
     Ok((StatusCode::CREATED, Json(message)))
@@ -55,7 +55,7 @@ pub async fn get_all(
     headers: HeaderMap,
     Query(params): Query<MessageQueryParams>,
 ) -> ApiResult<impl IntoResponse> {
-    info!("GET /messages?target_domain={:?}", params.target_domain);
+    info!("GET /messages?target_host={:?}", params.target_host);
     let session = authorize(
         &state,
         Principal::from_client_headers(&headers, &state)?,
@@ -65,7 +65,7 @@ pub async fn get_all(
     let messages = ops::messages::get_all(
         &state,
         &session,
-        params.target_domain.as_deref(),
+        params.target_host.as_deref(),
     )
     .await?;
     Ok((StatusCode::OK, Json(messages)))
@@ -79,8 +79,8 @@ pub async fn get_by_server(
     Query(params): Query<MessageQueryParams>,
 ) -> ApiResult<impl IntoResponse> {
     info!(
-        "GET /servers/{server_id}/messages?target_domain={:?}",
-        params.target_domain
+        "GET /servers/{server_id}/messages?target_host={:?}",
+        params.target_host
     );
     let session = authorize(
         &state,
@@ -92,7 +92,7 @@ pub async fn get_by_server(
         &state,
         &session,
         server_id,
-        params.target_domain.as_deref(),
+        params.target_host.as_deref(),
     )
     .await?;
     Ok((StatusCode::OK, Json(messages)))
@@ -106,8 +106,8 @@ pub async fn get_by_channel(
     Query(params): Query<MessageQueryParams>,
 ) -> ApiResult<impl IntoResponse> {
     info!(
-        "GET /servers/{server_id}/channels/{channel_id}/messages?target_domain={:?}",
-        params.target_domain
+        "GET /servers/{server_id}/channels/{channel_id}/messages?target_host={:?}",
+        params.target_host
     );
     let session = authorize(
         &state,
@@ -120,7 +120,7 @@ pub async fn get_by_channel(
         &session,
         server_id,
         channel_id,
-        params.target_domain.as_deref(),
+        params.target_host.as_deref(),
     )
     .await?;
     Ok((StatusCode::OK, Json(messages)))
@@ -134,8 +134,8 @@ pub async fn get_by_id(
     Query(params): Query<MessageQueryParams>,
 ) -> ApiResult<impl IntoResponse> {
     info!(
-        "GET /servers/{server_id}/channels/{channel_id}/messages/{message_id}?target_domain={:?}",
-        params.target_domain
+        "GET /servers/{server_id}/channels/{channel_id}/messages/{message_id}?target_host={:?}",
+        params.target_host
     );
     let session = authorize(
         &state,
@@ -149,7 +149,7 @@ pub async fn get_by_id(
         server_id,
         channel_id,
         message_id,
-        params.target_domain.as_deref(),
+        params.target_host.as_deref(),
     )
     .await?;
     Ok((StatusCode::OK, Json(message)))
@@ -163,8 +163,8 @@ pub async fn delete(
     Query(params): Query<MessageQueryParams>,
 ) -> ApiResult<impl IntoResponse> {
     info!(
-        "DELETE /servers/{server_id}/channels/{channel_id}/messages/{message_id}?target_domain={:?}",
-        params.target_domain
+        "DELETE /servers/{server_id}/channels/{channel_id}/messages/{message_id}?target_host={:?}",
+        params.target_host
     );
     let session = authorize(
         &state,
@@ -178,7 +178,7 @@ pub async fn delete(
         server_id,
         channel_id,
         message_id,
-        params.target_domain.as_deref(),
+        params.target_host.as_deref(),
     )
     .await?;
     Ok(StatusCode::NO_CONTENT)

@@ -5,7 +5,6 @@ use crate::error::Result;
 pub mod auth;
 pub mod channels;
 pub mod generic;
-pub mod hosts;
 pub mod memberships;
 pub mod messages;
 pub mod servers;

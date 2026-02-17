@@ -23,7 +23,7 @@ pub struct AccountAuth {
 }
 
 /// Auth cache storing authentication data for multiple accounts.
-/// Keys are "name@domain" identity strings (JSON requires string keys).
+/// Keys are "name@host" identity strings (JSON requires string keys).
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct AuthCache {
     pub accounts: HashMap<String, AccountAuth>,

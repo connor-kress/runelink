@@ -25,7 +25,7 @@ pub enum AccountCommands {
     /// List accounts
     List,
     /// Create a new account
-    Create(NameAndDomainArgs),
+    Create(NameAndHostArgs),
     /// Login to an account (store authentication tokens)
     Login(LoginArgs),
     /// Logout from an account (remove authentication tokens)
@@ -39,13 +39,13 @@ pub enum AccountCommands {
 }
 
 #[derive(clap::Args, Debug)]
-pub struct NameAndDomainArgs {
+pub struct NameAndHostArgs {
     /// The account's username
     #[clap(long)]
     pub name: Option<String>,
-    /// The domain name of the account's host
+    /// The host name of the account's host
     #[clap(long)]
-    pub domain: Option<String>,
+    pub host: Option<String>,
 }
 
 #[derive(clap::Args, Debug)]
@@ -53,9 +53,9 @@ pub struct LoginArgs {
     /// The account's username
     #[clap(long)]
     pub name: Option<String>,
-    /// The domain name of the account's host
+    /// The host name of the account's host
     #[clap(long)]
-    pub domain: Option<String>,
+    pub host: Option<String>,
 }
 
 #[derive(clap::Args, Debug)]
@@ -63,9 +63,9 @@ pub struct LogoutArgs {
     /// The account's username
     #[clap(long)]
     pub name: Option<String>,
-    /// The domain name of the account's host
+    /// The host name of the account's host
     #[clap(long)]
-    pub domain: Option<String>,
+    pub host: Option<String>,
 }
 
 #[derive(clap::Args, Debug)]
@@ -73,9 +73,9 @@ pub struct StatusArgs {
     /// The account's username
     #[clap(long)]
     pub name: Option<String>,
-    /// The domain name of the account's host
+    /// The host name of the account's host
     #[clap(long)]
-    pub domain: Option<String>,
+    pub host: Option<String>,
 }
 
 #[derive(clap::Args, Debug)]
@@ -83,7 +83,7 @@ pub struct DeleteAccountArgs {
     #[clap(long)]
     pub name: Option<String>,
     #[clap(long)]
-    pub domain: Option<String>,
+    pub host: Option<String>,
 }
 
 pub async fn handle_account_commands(
@@ -107,13 +107,13 @@ pub async fn handle_account_commands(
         }
 
         AccountCommands::Create(create_args) => {
-            let domain =
-                unwrap_or_prompt(create_args.domain.clone(), "Domain")?;
+            let host =
+                unwrap_or_prompt(create_args.host.clone(), "Host")?;
             let name = unwrap_or_prompt(create_args.name.clone(), "Name")?;
             let password = read_input("Password: ")?.ok_or_else(|| {
                 CliError::InvalidArgument("Password is required.".into())
             })?;
-            let api_url = get_api_url(&domain);
+            let api_url = get_api_url(&host);
             let signup_req = SignupRequest { name, password };
             let user =
                 requests::auth::signup(ctx.client, &api_url, &signup_req)
@@ -125,10 +125,10 @@ pub async fn handle_account_commands(
 
         AccountCommands::Login(login_args) => {
             // Get or discover account
-            let account = if let (Some(name), Some(domain)) =
-                (&login_args.name, &login_args.domain)
+            let account = if let (Some(name), Some(host)) =
+                (&login_args.name, &login_args.host)
             {
-                let user_ref = UserRef::new(name.clone(), domain.clone());
+                let user_ref = UserRef::new(name.clone(), host.clone());
                 // Try to find existing account in config
                 if let Some(acc) =
                     ctx.config.get_account_config(user_ref.clone())
@@ -136,7 +136,7 @@ pub async fn handle_account_commands(
                     acc
                 } else {
                     // Account doesn't exist, fetch it from server
-                    let api_url = get_api_url(domain);
+                    let api_url = get_api_url(host);
                     let user = requests::users::fetch_by_ref(
                         ctx.client,
                         &api_url,
@@ -160,7 +160,7 @@ pub async fn handle_account_commands(
             // TODO: Don't generate a random client_id for each session
             let client_id = Uuid::new_v4().to_string();
 
-            let api_url = get_api_url(&account.user_ref.domain);
+            let api_url = get_api_url(&account.user_ref.host);
             let token_response = requests::auth::token_password(
                 ctx.client,
                 &api_url,
@@ -189,13 +189,13 @@ pub async fn handle_account_commands(
         }
 
         AccountCommands::Logout(logout_args) => {
-            let account = if let (Some(name), Some(domain)) =
-                (&logout_args.name, &logout_args.domain)
+            let account = if let (Some(name), Some(host)) =
+                (&logout_args.name, &logout_args.host)
             {
                 ctx.config
                     .get_account_config(UserRef::new(
                         name.clone(),
-                        domain.clone(),
+                        host.clone(),
                     ))
                     .ok_or_else(|| {
                         CliError::InvalidArgument("Account not found.".into())
@@ -213,10 +213,10 @@ pub async fn handle_account_commands(
         }
 
         AccountCommands::Status(status_args) => {
-            let account = if let (Some(name), Some(domain)) =
-                (&status_args.name, &status_args.domain)
+            let account = if let (Some(name), Some(host)) =
+                (&status_args.name, &status_args.host)
             {
-                let user_ref = UserRef::new(name.clone(), domain.clone());
+                let user_ref = UserRef::new(name.clone(), host.clone());
                 ctx.config.get_account_config(user_ref).ok_or_else(|| {
                     CliError::InvalidArgument("Account not found.".into())
                 })?
@@ -265,14 +265,14 @@ pub async fn handle_account_commands(
                 ));
             }
 
-            let user_ref = if let (Some(name), Some(domain)) =
-                (&delete_args.name, &delete_args.domain)
+            let user_ref = if let (Some(name), Some(host)) =
+                (&delete_args.name, &delete_args.host)
             {
                 let account = ctx
                     .config
                     .get_account_config(UserRef::new(
                         name.clone(),
-                        domain.clone(),
+                        host.clone(),
                     ))
                     .ok_or_else(|| {
                         CliError::InvalidArgument(
@@ -291,7 +291,7 @@ pub async fn handle_account_commands(
                 account.user_ref.clone()
             };
 
-            let api_url = get_api_url(&user_ref.domain);
+            let api_url = get_api_url(&user_ref.host);
             let access_token =
                 ctx.get_access_token_for(&user_ref, &api_url).await?;
 
