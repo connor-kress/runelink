@@ -1,13 +1,11 @@
 pub mod auth;
 pub mod channel;
-pub mod host;
 pub mod message;
 pub mod server;
 pub mod user;
 
 pub use auth::*;
 pub use channel::*;
-pub use host::*;
 pub use message::*;
 pub use server::*;
 pub use user::*;

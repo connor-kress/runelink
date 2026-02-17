@@ -10,7 +10,7 @@ use uuid::Uuid;
 #[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
 pub struct Server {
     pub id: Uuid,
-    pub domain: String,
+    pub host: String,
     pub title: String,
     pub description: Option<String>,
     #[serde(with = "time::serde::rfc3339")]
@@ -83,7 +83,7 @@ pub struct ServerMember {
 pub struct NewServerMembership {
     pub user_ref: UserRef,
     pub server_id: Uuid,
-    pub server_domain: String,
+    pub server_host: String,
     pub role: ServerRole,
 }
 

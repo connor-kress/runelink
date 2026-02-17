@@ -10,7 +10,6 @@ use serde::Deserialize;
 
 mod auth;
 mod channels;
-mod hosts;
 mod memberships;
 mod messages;
 mod servers;
@@ -78,8 +77,6 @@ pub fn router() -> Router<AppState> {
             get(memberships::get_by_user_and_server)
                 .delete(memberships::delete),
         )
-        .route("/hosts", get(hosts::get_all))
-        .route("/hosts/{domain}", get(hosts::get_by_domain))
 }
 
 /// Creates a router for all federation endpoints (server-to-server).

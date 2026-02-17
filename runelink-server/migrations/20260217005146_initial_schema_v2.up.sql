@@ -11,20 +11,12 @@ CREATE TYPE user_role AS ENUM ('user', 'admin');
 
 CREATE TABLE users (
     name TEXT NOT NULL,
-    domain TEXT NOT NULL,
+    host TEXT NOT NULL,
     role user_role NOT NULL DEFAULT 'user',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     synced_at TIMESTAMPTZ,
-    PRIMARY KEY (name, domain)
-);
-
-CREATE TABLE hosts (
-    domain TEXT PRIMARY KEY,
-    user_count INT NOT NULL DEFAULT 0
-        CHECK (user_count >= 0),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    PRIMARY KEY (name, host)
 );
 
 CREATE TABLE servers (
@@ -52,36 +44,36 @@ CREATE TABLE messages (
         REFERENCES channels (id)
         ON DELETE CASCADE,
     author_name TEXT,
-    author_domain TEXT,
+    author_host TEXT,
     body TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT messages_author_fkey
-        FOREIGN KEY (author_name, author_domain)
-        REFERENCES users(name, domain)
+        FOREIGN KEY (author_name, author_host)
+        REFERENCES users(name, host)
         ON DELETE SET NULL
 );
 
 CREATE TABLE server_users (
     user_name TEXT NOT NULL,
-    user_domain TEXT NOT NULL,
+    user_host TEXT NOT NULL,
     server_id UUID NOT NULL
         REFERENCES servers (id)
         ON DELETE CASCADE,
     role server_role NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (user_name, user_domain, server_id),
+    PRIMARY KEY (user_name, user_host, server_id),
     CONSTRAINT server_users_user_fkey
-        FOREIGN KEY (user_name, user_domain)
-        REFERENCES users(name, domain)
+        FOREIGN KEY (user_name, user_host)
+        REFERENCES users(name, host)
         ON DELETE CASCADE
 );
 
 -- Remote servers that local users are members of
 CREATE TABLE cached_remote_servers (
     id UUID PRIMARY KEY,
-    domain TEXT NOT NULL,
+    host TEXT NOT NULL,
     title TEXT NOT NULL,
     description TEXT,
     remote_created_at TIMESTAMPTZ NOT NULL,
@@ -92,7 +84,7 @@ CREATE TABLE cached_remote_servers (
 -- Local user memberships in remote servers
 CREATE TABLE user_remote_server_memberships (
     user_name TEXT NOT NULL,
-    user_domain TEXT NOT NULL,
+    user_host TEXT NOT NULL,
     remote_server_id UUID NOT NULL
         REFERENCES cached_remote_servers (id)
         ON DELETE CASCADE,
@@ -100,23 +92,23 @@ CREATE TABLE user_remote_server_memberships (
     remote_created_at TIMESTAMPTZ NOT NULL,
     remote_updated_at TIMESTAMPTZ NOT NULL,
     synced_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (user_name, user_domain, remote_server_id),
+    PRIMARY KEY (user_name, user_host, remote_server_id),
     CONSTRAINT user_remote_server_memberships_user_fkey
-        FOREIGN KEY (user_name, user_domain)
-        REFERENCES users(name, domain)
+        FOREIGN KEY (user_name, user_host)
+        REFERENCES users(name, host)
         ON DELETE CASCADE
 );
 
 CREATE TABLE local_accounts (
     user_name TEXT NOT NULL,
-    user_domain TEXT NOT NULL,
+    user_host TEXT NOT NULL,
     password_hash TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (user_name, user_domain),
+    PRIMARY KEY (user_name, user_host),
     CONSTRAINT local_accounts_user_fkey
-        FOREIGN KEY (user_name, user_domain)
-        REFERENCES users(name, domain)
+        FOREIGN KEY (user_name, user_host)
+        REFERENCES users(name, host)
         ON DELETE CASCADE
 );
 
@@ -124,14 +116,14 @@ CREATE TABLE local_accounts (
 CREATE TABLE refresh_tokens (
     token TEXT PRIMARY KEY,
     user_name TEXT NOT NULL,
-    user_domain TEXT NOT NULL,
+    user_host TEXT NOT NULL,
     client_id TEXT NOT NULL,
     issued_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     expires_at TIMESTAMPTZ NOT NULL,
     revoked BOOLEAN NOT NULL DEFAULT FALSE,
     CONSTRAINT refresh_tokens_user_fkey
-        FOREIGN KEY (user_name, user_domain)
-        REFERENCES users(name, domain)
+        FOREIGN KEY (user_name, user_host)
+        REFERENCES users(name, host)
         ON DELETE CASCADE
 );
 
@@ -144,11 +136,11 @@ CREATE INDEX idx_messages_channel_id_created_at
     ON messages (channel_id, created_at);
 
 CREATE INDEX idx_messages_author
-    ON messages (author_name, author_domain)
+    ON messages (author_name, author_host)
     WHERE author_name IS NOT NULL;
 
 CREATE INDEX idx_user_remote_memberships_user
-    ON user_remote_server_memberships (user_name, user_domain);
+    ON user_remote_server_memberships (user_name, user_host);
 
 CREATE INDEX idx_user_remote_memberships_remote_server_id
     ON user_remote_server_memberships (remote_server_id);
@@ -165,11 +157,6 @@ $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER users_set_updated_at
     BEFORE UPDATE ON users
-    FOR EACH ROW
-    EXECUTE FUNCTION set_updated_at();
-
-CREATE TRIGGER hosts_set_updated_at
-    BEFORE UPDATE ON hosts
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
 
@@ -197,62 +184,3 @@ CREATE TRIGGER local_accounts_set_updated_at
     BEFORE UPDATE ON local_accounts
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
-
--- USER_COUNT MANAGEMENT --
-
--- Increment user_count on user insertions
-CREATE OR REPLACE FUNCTION increment_host_user_count()
-RETURNS TRIGGER AS $$
-BEGIN
-    INSERT INTO hosts(domain, user_count)
-        VALUES (NEW.domain, 1)
-    ON CONFLICT (domain)
-        DO UPDATE SET user_count = hosts.user_count + 1;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER users_after_insert
-    AFTER INSERT ON users
-    FOR EACH ROW
-    EXECUTE FUNCTION increment_host_user_count();
-
--- Decrement user_count on users deletions
-CREATE OR REPLACE FUNCTION decrement_host_user_count()
-RETURNS TRIGGER AS $$
-BEGIN
-    UPDATE hosts
-    SET user_count = user_count - 1
-    WHERE domain = OLD.domain;
-    RETURN OLD;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER users_after_delete
-    AFTER DELETE ON users
-    FOR EACH ROW
-    EXECUTE FUNCTION decrement_host_user_count();
-
--- Adjust user_counts on user updates
-CREATE OR REPLACE FUNCTION adjust_host_user_count_on_update()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF NEW.domain <> OLD.domain THEN
-        -- decrement old domain
-        UPDATE hosts
-        SET user_count = user_count - 1
-        WHERE domain = OLD.domain;
-
-        -- increment new domain
-        UPDATE hosts
-        SET user_count = user_count + 1
-        WHERE domain = NEW.domain;
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER users_after_update
-    AFTER UPDATE OF domain ON users
-    FOR EACH ROW
-    EXECUTE FUNCTION adjust_host_user_count_on_update();

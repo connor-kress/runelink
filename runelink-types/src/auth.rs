@@ -9,7 +9,7 @@ use crate::UserRef;
 #[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
 pub struct LocalAccount {
     pub user_name: String,
-    pub user_domain: String,
+    pub user_host: String,
     pub password_hash: String,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
@@ -28,7 +28,7 @@ pub struct SignupRequest {
 pub struct RefreshToken {
     pub token: String,
     pub user_name: String,
-    pub user_domain: String,
+    pub user_host: String,
     pub client_id: String,
     #[serde(with = "time::serde::rfc3339")]
     pub issued_at: OffsetDateTime,
@@ -69,7 +69,7 @@ impl RefreshToken {
         Self {
             token: token_str,
             user_name: user_ref.name,
-            user_domain: user_ref.domain,
+            user_host: user_ref.host,
             client_id,
             issued_at: now,
             expires_at: now + lifetime,
@@ -115,7 +115,7 @@ impl PublicJwk {
 pub struct ClientAccessClaims {
     /// Token issuer (canonical ServerId; currently `ServerConfig::api_url_with_port()`)
     pub iss: String,
-    /// Subject identifier for the user ("name@domain")
+    /// Subject identifier for the user ("name@host")
     pub sub: String,
     /// Intended audience for this token (APIs this token can access)
     pub aud: Vec<String>,
@@ -213,7 +213,7 @@ impl std::fmt::Debug for LocalAccount {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("LocalAccount")
             .field("user_name", &self.user_name)
-            .field("user_domain", &self.user_domain)
+            .field("user_host", &self.user_host)
             .field("password_hash", &"[REDACTED]")
             .field("created_at", &self.created_at)
             .field("updated_at", &self.updated_at)
@@ -235,7 +235,7 @@ impl std::fmt::Debug for RefreshToken {
         f.debug_struct("RefreshToken")
             .field("token", &"[REDACTED]")
             .field("user_name", &self.user_name)
-            .field("user_domain", &self.user_domain)
+            .field("user_host", &self.user_host)
             .field("client_id", &self.client_id)
             .field("issued_at", &self.issued_at)
             .field("expires_at", &self.expires_at)

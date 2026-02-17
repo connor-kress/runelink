@@ -7,18 +7,6 @@ use crate::{
     state::AppState,
 };
 
-/// List all hosts (public).
-pub async fn get_all(state: &AppState) -> ApiResult<Vec<Host>> {
-    let hosts = queries::hosts::get_all(&state.db_pool).await?;
-    Ok(hosts)
-}
-
-/// Get a host by domain (public).
-pub async fn get_by_domain(state: &AppState, domain: &str) -> ApiResult<Host> {
-    let host = queries::hosts::get_by_domain(&state.db_pool, domain).await?;
-    Ok(host)
-}
-
 /// Get all domains associated with a user (public).
 pub async fn get_user_associated_domains(
     state: &AppState,
