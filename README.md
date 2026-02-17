@@ -11,13 +11,13 @@ This repo contains:
 
 ## What is RuneLink?
 
-- **Federated**: many independent hosts (domains) can interoperate.
+- **Federated**: many independent hosts (hosts) can interoperate.
 - **Server structure**: like Discord/Slack—join servers, talk in channels.
 - **Open client ecosystem**: today’s client is a CLI, but the intent is that the community can build their own clients against the HTTP API and/or `runelink-client`.
 
 ## Concepts
 
-- **Host**: a RuneLink deployment reachable at a domain (in dev, typically on port `7000`).
+- **Host**: a RuneLink deployment reachable at a host (in dev, typically on port `7000`).
 - **User**: an account on exactly one host (your **home host**).
 - **Server**: a workspace/community that “lives on” some host.
 - **Channel**: a room inside a server.
@@ -29,7 +29,7 @@ This is a Rust workspace (see `Cargo.toml`) with these crates:
 - `runelink-server`: Axum HTTP server + Postgres persistence + federation endpoints.
 - `runelink-term`: the `rune` CLI client (a TUI + websockets are planned, but not the primary interface yet).
 - `runelink-client`: reusable Rust client library for talking to RuneLink servers.
-- `runelink-types`: shared request/response and domain types.
+- `runelink-types`: shared request/response and host types.
 
 ## Federation (high level)
 
@@ -90,7 +90,7 @@ rune channel create
 rune message send
 ```
 
-Most commands will prompt you for any missing values (domain, IDs, message body, etc.) so you can get started quickly. For scripting and non-interactive use, most prompts also have `--...` flags (run `rune --help` and `rune <command> --help`).
+Most commands will prompt you for any missing values (host, IDs, message body, etc.) so you can get started quickly. For scripting and non-interactive use, most prompts also have `--...` flags (run `rune --help` and `rune <command> --help`).
 
 ### Run the server
 
@@ -99,7 +99,7 @@ If you want to host your own RuneLink server, run `runelink-server` (Axum + Post
 `runelink-server` reads configuration from environment variables (see `runelink-server/src/config.rs`):
 
 - **Required**
-  - `LOCAL_DOMAIN` (example: `localhost`)
+  - `LOCAL_HOST` (example: `localhost`)
   - `DATABASE_URL` (Postgres connection string; can point to a local Postgres instance or a remote Postgres server). Example: `postgres://postgres:postgres@localhost/runelink`
 - **Optional**
   - `PORT` (default: `7000`)
