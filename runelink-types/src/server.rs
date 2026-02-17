@@ -1,5 +1,5 @@
-use crate::channel::Channel;
 use crate::user::User;
+use crate::{UserRef, channel::Channel};
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -46,7 +46,7 @@ pub enum ServerRole {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ServerMembership {
     pub server: Server,
-    pub user_id: Uuid,
+    pub user_ref: UserRef,
     pub role: ServerRole,
     #[serde(with = "time::serde::rfc3339")]
     pub joined_at: OffsetDateTime,
@@ -81,8 +81,7 @@ pub struct ServerMember {
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct NewServerMembership {
-    pub user_id: Uuid,
-    pub user_domain: String,
+    pub user_ref: UserRef,
     pub server_id: Uuid,
     pub server_domain: String,
     pub role: ServerRole,
@@ -108,7 +107,7 @@ impl From<FullServerMembership> for ServerMembership {
     fn from(full_membership: FullServerMembership) -> Self {
         ServerMembership {
             server: full_membership.server,
-            user_id: full_membership.user.id,
+            user_ref: full_membership.user.as_ref(),
             role: full_membership.role,
             joined_at: full_membership.joined_at,
             updated_at: full_membership.updated_at,

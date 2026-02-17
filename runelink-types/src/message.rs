@@ -1,4 +1,4 @@
-use crate::user::User;
+use crate::{UserRef, user::User};
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -19,7 +19,7 @@ pub struct Message {
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct NewMessage {
-    pub author_id: Uuid,
+    pub author: UserRef,
     pub body: String,
 }
 

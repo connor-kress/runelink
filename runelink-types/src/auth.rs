@@ -2,14 +2,14 @@ use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use rand::{RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};
-use uuid::Uuid;
 
 use crate::UserRef;
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
 pub struct LocalAccount {
-    pub user_id: Uuid,
+    pub user_name: String,
+    pub user_domain: String,
     pub password_hash: String,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
@@ -27,7 +27,8 @@ pub struct SignupRequest {
 #[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
 pub struct RefreshToken {
     pub token: String,
-    pub user_id: Uuid,
+    pub user_name: String,
+    pub user_domain: String,
     pub client_id: String,
     #[serde(with = "time::serde::rfc3339")]
     pub issued_at: OffsetDateTime,
@@ -56,14 +57,19 @@ pub struct TokenResponse {
 }
 
 impl RefreshToken {
-    pub fn new(user_id: Uuid, client_id: String, lifetime: Duration) -> Self {
+    pub fn new(
+        user_ref: UserRef,
+        client_id: String,
+        lifetime: Duration,
+    ) -> Self {
         let mut bytes = [0u8; 32]; // 256 bits
         OsRng.fill_bytes(&mut bytes);
         let token_str = URL_SAFE_NO_PAD.encode(bytes);
         let now = OffsetDateTime::now_utc();
         Self {
             token: token_str,
-            user_id,
+            user_name: user_ref.name,
+            user_domain: user_ref.domain,
             client_id,
             issued_at: now,
             expires_at: now + lifetime,
@@ -109,8 +115,8 @@ impl PublicJwk {
 pub struct ClientAccessClaims {
     /// Token issuer (canonical ServerId; currently `ServerConfig::api_url_with_port()`)
     pub iss: String,
-    /// Subject identifier for the user (user UUID)
-    pub sub: Uuid,
+    /// Subject identifier for the user ("name@domain")
+    pub sub: String,
     /// Intended audience for this token (APIs this token can access)
     pub aud: Vec<String>,
     /// Expiration time as a UNIX timestamp
@@ -125,7 +131,7 @@ pub struct ClientAccessClaims {
 
 impl ClientAccessClaims {
     pub fn new(
-        user_id: Uuid,
+        user_ref: &UserRef,
         client_id: String,
         issuer_server_id: String,
         scope: String,
@@ -134,7 +140,7 @@ impl ClientAccessClaims {
         let now = OffsetDateTime::now_utc().unix_timestamp();
         Self {
             iss: issuer_server_id.clone(),
-            sub: user_id,
+            sub: user_ref.as_subject(),
             aud: vec![issuer_server_id],
             exp: now + lifetime.whole_seconds(),
             iat: now,
@@ -147,7 +153,7 @@ impl ClientAccessClaims {
 /// JWT claims used for server-to-server federation requests.
 ///
 /// This token authenticates the **calling server** (`iss` and `sub`).
-/// It may optionally include a delegated user identity (`user_id`, `user_domain`)
+/// It may optionally include a delegated user identity (`user_ref`)
 /// for operations performed "on behalf of" a user.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct FederationClaims {
@@ -188,8 +194,7 @@ impl FederationClaims {
     pub fn new_delegated(
         issuer_server_id: String,
         audience_server_id: String,
-        user_id: Uuid,
-        user_domain: String,
+        user_ref: UserRef,
         lifetime: Duration,
     ) -> Self {
         let now = OffsetDateTime::now_utc().unix_timestamp();
@@ -199,7 +204,7 @@ impl FederationClaims {
             aud: vec![audience_server_id],
             exp: now + lifetime.whole_seconds(),
             iat: now,
-            user_ref: Some(UserRef::new(user_id, user_domain)),
+            user_ref: Some(user_ref),
         }
     }
 }
@@ -207,7 +212,8 @@ impl FederationClaims {
 impl std::fmt::Debug for LocalAccount {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("LocalAccount")
-            .field("user_id", &self.user_id)
+            .field("user_name", &self.user_name)
+            .field("user_domain", &self.user_domain)
             .field("password_hash", &"[REDACTED]")
             .field("created_at", &self.created_at)
             .field("updated_at", &self.updated_at)
@@ -228,11 +234,11 @@ impl std::fmt::Debug for RefreshToken {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("RefreshToken")
             .field("token", &"[REDACTED]")
-            .field("user_id", &self.user_id)
+            .field("user_name", &self.user_name)
+            .field("user_domain", &self.user_domain)
             .field("client_id", &self.client_id)
             .field("issued_at", &self.issued_at)
             .field("expires_at", &self.expires_at)
-            .field("revoked", &self.revoked)
             .finish()
     }
 }
