@@ -31,6 +31,8 @@ pub async fn create(
                 "Session missing user identity for server creation".into(),
             )
         })?;
+        // Ensure user exists (creates record for federated users from other domains)
+        queries::users::ensure_exists(&state.db_pool, user_ref.clone()).await?;
         let new_membership = NewServerMembership {
             user_ref,
             server_id: server.id,

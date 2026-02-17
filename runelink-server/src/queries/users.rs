@@ -78,6 +78,32 @@ pub async fn get_all(pool: &DbPool) -> ApiResult<Vec<User>> {
     Ok(users)
 }
 
+pub async fn ensure_exists(
+    pool: &DbPool,
+    user_ref: UserRef,
+) -> ApiResult<User> {
+    let user = sqlx::query_as!(
+        User,
+        r#"
+        INSERT INTO users (name, domain, role)
+        VALUES ($1, $2, 'user')
+        ON CONFLICT (name, domain) DO UPDATE SET updated_at = NOW()
+        RETURNING
+            name,
+            domain,
+            role AS "role: UserRole",
+            created_at,
+            updated_at,
+            synced_at;
+        "#,
+        user_ref.name,
+        user_ref.domain,
+    )
+    .fetch_one(pool)
+    .await?;
+    Ok(user)
+}
+
 pub async fn get_by_ref(pool: &DbPool, user_ref: UserRef) -> ApiResult<User> {
     let user = sqlx::query_as!(
         User,
