@@ -11,9 +11,9 @@ This repo contains:
 
 ## What is RuneLink?
 
-- **Federated**: many independent hosts (hosts) can interoperate.
-- **Server structure**: like Discord/Slack—join servers, talk in channels.
-- **Open client ecosystem**: today’s client is a CLI, but the intent is that the community can build their own clients against the HTTP API and/or `runelink-client`.
+- **Federated**: many independent hosts can interoperate.
+- **Server structure**: like Discord/Slack; join servers, talk in channels.
+- **Open client ecosystem**: today's client is a CLI, but the intent is that the community can build their own clients against the HTTP API and/or `runelink-client`.
 
 ## Concepts
 
@@ -54,7 +54,7 @@ This is intentionally *not* federated: your end-user credentials are never share
 
 ### Prerequisites
 
-- Rust toolchain (this workspace uses **edition 2024**). If you don’t have Rust installed yet, see [rustup](https://rustup.rs/).
+- Rust toolchain (this workspace uses **edition 2024**). If you don't have Rust installed yet, see [rustup](https://rustup.rs/).
 - Postgres
 
 ### Build and use the CLI client (`rune`)
@@ -65,7 +65,7 @@ Install `rune` from source (recommended for now):
 cargo install --path runelink-term
 ```
 
-Verify it’s on your PATH:
+Verify it's in your PATH:
 
 ```bash
 rune --help
@@ -125,7 +125,7 @@ Start the server:
 cargo run
 ```
 
-You can verify it’s up with:
+You can verify it's up with:
 
 ```bash
 curl "http://localhost:7000/ping"
@@ -134,7 +134,9 @@ curl "http://localhost:7000/ping"
 ## Roadmap (high level)
 
 - A public/demo instance: **planned**.
-- A richer interactive client experience: **CLI today**, TUI + websockets planned.
+- A richer interactive client experience: **CLI today**, TUI + GUI with websockets planned.
+- Calls: group audio + video calls with WebRTC.
+- Direct messages: user-to-user direct messages with E2EE as well as group chats.
 - Federation hardening: key rotation, better caching/validation, richer policies.
 - Authentication improvements: additional methods remain local to the home host.
 
